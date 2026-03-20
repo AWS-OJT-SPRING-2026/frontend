@@ -1,0 +1,416 @@
+import { useState } from 'react';
+import { CaretLeft, CaretDown, CaretRight, BookOpen, FileText, Stack } from '@phosphor-icons/react';
+
+// ─── Types ────────────────────────────────────────────────────────────────────
+interface Lesson {
+    id: number;
+    title: string;
+    content: string;
+    readTime: number;
+}
+
+interface Chapter {
+    id: number;
+    title: string;
+    lessons: Lesson[];
+}
+
+interface Subject {
+    id: number;
+    name: string;
+    color: string;
+    bg: string;
+    icon: React.ReactNode;
+    chapters: Chapter[];
+}
+
+// ─── Subject Icons (SVG geometric, monochromatic per subject) ─────────────────
+const SubjectIcons: Record<string, (color: string) => React.ReactNode> = {
+    NguVan: (c) => (
+        <svg viewBox="0 0 40 40" fill="none" xmlns="http://www.w3.org/2000/svg" width="100%" height="100%">
+            {/* Book body */}
+            <rect x="5" y="3" width="23" height="31" rx="3" fill={c} opacity="0.25" stroke={c} strokeWidth="2.5"/>
+            {/* Lines of text */}
+            <rect x="9" y="9" width="15" height="3" rx="1.5" fill={c}/>
+            <rect x="9" y="15" width="15" height="3" rx="1.5" fill={c}/>
+            <rect x="9" y="21" width="10" height="3" rx="1.5" fill={c}/>
+            {/* Pen circle */}
+            <circle cx="31" cy="31" r="7" fill={c}/>
+            <rect x="29.5" y="25.5" width="3" height="6" rx="1.5" fill="white"/>
+            <rect x="27.5" y="30" width="7" height="3" rx="1.5" fill="white"/>
+        </svg>
+    ),
+    Toan: (c) => (
+        <svg viewBox="0 0 40 40" fill="none" xmlns="http://www.w3.org/2000/svg" width="100%" height="100%">
+            {/* Bounding square */}
+            <rect x="3" y="3" width="34" height="34" rx="6" fill={c} opacity="0.2" stroke={c} strokeWidth="3"/>
+            {/* Plus cross */}
+            <rect x="17.5" y="8" width="5" height="24" rx="2.5" fill={c}/>
+            <rect x="8" y="17.5" width="24" height="5" rx="2.5" fill={c}/>
+            {/* Minus to the upper-left (−) */}
+            <rect x="9" y="10" width="8" height="3" rx="1.5" fill={c} opacity="0.5"/>
+            {/* Circle top-right */}
+            <circle cx="30" cy="13" r="4" fill={c}/>
+        </svg>
+    ),
+    VatLy: (c) => (
+        <svg viewBox="0 0 40 40" fill="none" xmlns="http://www.w3.org/2000/svg" width="100%" height="100%">
+            {/* Three ellipses simulating atom orbits */}
+            <ellipse cx="20" cy="20" rx="17" ry="7" stroke={c} strokeWidth="3" fill={c} fillOpacity="0.1"/>
+            <ellipse cx="20" cy="20" rx="17" ry="7" stroke={c} strokeWidth="3" fill="none" transform="rotate(60 20 20)"/>
+            <ellipse cx="20" cy="20" rx="17" ry="7" stroke={c} strokeWidth="3" fill="none" transform="rotate(120 20 20)"/>
+            {/* Nucleus */}
+            <circle cx="20" cy="20" r="5" fill={c}/>
+        </svg>
+    ),
+    HoaHoc: (c) => (
+        <svg viewBox="0 0 40 40" fill="none" xmlns="http://www.w3.org/2000/svg" width="100%" height="100%">
+            {/* Flask neck */}
+            <rect x="15" y="3" width="10" height="10" rx="2" fill={c} opacity="0.3" stroke={c} strokeWidth="2.5"/>
+            {/* Flask body */}
+            <path d="M11 13 C5 18 3 27 8 33 C12 37 28 37 32 33 C37 27 35 18 29 13Z"
+                fill={c} opacity="0.22" stroke={c} strokeWidth="2.5" strokeLinecap="round"/>
+            {/* Bubbles inside */}
+            <circle cx="15" cy="26" r="3.5" fill={c}/>
+            <circle cx="25" cy="22" r="3" fill={c} opacity="0.7"/>
+            <circle cx="22" cy="30" r="2" fill={c} opacity="0.5"/>
+        </svg>
+    ),
+    TiengAnh: (c) => (
+        <svg viewBox="0 0 40 40" fill="none" xmlns="http://www.w3.org/2000/svg" width="100%" height="100%">
+            {/* Globe outer circle */}
+            <circle cx="20" cy="20" r="17" stroke={c} strokeWidth="3" fill={c} fillOpacity="0.15"/>
+            {/* Longitude ellipse */}
+            <ellipse cx="20" cy="20" rx="8" ry="17" stroke={c} strokeWidth="2.5" fill="none"/>
+            {/* Equator */}
+            <line x1="3" y1="20" x2="37" y2="20" stroke={c} strokeWidth="2.5" strokeLinecap="round"/>
+            {/* Upper latitude arc */}
+            <path d="M5 13 Q20 9 35 13" stroke={c} strokeWidth="2.5" fill="none" strokeLinecap="round"/>
+            {/* Lower latitude arc */}
+            <path d="M5 27 Q20 31 35 27" stroke={c} strokeWidth="2.5" fill="none" strokeLinecap="round"/>
+        </svg>
+    ),
+    LichSu: (c) => (
+        <svg viewBox="0 0 40 40" fill="none" xmlns="http://www.w3.org/2000/svg" width="100%" height="100%">
+            {/* Pyramid triangle */}
+            <path d="M20 3 L36 35 H4 Z" fill={c} opacity="0.2" stroke={c} strokeWidth="3" strokeLinejoin="round"/>
+            {/* Door opening */}
+            <rect x="15.5" y="22" width="9" height="13" rx="1.5" fill={c} opacity="0.9"/>
+            {/* Base line */}
+            <rect x="8" y="30" width="24" height="4" rx="2" fill={c}/>
+            {/* Capstone */}
+            <circle cx="20" cy="13" r="3.5" fill={c}/>
+        </svg>
+    ),
+};
+
+
+// ─── Mock Data ────────────────────────────────────────────────────────────────
+const subjects: Subject[] = [
+    {
+        id: 1, name: 'Ngữ Văn', color: '#6C63FF', bg: '#B8B5FF',
+        icon: SubjectIcons.NguVan('#6C63FF'),
+        chapters: [
+            {
+                id: 11, title: 'Chương 1: Văn học dân gian Việt Nam',
+                lessons: [
+                    { id: 111, readTime: 5, title: 'Khái quát văn học dân gian', content: '**Văn học dân gian** là những tác phẩm nghệ thuật ngôn từ truyền miệng, được tập thể nhân dân lao động sáng tác và lưu truyền.\n\n**Đặc trưng cơ bản:**\n- Tính truyền miệng: được lưu truyền qua nhiều thế hệ bằng miệng\n- Tính tập thể: do nhiều người cùng sáng tác và sửa đổi\n- Tính dị bản: có nhiều dị bản khác nhau ở các vùng\n\n**Các thể loại chính:**\n1. Thần thoại\n2. Sử thi\n3. Truyền thuyết\n4. Cổ tích\n5. Ca dao, tục ngữ' },
+                    { id: 112, readTime: 7, title: 'Thần thoại và sử thi', content: '**Thần thoại** là những câu chuyện hư cấu về thần linh và các nhân vật siêu nhiên.\n\n**Sử thi** là những tác phẩm tự sự dài, phản ánh cuộc sống và chiến đấu của một cộng đồng trong một giai đoạn lịch sử.\n\n**Sử thi Dăm San (Ê-đê):** Kể về người anh hùng Dăm San chinh phục thiên nhiên và kẻ thù.' },
+                ]
+            },
+            {
+                id: 12, title: 'Chương 2: Văn học trung đại',
+                lessons: [
+                    { id: 121, readTime: 6, title: 'Khái quát văn học trung đại Việt Nam', content: '**Văn học trung đại Việt Nam** tồn tại từ thế kỷ X đến hết thế kỷ XIX.\n\n**Hai bộ phận:**\n1. **Văn học chữ Hán:** Chiếu, hịch, cáo, thơ Đường luật...\n2. **Văn học chữ Nôm:** Truyện Kiều, Cung oán ngâm khúc...' },
+                    { id: 122, readTime: 10, title: 'Truyện Kiều - Nguyễn Du', content: '**Truyện Kiều** (Đoạn trường tân thanh) là truyện thơ Nôm của đại thi hào **Nguyễn Du** (1765–1820).\n\n**Giá trị nội dung:**\n- *Giá trị hiện thực:* Phản ánh xã hội phong kiến thối nát\n- *Giá trị nhân đạo:* Đề cao phẩm giá con người' },
+                ]
+            },
+        ]
+    },
+    {
+        id: 2, name: 'Toán học', color: '#D4A017', bg: '#FCE38A',
+        icon: SubjectIcons.Toan('#D4A017'),
+        chapters: [
+            {
+                id: 21, title: 'Chương 1: Giới hạn và Liên tục',
+                lessons: [
+                    { id: 211, readTime: 8, title: 'Giới hạn của dãy số', content: '**Định nghĩa:** Số thực L được gọi là giới hạn của dãy số (uₙ) nếu |uₙ – L| nhỏ tùy ý khi n đủ lớn.\n\n**Ký hiệu:** lim uₙ = L (n → ∞)\n\n**Ví dụ:**\n- lim (1/n) = 0\n- lim ((2n+1)/(n+3)) = 2' },
+                    { id: 212, readTime: 7, title: 'Giới hạn của hàm số', content: '**Định nghĩa:** lim f(x) = L khi x → x₀ nghĩa là f(x) tiến về L khi x tiến về x₀.\n\n**Giới hạn một phía:**\n- Giới hạn trái: lim⁻ f(x)\n- Giới hạn phải: lim⁺ f(x)' },
+                ]
+            },
+            {
+                id: 22, title: 'Chương 2: Đạo hàm và Vi phân',
+                lessons: [
+                    { id: 221, readTime: 6, title: 'Định nghĩa và ý nghĩa đạo hàm', content: '**Đạo hàm** của hàm số f(x) tại điểm x₀:\n\nf\'(x₀) = lim [f(x₀+Δx) – f(x₀)] / Δx (Δx → 0)\n\n**Bảng đạo hàm cơ bản:**\n\n| Hàm số | Đạo hàm |\n|---|---|\n| xⁿ | n·xⁿ⁻¹ |\n| sin x | cos x |\n| eˣ | eˣ |' },
+                ]
+            },
+        ]
+    },
+    {
+        id: 3, name: 'Vật Lý', color: '#0E9E8E', bg: '#95E1D3',
+        icon: SubjectIcons.VatLy('#0E9E8E'),
+        chapters: [
+            {
+                id: 31, title: 'Chương 1: Điện học',
+                lessons: [
+                    { id: 311, readTime: 6, title: 'Điện tích và Định luật Coulomb', content: '**Định luật Coulomb:**\nLực tương tác giữa hai điện tích điểm q₁, q₂ đặt cách nhau r:\n\n**F = k · |q₁·q₂| / r²**\n\nTrong đó k = 9×10⁹ N·m²/C²\n\n- Cùng dấu: đẩy nhau\n- Trái dấu: hút nhau' },
+                    { id: 312, readTime: 7, title: 'Điện trường và Điện thế', content: '**Điện trường** là trường lực do điện tích sinh ra.\n\n**Cường độ điện trường:** E = F/q (đơn vị: V/m)\n\n**Hiệu điện thế:** U_MN = V_M – V_N = A_MN / q' },
+                ]
+            },
+        ]
+    },
+    {
+        id: 4, name: 'Hóa Học', color: '#E05050', bg: '#FFB5B5',
+        icon: SubjectIcons.HoaHoc('#E05050'),
+        chapters: [
+            {
+                id: 41, title: 'Chương 1: Nguyên tử và Bảng tuần hoàn',
+                lessons: [
+                    { id: 411, readTime: 6, title: 'Cấu tạo nguyên tử', content: '**Nguyên tử** gồm:\n- **Hạt nhân:** proton (p⁺) và neutron (n)\n- **Vỏ electron:** các electron (e⁻) chuyển động xung quanh\n\n**Số hiệu nguyên tử (Z)** = số proton = số electron\n\n**Số khối (A)** = Z + N (N = số neutron)' },
+                ]
+            },
+        ]
+    },
+    {
+        id: 5, name: 'Tiếng Anh', color: '#2E9E55', bg: '#C8F7C5',
+        icon: SubjectIcons.TiengAnh('#2E9E55'),
+        chapters: [
+            {
+                id: 51, title: 'Chương 1: Grammar – Tenses',
+                lessons: [
+                    { id: 511, readTime: 5, title: 'Present Simple & Present Continuous', content: '**Present Simple – Hiện tại đơn**\n\nCấu trúc: S + V(s/es) + ...\n\n**Cách dùng:**\n- Sự thật hiển nhiên: *The sun rises in the east.*\n- Thói quen: *I go to school every day.*\n\n---\n\n**Present Continuous – Hiện tại tiếp diễn**\n\nCấu trúc: S + am/is/are + V-ing + ...' },
+                ]
+            },
+        ]
+    },
+    {
+        id: 6, name: 'Lịch Sử', color: '#C07820', bg: '#FFD9A0',
+        icon: SubjectIcons.LichSu('#C07820'),
+        chapters: [
+            {
+                id: 61, title: 'Chương 1: Việt Nam 1945–1954',
+                lessons: [
+                    { id: 611, readTime: 7, title: 'Cách mạng tháng Tám 1945', content: '**Bối cảnh lịch sử:**\n- Nhật đảo chính Pháp (9/3/1945), Nhật đầu hàng Đồng Minh (8/1945)\n\n**Diễn biến:**\n- 19/8/1945: Hà Nội khởi nghĩa thắng lợi\n- 2/9/1945: Chủ tịch Hồ Chí Minh đọc Tuyên ngôn Độc lập\n\n**Ý nghĩa:**\n- Chấm dứt ách thực dân Pháp hơn 80 năm\n- Nhân dân ta làm chủ vận mệnh đất nước' },
+                ]
+            },
+        ]
+    },
+];
+
+// ─── Simple renderer ───────────────────────────────────────────────────────────
+function parseInline(text: string): React.ReactNode {
+    const parts = text.split(/(\*\*[^*]+\*\*|\*[^*]+\*)/g);
+    return parts.map((part, i) => {
+        if (part.startsWith('**') && part.endsWith('**')) return <strong key={i} className="font-extrabold text-[#1A1A1A]">{part.slice(2, -2)}</strong>;
+        if (part.startsWith('*') && part.endsWith('*')) return <em key={i} className="italic text-[#1A1A1A]/60">{part.slice(1, -1)}</em>;
+        return part;
+    });
+}
+
+function renderContent(text: string) {
+    return text.split('\n').map((line, i) => {
+        if (line.startsWith('- ')) return <li key={i} className="ml-4 text-[#1A1A1A]/70 font-semibold list-disc">{parseInline(line.slice(2))}</li>;
+        if (/^\d+\.\s/.test(line)) return <li key={i} className="ml-4 text-[#1A1A1A]/70 font-semibold list-decimal">{parseInline(line.replace(/^\d+\.\s/, ''))}</li>;
+        if (line.startsWith('---')) return <hr key={i} className="border-[#1A1A1A]/10 my-3" />;
+        if (line.startsWith('| ')) return null;
+        if (line.trim() === '') return <div key={i} className="h-2" />;
+        return <p key={i} className="text-[#1A1A1A]/70 font-semibold leading-relaxed">{parseInline(line)}</p>;
+    });
+}
+
+// ─── Lesson Reader ────────────────────────────────────────────────────────────
+function LessonReader({ lesson, subject, onBack }: { lesson: Lesson; subject: Subject; onBack: () => void }) {
+    return (
+        <div className="max-w-3xl mx-auto space-y-5">
+            <button onClick={onBack} className="flex items-center gap-2 text-[#1A1A1A]/50 hover:text-[#1A1A1A] font-extrabold text-sm transition-colors">
+                <CaretLeft className="w-4 h-4" /> Quay lại
+            </button>
+
+            <div className="rounded-3xl border-2 border-[#1A1A1A] overflow-hidden bg-white">
+                {/* Header */}
+                <div className="p-6 border-b-2 border-[#1A1A1A]" style={{ backgroundColor: subject.bg }}>
+                    <span className="inline-flex items-center gap-2 text-[10px] font-extrabold border-2 border-[#1A1A1A]/20 px-3 py-1 rounded-full uppercase tracking-widest text-[#1A1A1A] bg-white/70">
+                        <span className="w-4 h-4 shrink-0 flex items-center justify-center">{subject.icon}</span>
+                        {subject.name}
+                    </span>
+                    <h1 className="text-xl font-extrabold text-[#1A1A1A] mt-3">{lesson.title}</h1>
+                    <p className="text-xs text-[#1A1A1A]/60 font-bold mt-1 flex items-center gap-1">
+                        <BookOpen className="w-3.5 h-3.5" weight="fill" /> Thời gian đọc ≈ {lesson.readTime} phút
+                    </p>
+                </div>
+
+                {/* Content */}
+                <div className="p-6 md:p-8 space-y-1.5">
+                    {lesson.content.includes('| ') ? (() => {
+                        const blocks: string[][] = [[]]
+                        lesson.content.split('\n').forEach(line => {
+                            if (line.startsWith('| ')) { blocks[blocks.length - 1].push(line); }
+                            else { if (blocks[blocks.length - 1].length > 0) blocks.push([]); blocks[blocks.length - 1].push(line); }
+                        });
+                        return blocks.map((block, bi) => {
+                            if (block[0]?.startsWith('| ')) {
+                                const rows = block.filter(r => !r.startsWith('|---'));
+                                const head = rows[0]; const body = rows.slice(1);
+                                const parseRow = (r: string) => r.split('|').filter((_, i, a) => i > 0 && i < a.length - 1).map(c => c.trim());
+                                return (
+                                    <div key={bi} className="overflow-x-auto my-3">
+                                        <table className="w-full text-sm border-2 border-[#1A1A1A] rounded-2xl overflow-hidden">
+                                            <thead>
+                                                <tr className="bg-[#1A1A1A]/5 border-b-2 border-[#1A1A1A]">
+                                                    {parseRow(head).map((h, i) => <th key={i} className="text-left px-4 py-2.5 font-extrabold text-[#1A1A1A]">{h}</th>)}
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                {body.map((row, ri) => (
+                                                    <tr key={ri} className="border-b border-[#1A1A1A]/10 hover:bg-[#1A1A1A]/3">
+                                                        {parseRow(row).map((c, ci) => <td key={ci} className="px-4 py-2.5 text-[#1A1A1A]/60 font-semibold">{c}</td>)}
+                                                    </tr>
+                                                ))}
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                );
+                            }
+                            return <div key={bi}>{renderContent(block.join('\n'))}</div>;
+                        });
+                    })() : renderContent(lesson.content)}
+                </div>
+            </div>
+        </div>
+    );
+}
+
+// ─── Main Component ───────────────────────────────────────────────────────────
+export function StudentDocuments() {
+    const [selectedSubject, setSelectedSubject] = useState<Subject | null>(null);
+    const [openChapters, setOpenChapters] = useState<number[]>([]);
+    const [selectedLesson, setSelectedLesson] = useState<Lesson | null>(null);
+
+    const toggleChapter = (id: number) => {
+        setOpenChapters(prev => prev.includes(id) ? prev.filter(c => c !== id) : [...prev, id]);
+    };
+
+    // ── Lesson reader ─────────────────────────────────────────────────────────
+    if (selectedLesson && selectedSubject) {
+        return (
+            <div className="p-8 min-h-screen bg-[#F7F7F2]" style={{ fontFamily: "'Nunito', sans-serif" }}>
+                <LessonReader lesson={selectedLesson} subject={selectedSubject} onBack={() => setSelectedLesson(null)} />
+            </div>
+        );
+    }
+
+    // ── Chapter list for a subject ────────────────────────────────────────────
+    if (selectedSubject) {
+        const totalLessons = selectedSubject.chapters.reduce((s, c) => s + c.lessons.length, 0);
+        return (
+            <div className="p-8 min-h-screen bg-[#F7F7F2]" style={{ fontFamily: "'Nunito', sans-serif" }}>
+                <div className="max-w-3xl mx-auto space-y-5">
+                    <button onClick={() => setSelectedSubject(null)} className="flex items-center gap-2 text-[#1A1A1A]/50 hover:text-[#1A1A1A] font-extrabold text-sm transition-colors">
+                        <CaretLeft className="w-4 h-4" /> Tất cả môn học
+                    </button>
+
+                    {/* Subject header */}
+                    <div className="rounded-3xl border-2 border-[#1A1A1A] overflow-hidden" style={{ backgroundColor: selectedSubject.bg }}>
+                        <div className="p-6 flex items-center gap-5">
+                            <div className="w-14 h-14 shrink-0 rounded-2xl border-2 border-[#1A1A1A]/20 flex items-center justify-center p-2.5" style={{ backgroundColor: 'white' }}>{selectedSubject.icon}</div>
+                            <div>
+                                <h1 className="text-2xl font-extrabold text-[#1A1A1A]">{selectedSubject.name}</h1>
+                                <p className="text-sm font-bold text-[#1A1A1A]/60 mt-1">{selectedSubject.chapters.length} chương · {totalLessons} bài học</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* Chapters accordion */}
+                    <div className="space-y-3">
+                        {selectedSubject.chapters.map((chapter) => {
+                            const isOpen = openChapters.includes(chapter.id);
+                            return (
+                                <div key={chapter.id} className="rounded-3xl border-2 border-[#1A1A1A] bg-white overflow-hidden">
+                                    <button
+                                        onClick={() => toggleChapter(chapter.id)}
+                                        className="w-full p-5 flex items-center gap-4 text-left hover:bg-[#1A1A1A]/3 transition-colors"
+                                    >
+                                        <div className="shrink-0 w-10 h-10 rounded-2xl border-2 border-[#1A1A1A]/20 flex items-center justify-center" style={{ backgroundColor: selectedSubject.bg }}>
+                                            <Stack className="w-5 h-5 text-[#1A1A1A]" weight="fill" />
+                                        </div>
+                                        <div className="flex-1 min-w-0">
+                                            <h3 className="font-extrabold text-[#1A1A1A] text-sm">{chapter.title}</h3>
+                                            <p className="text-xs text-[#1A1A1A]/50 font-bold mt-0.5">{chapter.lessons.length} bài học</p>
+                                        </div>
+                                        {isOpen
+                                            ? <CaretDown className="w-5 h-5 text-[#1A1A1A]/40 shrink-0" />
+                                            : <CaretRight className="w-5 h-5 text-[#1A1A1A]/40 shrink-0" />}
+                                    </button>
+
+                                    {isOpen && (
+                                        <div className="border-t-2 border-[#1A1A1A]/10 divide-y divide-[#1A1A1A]/10">
+                                            {chapter.lessons.map((lesson) => (
+                                                <button
+                                                    key={lesson.id}
+                                                    onClick={() => setSelectedLesson(lesson)}
+                                                    className="w-full px-5 py-4 flex items-center gap-4 text-left hover:bg-[#1A1A1A]/3 transition-colors"
+                                                >
+                                                    <div className="shrink-0 w-8 h-8 rounded-xl bg-[#1A1A1A]/5 border border-[#1A1A1A]/15 flex items-center justify-center">
+                                                        <FileText className="w-4 h-4 text-[#1A1A1A]/50" weight="fill" />
+                                                    </div>
+                                                    <div className="flex-1 min-w-0">
+                                                        <p className="font-extrabold text-[#1A1A1A] text-sm truncate">{lesson.title}</p>
+                                                        <p className="text-xs text-[#1A1A1A]/40 font-bold mt-0.5">≈ {lesson.readTime} phút đọc</p>
+                                                    </div>
+                                                    <CaretRight className="w-4 h-4 text-[#1A1A1A]/30 shrink-0" />
+                                                </button>
+                                            ))}
+                                        </div>
+                                    )}
+                                </div>
+                            );
+                        })}
+                    </div>
+                </div>
+            </div>
+        );
+    }
+
+    // ── Subject grid (home) ───────────────────────────────────────────────────
+    return (
+        <div className="p-8 min-h-screen bg-[#F7F7F2]" style={{ fontFamily: "'Nunito', sans-serif" }}>
+            <div className="max-w-4xl mx-auto space-y-6">
+                <div>
+                    <p className="text-xs font-extrabold text-gray-400 uppercase tracking-widest mb-1">Chọn môn học để xem lý thuyết</p>
+                    <h1 className="text-3xl font-extrabold text-[#1A1A1A]">Tài liệu học tập</h1>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                    {subjects.map((subject) => {
+                        const totalLessons = subject.chapters.reduce((s, c) => s + c.lessons.length, 0);
+                        return (
+                            <button
+                                key={subject.id}
+                                onClick={() => {
+                                    setSelectedSubject(subject);
+                                    setOpenChapters([subject.chapters[0]?.id]);
+                                    setSelectedLesson(null);
+                                }}
+                                className="text-left group"
+                            >
+                                <div className="rounded-3xl border-2 border-[#1A1A1A] overflow-hidden hover:shadow-lg transition-all duration-200 group-hover:-translate-y-0.5 bg-white">
+                                    <div className="h-2 w-full" style={{ backgroundColor: subject.bg }} />
+                                    <div className="p-6">
+                                        <div className="w-14 h-14 rounded-2xl border-2 border-[#1A1A1A]/20 flex items-center justify-center mb-4 p-3 group-hover:scale-105 transition-transform" style={{ backgroundColor: subject.bg }}>
+                                            {subject.icon}
+                                        </div>
+                                        <h3 className="font-extrabold text-[#1A1A1A] text-lg">{subject.name}</h3>
+                                        <p className="text-xs font-bold text-[#1A1A1A]/50 mt-1">{subject.chapters.length} chương · {totalLessons} bài học</p>
+                                        <div className="mt-4 inline-flex items-center gap-1.5 text-xs font-extrabold text-[#FF6B4A]">
+                                            Xem tài liệu <CaretRight className="w-3.5 h-3.5" />
+                                        </div>
+                                    </div>
+                                </div>
+                            </button>
+                        );
+                    })}
+                </div>
+            </div>
+        </div>
+    );
+}

@@ -1,0 +1,1543 @@
+import { useState, useEffect, useRef } from 'react';
+import { MagnifyingGlass, UserPlus, PencilSimple, Trash, X, ChalkboardTeacher, Student, Eye, EyeSlash, Lock, LockOpen } from '@phosphor-icons/react';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
+import { api } from '../../services/api';
+import { authService } from '../../services/authService';
+
+/* ─── API Types ──────────────────────────────────────────────────────────── */
+interface RoleResponse {
+    roleID: number;
+    roleName: string;
+    description: string;
+}
+
+interface UserResponse {
+    userID: number;
+    username: string;
+    fullName: string;
+    email: string;
+    phone: string;
+    status: string;
+    createdAt: string;
+    classes: string[] | null;
+    role: RoleResponse;
+}
+
+interface PageResponse<T> {
+    currentPage: number;
+    totalPages: number;
+    totalElements: number;
+    pageSize: number;
+    data: T[];
+}
+
+interface ApiResponse<T> {
+    code: number;
+    message: string;
+    result: T;
+}
+
+/* ─── Types ──────────────────────────────────────────────────────────────── */
+interface TeacherForm {
+    username: string;
+    password: string;
+    fullName: string;
+    email: string;
+    phone: string;
+    gender: string;
+    specialization: string;
+    dateOfBirth: string;
+    isHomeroomTeacher: boolean;
+    status: string;
+}
+
+interface StudentForm {
+    // Thông tin tài khoản
+    username: string;
+    password: string;
+    email: string;
+    phone: string;
+    // Thông tin cá nhân
+    fullName: string;
+    dateOfBirth: string;
+    gender: string;
+    address: string;
+    // Thông tin phụ huynh
+    parentName: string;
+    parentPhone: string;
+    parentEmail: string;
+    parentRelationship: string;
+}
+
+const EMPTY_TEACHER: TeacherForm = {
+    username: '', password: '', fullName: '', email: '',
+    phone: '', gender: '', specialization: '', dateOfBirth: '', isHomeroomTeacher: false, status: 'ACTIVE',
+};
+const EMPTY_STUDENT: StudentForm = {
+    username: '', password: '', email: '', phone: '',
+    fullName: '', dateOfBirth: '', gender: '', address: '',
+    parentName: '', parentPhone: '', parentEmail: '', parentRelationship: '',
+};
+
+/* ─── Input helper ───────────────────────────────────────────────────────── */
+function Field({ label, required, children }: { label: string; required?: boolean; children: React.ReactNode }) {
+    return (
+        <div className="flex flex-col gap-1">
+            <label className="text-xs font-extrabold text-[#1A1A1A]/60 uppercase tracking-wider">
+                {label}{required && <span className="text-[#FF6B4A] ml-0.5">*</span>}
+            </label>
+            {children}
+        </div>
+    );
+}
+
+const inputCls = "w-full px-3 py-2 bg-white border-2 border-[#1A1A1A]/20 rounded-xl text-sm font-semibold focus:outline-none focus:border-[#FF6B4A] transition-colors placeholder:text-gray-300";
+
+/* ─── Add User Modal ─────────────────────────────────────────────────────── */
+function AddUserModal({ onClose, onSuccess }: { onClose: () => void; onSuccess: () => void }) {
+    const [tab, setTab] = useState<'teacher' | 'student'>('teacher');
+    const [teacherForm, setTeacherForm] = useState<TeacherForm>(EMPTY_TEACHER);
+    const [studentForm, setStudentForm] = useState<StudentForm>(EMPTY_STUDENT);
+    const [loading, setLoading] = useState(false);
+    const [error, setError] = useState<string | null>(null);
+    const [success, setSuccess] = useState<string | null>(null);
+    const [showTeacherPassword, setShowTeacherPassword] = useState(false);
+    const [showStudentPassword, setShowStudentPassword] = useState(false);
+
+    function updateTeacher(field: keyof TeacherForm, value: string | boolean) {
+        setTeacherForm(prev => ({ ...prev, [field]: value }));
+    }
+    function updateStudent(field: keyof StudentForm, value: string) {
+        setStudentForm(prev => ({ ...prev, [field]: value }));
+    }
+
+    async function handleSubmit() {
+        setError(null);
+        setSuccess(null);
+        const token = authService.getToken();
+        if (!token) { setError('Bạn chưa đăng nhập.'); return; }
+
+        setLoading(true);
+        try {
+            if (tab === 'teacher') {
+                const payload: any = { ...teacherForm };
+                if (!payload.dateOfBirth) delete payload.dateOfBirth;
+                if (!payload.gender) delete payload.gender;
+                await api.authPost('/users/teachers', payload, token);
+                setSuccess('Tạo giáo viên thành công!');
+            } else {
+                // Build student payload — omit empty optional fields
+                const payload: any = {
+                    username: studentForm.username,
+                    password: studentForm.password,
+                    fullName: studentForm.fullName,
+                    email: studentForm.email,
+                };
+                if (studentForm.phone) payload.phone = studentForm.phone;
+                if (studentForm.dateOfBirth) payload.dateOfBirth = studentForm.dateOfBirth;
+                if (studentForm.gender) payload.gender = studentForm.gender;
+                if (studentForm.address) payload.address = studentForm.address;
+                if (studentForm.parentName) payload.parentName = studentForm.parentName;
+                if (studentForm.parentPhone) payload.parentPhone = studentForm.parentPhone;
+                if (studentForm.parentEmail) payload.parentEmail = studentForm.parentEmail;
+                if (studentForm.parentRelationship) payload.parentRelationship = studentForm.parentRelationship;
+                await api.authPost('/users/students', payload, token);
+                setSuccess('Tạo học sinh thành công!');
+            }
+            setTimeout(() => { onSuccess(); onClose(); }, 1200);
+        } catch (e: any) {
+            setError(e?.message ?? 'Có lỗi xảy ra, vui lòng thử lại.');
+        } finally {
+            setLoading(false);
+        }
+    }
+
+    return (
+        /* Backdrop */
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4" onClick={onClose}>
+            {/* Modal — wider when student tab */}
+            <div
+                className={`bg-[#FAF9F6] w-full rounded-3xl border-2 border-[#1A1A1A] shadow-2xl overflow-hidden transition-all ${tab === 'student' ? 'max-w-2xl' : 'max-w-xl'}`}
+                style={{ fontFamily: "'Nunito', sans-serif" }}
+                onClick={e => e.stopPropagation()}
+            >
+                {/* Header */}
+                <div className="flex items-center justify-between px-6 pt-6 pb-4 border-b-2 border-[#1A1A1A]/10">
+                    <div>
+                        <p className="text-xs font-extrabold text-gray-400 uppercase tracking-widest mb-0.5">Quản lý người dùng</p>
+                        <h2 className="text-xl font-extrabold text-[#1A1A1A]">Thêm người dùng mới</h2>
+                    </div>
+                    <button onClick={onClose} className="w-8 h-8 rounded-xl bg-[#1A1A1A]/10 hover:bg-[#1A1A1A]/20 flex items-center justify-center transition-colors">
+                        <X className="w-4 h-4 text-[#1A1A1A]" />
+                    </button>
+                </div>
+
+                {/* Tabs */}
+                <div className="flex gap-2 px-6 pt-4">
+                    {([
+                        { key: 'teacher', label: 'Giáo viên', icon: <ChalkboardTeacher className="w-4 h-4" weight="fill" /> },
+                        { key: 'student', label: 'Học sinh', icon: <Student className="w-4 h-4" weight="fill" /> },
+                    ] as const).map(t => (
+                        <button
+                            key={t.key}
+                            onClick={() => { setTab(t.key); setError(null); setSuccess(null); }}
+                            className={`flex items-center gap-2 px-5 py-2 rounded-2xl font-extrabold text-sm transition-all border-2
+                                ${tab === t.key
+                                    ? 'bg-[#FF6B4A] text-white border-[#FF6B4A] shadow'
+                                    : 'bg-white text-[#1A1A1A]/60 border-[#1A1A1A]/20 hover:border-[#FF6B4A]/50'}`}
+                        >
+                            {t.icon}{t.label}
+                        </button>
+                    ))}
+                </div>
+
+                {/* Form body */}
+                <div className="px-6 py-4 space-y-4 max-h-[65vh] overflow-y-auto">
+                    {tab === 'teacher' ? (
+                        <>
+                            <div className="grid grid-cols-2 gap-4">
+                                <Field label="Tên đăng nhập" required>
+                                    <input className={inputCls} placeholder="vd: gv.nguyenvan" value={teacherForm.username} onChange={e => updateTeacher('username', e.target.value)} />
+                                </Field>
+                                <Field label="Mật khẩu" required>
+                                    <div className="relative">
+                                        <input type={showTeacherPassword ? 'text' : 'password'} className={inputCls + ' pr-10'} placeholder="Tối thiểu 6 ký tự" value={teacherForm.password} onChange={e => updateTeacher('password', e.target.value)} />
+                                        <button type="button" onClick={() => setShowTeacherPassword(p => !p)} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-[#FF6B4A] transition-colors">
+                                            {showTeacherPassword ? <EyeSlash className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                                        </button>
+                                    </div>
+                                </Field>
+                            </div>
+                            <Field label="Họ và tên" required>
+                                <input className={inputCls} placeholder="Nguyễn Văn A" value={teacherForm.fullName} onChange={e => updateTeacher('fullName', e.target.value)} />
+                            </Field>
+                            <div className="grid grid-cols-2 gap-4">
+                                <Field label="Email" required>
+                                    <input type="email" className={inputCls} placeholder="giaovien@school.edu.vn" value={teacherForm.email} onChange={e => updateTeacher('email', e.target.value)} />
+                                </Field>
+                                <Field label="Số điện thoại">
+                                    <input className={inputCls} placeholder="0912345678" value={teacherForm.phone} onChange={e => updateTeacher('phone', e.target.value)} />
+                                </Field>
+                            </div>
+                            <div className="grid grid-cols-2 gap-4">
+                                <Field label="Chuyên môn">
+                                    <input className={inputCls} placeholder="Toán học" value={teacherForm.specialization} onChange={e => updateTeacher('specialization', e.target.value)} />
+                                </Field>
+                                <Field label="Ngày sinh">
+                                    <input type="date" className={inputCls} value={teacherForm.dateOfBirth} onChange={e => updateTeacher('dateOfBirth', e.target.value)} />
+                                </Field>
+                            </div>
+                            <div className="grid grid-cols-2 gap-4">
+                                <Field label="Trạng thái">
+                                    <select className={inputCls} value={teacherForm.status} onChange={e => updateTeacher('status', e.target.value)}>
+                                        <option value="ACTIVE">Hoạt động</option>
+                                        <option value="LOCKED">Khóa</option>
+                                    </select>
+                                </Field>
+                                <Field label="Giới tính">
+                                    <select className={inputCls} value={teacherForm.gender} onChange={e => updateTeacher('gender', e.target.value)}>
+                                        <option value="">-- Chọn --</option>
+                                        <option value="MALE">Nam</option>
+                                        <option value="FEMALE">Nữ</option>
+                                        <option value="OTHER">Khác</option>
+                                    </select>
+                                </Field>
+                            </div>
+                            <div className="flex items-center gap-3 bg-white border-2 border-[#1A1A1A]/10 rounded-2xl px-4 py-3">
+                                <input
+                                    id="homeroom"
+                                    type="checkbox"
+                                    className="w-4 h-4 accent-[#FF6B4A]"
+                                    checked={teacherForm.isHomeroomTeacher}
+                                    onChange={e => updateTeacher('isHomeroomTeacher', e.target.checked)}
+                                />
+                                <label htmlFor="homeroom" className="text-sm font-bold text-[#1A1A1A] cursor-pointer select-none">
+                                    Là giáo viên chủ nhiệm
+                                </label>
+                            </div>
+                        </>
+                    ) : (
+                        <>
+                            {/* ── Section 1: Thông tin tài khoản ── */}
+                            <div className="rounded-2xl border-2 border-[#1A1A1A]/10 overflow-hidden">
+                                <div className="flex items-center gap-2 px-4 py-2.5 bg-[#FF6B4A]/8 border-b-2 border-[#1A1A1A]/10">
+                                    <span className="w-5 h-5 rounded-lg bg-[#FF6B4A] flex items-center justify-center text-white text-xs font-extrabold">1</span>
+                                    <p className="text-xs font-extrabold text-[#FF6B4A] uppercase tracking-wider">Thông tin tài khoản</p>
+                                </div>
+                                <div className="p-4 space-y-3 bg-white">
+                                    <div className="grid grid-cols-2 gap-3">
+                                        <Field label="Tên đăng nhập" required>
+                                            <input className={inputCls} placeholder="vd: hs.tranvan" value={studentForm.username} onChange={e => updateStudent('username', e.target.value)} />
+                                        </Field>
+                                        <Field label="Mật khẩu" required>
+                                            <div className="relative">
+                                                <input type={showStudentPassword ? 'text' : 'password'} className={inputCls + ' pr-10'} placeholder="Tối thiểu 6 ký tự, có chữ + số" value={studentForm.password} onChange={e => updateStudent('password', e.target.value)} />
+                                                <button type="button" onClick={() => setShowStudentPassword(p => !p)} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-[#FF6B4A] transition-colors">
+                                                    {showStudentPassword ? <EyeSlash className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                                                </button>
+                                            </div>
+                                        </Field>
+                                    </div>
+                                    <div className="grid grid-cols-2 gap-3">
+                                        <Field label="Email" required>
+                                            <input type="email" className={inputCls} placeholder="hocsinh@student.edu.vn" value={studentForm.email} onChange={e => updateStudent('email', e.target.value)} />
+                                        </Field>
+                                        <Field label="Số điện thoại">
+                                            <input className={inputCls} placeholder="0912345678" value={studentForm.phone} onChange={e => updateStudent('phone', e.target.value)} />
+                                        </Field>
+                                    </div>
+                                </div>
+                            </div>
+
+                            {/* ── Section 2: Thông tin cá nhân ── */}
+                            <div className="rounded-2xl border-2 border-[#1A1A1A]/10 overflow-hidden">
+                                <div className="flex items-center gap-2 px-4 py-2.5 bg-[#B8B5FF]/20 border-b-2 border-[#1A1A1A]/10">
+                                    <span className="w-5 h-5 rounded-lg bg-[#B8B5FF] flex items-center justify-center text-[#1A1A1A] text-xs font-extrabold">2</span>
+                                    <p className="text-xs font-extrabold text-[#6C63FF] uppercase tracking-wider">Thông tin cá nhân</p>
+                                </div>
+                                <div className="p-4 space-y-3 bg-white">
+                                    <Field label="Họ và tên" required>
+                                        <input className={inputCls} placeholder="Trần Văn B" value={studentForm.fullName} onChange={e => updateStudent('fullName', e.target.value)} />
+                                    </Field>
+                                    <div className="grid grid-cols-2 gap-3">
+                                        <Field label="Ngày sinh">
+                                            <input type="date" className={inputCls} value={studentForm.dateOfBirth} onChange={e => updateStudent('dateOfBirth', e.target.value)} />
+                                        </Field>
+                                        <Field label="Giới tính">
+                                            <select className={inputCls} value={studentForm.gender} onChange={e => updateStudent('gender', e.target.value)}>
+                                                <option value="">-- Chọn --</option>
+                                                <option value="MALE">Nam</option>
+                                                <option value="FEMALE">Nữ</option>
+                                                <option value="OTHER">Khác</option>
+                                            </select>
+                                        </Field>
+                                    </div>
+                                    <Field label="Địa chỉ">
+                                        <input className={inputCls} placeholder="123 Đường ABC, Quận 1, TP.HCM" value={studentForm.address} onChange={e => updateStudent('address', e.target.value)} />
+                                    </Field>
+                                </div>
+                            </div>
+
+                            {/* ── Section 3: Thông tin phụ huynh ── */}
+                            <div className="rounded-2xl border-2 border-[#1A1A1A]/10 overflow-hidden">
+                                <div className="flex items-center gap-2 px-4 py-2.5 bg-[#95E1D3]/20 border-b-2 border-[#1A1A1A]/10">
+                                    <span className="w-5 h-5 rounded-lg bg-[#95E1D3] flex items-center justify-center text-[#1A1A1A] text-xs font-extrabold">3</span>
+                                    <p className="text-xs font-extrabold text-[#1A7A6E] uppercase tracking-wider">Thông tin phụ huynh</p>
+                                </div>
+                                <div className="p-4 space-y-3 bg-white">
+                                    <div className="grid grid-cols-2 gap-3">
+                                        <Field label="Họ tên phụ huynh">
+                                            <input className={inputCls} placeholder="Nguyễn Văn C" value={studentForm.parentName} onChange={e => updateStudent('parentName', e.target.value)} />
+                                        </Field>
+                                        <Field label="Quan hệ">
+                                            <select className={inputCls} value={studentForm.parentRelationship} onChange={e => updateStudent('parentRelationship', e.target.value)}>
+                                                <option value="">-- Chọn --</option>
+                                                <option value="Father">Cha</option>
+                                                <option value="Mother">Mẹ</option>
+                                                <option value="Grandfather">Ông</option>
+                                                <option value="Grandmother">Bà</option>
+                                                <option value="Sibling">Anh / Chị</option>
+                                                <option value="Guardian">Người giám hộ</option>
+                                            </select>
+                                        </Field>
+                                    </div>
+                                    <div className="grid grid-cols-2 gap-3">
+                                        <Field label="SĐT phụ huynh">
+                                            <input className={inputCls} placeholder="0987654321" value={studentForm.parentPhone} onChange={e => updateStudent('parentPhone', e.target.value)} />
+                                        </Field>
+                                        <Field label="Email phụ huynh">
+                                            <input type="email" className={inputCls} placeholder="phuhuynh@email.com" value={studentForm.parentEmail} onChange={e => updateStudent('parentEmail', e.target.value)} />
+                                        </Field>
+                                    </div>
+                                </div>
+                            </div>
+                        </>
+                    )}
+
+                    {/* Feedback */}
+                    {error && (
+                        <div className="bg-[#FFB5B5]/40 border-2 border-[#FF6B4A]/40 text-[#c0392b] text-sm font-bold px-4 py-2.5 rounded-2xl">
+                            ⚠️ {error}
+                        </div>
+                    )}
+                    {success && (
+                        <div className="bg-[#95E1D3]/40 border-2 border-[#95E1D3] text-[#1A7A6E] text-sm font-bold px-4 py-2.5 rounded-2xl">
+                            ✅ {success}
+                        </div>
+                    )}
+                </div>
+
+                {/* Footer */}
+                <div className="flex justify-end gap-3 px-6 pb-6 pt-3 border-t-2 border-[#1A1A1A]/10">
+                    <button
+                        onClick={onClose}
+                        className="px-5 py-2.5 rounded-2xl border-2 border-[#1A1A1A]/20 font-extrabold text-sm text-[#1A1A1A]/60 hover:bg-[#1A1A1A]/5 transition-colors"
+                    >
+                        Hủy
+                    </button>
+                    <button
+                        onClick={handleSubmit}
+                        disabled={loading}
+                        className="flex items-center gap-2 px-5 py-2.5 rounded-2xl bg-[#FF6B4A] hover:bg-[#ff5535] font-extrabold text-sm text-white transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
+                    >
+                        {loading ? (
+                            <svg className="animate-spin w-4 h-4" viewBox="0 0 24 24" fill="none">
+                                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4l3-3-3-3v4a8 8 0 100 16v-4l-3 3 3 3v-4a8 8 0 01-8-8z" />
+                            </svg>
+                        ) : <UserPlus className="w-4 h-4" weight="fill" />}
+                        {loading ? 'Đang tạo...' : `Tạo ${tab === 'teacher' ? 'giáo viên' : 'học sinh'}`}
+                    </button>
+                </div>
+            </div>
+        </div>
+    );
+}
+
+/* ─── Helpers ────────────────────────────────────────────────────────────── */
+const AVATAR_COLORS = ['#FCE38A', '#B8B5FF', '#FFB5B5', '#95E1D3', '#A8E6CF', '#FFD3B6', '#C9B1FF', '#B5EAD7'];
+
+function getInitials(name: string): string {
+    if (!name) return '?';
+    const parts = name.trim().split(' ');
+    if (parts.length === 1) return parts[0][0].toUpperCase();
+    return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
+}
+
+function getAvatarColor(id: number): string {
+    return AVATAR_COLORS[id % AVATAR_COLORS.length];
+}
+
+function getRoleLabel(roleName: string): string {
+    if (!roleName) return '';
+    const r = roleName.toUpperCase();
+    if (r.includes('TEACHER')) return 'Giáo viên';
+    if (r.includes('STUDENT')) return 'Học sinh';
+    if (r.includes('ADMIN')) return 'Admin';
+    return roleName;
+}
+
+function getRoleBg(roleName: string): string {
+    const r = roleName?.toUpperCase() ?? '';
+    if (r.includes('TEACHER')) return '#B8B5FF';
+    if (r.includes('STUDENT')) return '#FCE38A';
+    return '#D0D0D0';
+}
+
+function formatDate(dateStr: string | null): string {
+    if (!dateStr) return '—';
+    try {
+        const d = new Date(dateStr);
+        return d.toLocaleDateString('vi-VN');
+    } catch {
+        return dateStr;
+    }
+}
+
+function getUserCode(user: UserResponse): string {
+    const r = user.role?.roleName?.toUpperCase() ?? '';
+    const prefix = r.includes('TEACHER') ? 'GV' : r.includes('STUDENT') ? 'HS' : 'ND';
+    return `${prefix}-${String(user.userID).padStart(4, '0')}`;
+}
+
+function getGenderLabel(gender?: string | null): string {
+    const g = (gender ?? '').toUpperCase();
+    if (g === 'MALE') return 'Nam';
+    if (g === 'FEMALE') return 'Nữ';
+    if (g === 'OTHER') return 'Khác';
+    return '—';
+}
+
+function renderClassPreview(classes: string[] | null) {
+    if (!classes || classes.length === 0) return '—';
+    const visible = classes.slice(0, 3);
+    const hiddenCount = classes.length - visible.length;
+    const fullList = classes.join(', ');
+
+    return (
+        <span className="font-bold text-[#1A1A1A]/70">
+            {visible.join(', ')}
+            {hiddenCount > 0 && (
+                <span
+                    className="ml-1 inline-flex cursor-help rounded-md border border-[#1A1A1A]/15 px-1.5 text-xs font-extrabold text-[#1A1A1A]/60"
+                    title={fullList}
+                    aria-label={`Xem toàn bộ lớp học: ${fullList}`}
+                >
+                    ....
+                </span>
+            )}
+        </span>
+    );
+}
+
+function DetailItem({ label, value }: { label: string; value: string }) {
+    return (
+        <div className="rounded-2xl border-2 border-[#1A1A1A]/10 bg-white p-3">
+            <p className="text-[11px] font-extrabold uppercase tracking-wider text-[#1A1A1A]/40">{label}</p>
+            <p className="mt-1 text-sm font-bold text-[#1A1A1A] break-words">{value || '—'}</p>
+        </div>
+    );
+}
+
+/* ─── Edit User Modal ────────────────────────────────────────────────────── */
+interface TeacherDetailResponse {
+    teacherID: number;
+    username: string;
+    email: string;
+    phone: string;
+    status: string;
+    createdAt: string;
+    role: RoleResponse;
+    fullName: string;
+    specialization: string;
+    gender: string;
+    isHomeroomTeacher: boolean;
+    dateOfBirth: string | null;
+    classes: string[] | null;
+}
+
+interface StudentDetailResponse {
+    studentID: number;
+    username: string;
+    email: string;
+    phone: string;
+    status: string;
+    createdAt: string;
+    role: RoleResponse;
+    fullName: string;
+    dateOfBirth: string | null;
+    gender: string;
+    address: string;
+    parentName: string;
+    parentPhone: string;
+    parentEmail: string;
+    parentRelationship: string;
+}
+
+type UserDetailResponse = TeacherDetailResponse | StudentDetailResponse;
+
+interface TeacherEditForm {
+    fullName: string;
+    email: string;
+    phone: string;
+    status: string;
+    gender: string;
+    specialization: string;
+    dateOfBirth: string;
+    isHomeroomTeacher: boolean;
+}
+
+interface StudentEditForm {
+    fullName: string;
+    email: string;
+    phone: string;
+    status: string;
+    dateOfBirth: string;
+    gender: string;
+    address: string;
+    parentName: string;
+    parentPhone: string;
+    parentEmail: string;
+    parentRelationship: string;
+}
+
+function EditUserModal({ user, onClose, onSuccess }: { user: UserResponse; onClose: () => void; onSuccess: () => void }) {
+    const isTeacher = user.role?.roleName?.toUpperCase().includes('TEACHER');
+
+    const [teacherForm, setTeacherForm] = useState<TeacherEditForm>({
+        fullName: user.fullName ?? '',
+        email: user.email ?? '',
+        phone: user.phone ?? '',
+        status: user.status ?? 'ACTIVE',
+        gender: '',
+        specialization: '',
+        dateOfBirth: '',
+        isHomeroomTeacher: false,
+    });
+
+    const [studentForm, setStudentForm] = useState<StudentEditForm>({
+        fullName: user.fullName ?? '',
+        email: user.email ?? '',
+        phone: user.phone ?? '',
+        status: user.status ?? 'ACTIVE',
+        dateOfBirth: '',
+        gender: '',
+        address: '',
+        parentName: '',
+        parentPhone: '',
+        parentEmail: '',
+        parentRelationship: '',
+    });
+
+    const [fetchingDetail, setFetchingDetail] = useState(true);
+    const [loading, setLoading] = useState(false);
+    const [error, setError] = useState<string | null>(null);
+    const [success, setSuccess] = useState<string | null>(null);
+
+    // Fetch full detail from GET /users/{userID} on mount
+    useEffect(() => {
+        async function loadDetail() {
+            const token = authService.getToken();
+            if (!token) { setFetchingDetail(false); return; }
+            try {
+                const resp = await api.get<ApiResponse<TeacherDetailResponse | StudentDetailResponse>>(
+                    `/users/${user.userID}`, token
+                );
+                const detail = resp.result;
+                if (isTeacher) {
+                    const t = detail as TeacherDetailResponse;
+                    setTeacherForm({
+                        fullName: t.fullName ?? '',
+                        email: t.email ?? '',
+                        phone: t.phone ?? '',
+                        status: t.status ?? 'ACTIVE',
+                        gender: (t.gender ?? '').toUpperCase(),
+                        specialization: t.specialization ?? '',
+                        dateOfBirth: t.dateOfBirth ? t.dateOfBirth.toString().slice(0, 10) : '',
+                        isHomeroomTeacher: t.isHomeroomTeacher ?? false,
+                    });
+                } else {
+                    const s = detail as StudentDetailResponse;
+                    setStudentForm({
+                        fullName: s.fullName ?? '',
+                        email: s.email ?? '',
+                        phone: s.phone ?? '',
+                        status: s.status ?? 'ACTIVE',
+                        dateOfBirth: s.dateOfBirth ? s.dateOfBirth.toString().slice(0, 10) : '',
+                        gender: (s.gender ?? '').toUpperCase(),
+                        address: s.address ?? '',
+                        parentName: s.parentName ?? '',
+                        parentPhone: s.parentPhone ?? '',
+                        parentEmail: s.parentEmail ?? '',
+                        parentRelationship: s.parentRelationship ?? '',
+                    });
+                }
+            } catch {
+                // giữ nguyên giá trị mặc định nếu lỗi
+            } finally {
+                setFetchingDetail(false);
+            }
+        }
+        loadDetail();
+    }, [user.userID, isTeacher]);
+
+    function updateTeacher(field: keyof TeacherEditForm, value: string | boolean) {
+        setTeacherForm(prev => ({ ...prev, [field]: value }));
+    }
+    function updateStudent(field: keyof StudentEditForm, value: string) {
+        setStudentForm(prev => ({ ...prev, [field]: value }));
+    }
+
+    async function handleSubmit() {
+        setError(null);
+        setSuccess(null);
+        const token = authService.getToken();
+        if (!token) { setError('Bạn chưa đăng nhập.'); return; }
+        setLoading(true);
+        try {
+            if (isTeacher) {
+                const payload: any = {
+                    fullName: teacherForm.fullName,
+                    email: teacherForm.email,
+                    status: teacherForm.status,
+                    isHomeroomTeacher: teacherForm.isHomeroomTeacher,
+                };
+                if (teacherForm.phone) payload.phone = teacherForm.phone;
+                if (teacherForm.gender) payload.gender = teacherForm.gender;
+                if (teacherForm.specialization) payload.specialization = teacherForm.specialization;
+                if (teacherForm.dateOfBirth) payload.dateOfBirth = teacherForm.dateOfBirth;
+                await api.authPut(`/users/teachers/${user.userID}`, payload, token);
+                setSuccess('Cập nhật giáo viên thành công!');
+            } else {
+                const payload: any = {
+                    fullName: studentForm.fullName,
+                    email: studentForm.email,
+                    status: studentForm.status,
+                };
+                if (studentForm.phone) payload.phone = studentForm.phone;
+                if (studentForm.dateOfBirth) payload.dateOfBirth = studentForm.dateOfBirth;
+                if (studentForm.gender) payload.gender = studentForm.gender;
+                if (studentForm.address) payload.address = studentForm.address;
+                if (studentForm.parentName) payload.parentName = studentForm.parentName;
+                if (studentForm.parentPhone) payload.parentPhone = studentForm.parentPhone;
+                if (studentForm.parentEmail) payload.parentEmail = studentForm.parentEmail;
+                if (studentForm.parentRelationship) payload.parentRelationship = studentForm.parentRelationship;
+                await api.authPut(`/users/students/${user.userID}`, payload, token);
+                setSuccess('Cập nhật học sinh thành công!');
+            }
+            setTimeout(() => { onSuccess(); onClose(); }, 1200);
+        } catch (e: any) {
+            setError(e?.message ?? 'Có lỗi xảy ra, vui lòng thử lại.');
+        } finally {
+            setLoading(false);
+        }
+    }
+
+    return (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4" onClick={onClose}>
+            <div
+                className={`bg-[#FAF9F6] w-full rounded-3xl border-2 border-[#1A1A1A] shadow-2xl overflow-hidden transition-all ${!isTeacher ? 'max-w-2xl' : 'max-w-xl'}`}
+                style={{ fontFamily: "'Nunito', sans-serif" }}
+                onClick={e => e.stopPropagation()}
+            >
+                {/* Header */}
+                <div className="flex items-center justify-between px-6 pt-6 pb-4 border-b-2 border-[#1A1A1A]/10">
+                    <div>
+                        <p className="text-xs font-extrabold text-gray-400 uppercase tracking-widest mb-0.5">Quản lý người dùng</p>
+                        <h2 className="text-xl font-extrabold text-[#1A1A1A]">
+                            Chỉnh sửa {isTeacher ? 'giáo viên' : 'học sinh'}
+                        </h2>
+                        <p className="text-xs text-gray-400 font-semibold mt-0.5">{getUserCode(user)} — {user.username}</p>
+                    </div>
+                    <button onClick={onClose} className="w-8 h-8 rounded-xl bg-[#1A1A1A]/10 hover:bg-[#1A1A1A]/20 flex items-center justify-center transition-colors">
+                        <X className="w-4 h-4 text-[#1A1A1A]" />
+                    </button>
+                </div>
+
+                {/* Form body */}
+                <div className="px-6 py-4 space-y-4 max-h-[65vh] overflow-y-auto">
+                    {fetchingDetail ? (
+                        <div className="space-y-3 py-2">
+                            {[1,2,3,4].map(i => (
+                                <div key={i} className="h-10 bg-[#1A1A1A]/8 rounded-xl animate-pulse" />
+                            ))}
+                        </div>
+                    ) : isTeacher ? (
+                        <>
+                            <Field label="Họ và tên" required>
+                                <input className={inputCls} placeholder="Nguyễn Văn A" value={teacherForm.fullName} onChange={e => updateTeacher('fullName', e.target.value)} />
+                            </Field>
+                            <div className="grid grid-cols-2 gap-4">
+                                <Field label="Email" required>
+                                    <input type="email" className={inputCls} placeholder="giaovien@school.edu.vn" value={teacherForm.email} onChange={e => updateTeacher('email', e.target.value)} />
+                                </Field>
+                                <Field label="Số điện thoại">
+                                    <input className={inputCls} placeholder="0912345678" value={teacherForm.phone} onChange={e => updateTeacher('phone', e.target.value)} />
+                                </Field>
+                            </div>
+                            <div className="grid grid-cols-2 gap-4">
+                                <Field label="Chuyên môn">
+                                    <input className={inputCls} placeholder="Toán học" value={teacherForm.specialization} onChange={e => updateTeacher('specialization', e.target.value)} />
+                                </Field>
+                                <Field label="Ngày sinh">
+                                    <input type="date" className={inputCls} value={teacherForm.dateOfBirth} onChange={e => updateTeacher('dateOfBirth', e.target.value)} />
+                                </Field>
+                            </div>
+                            <div className="grid grid-cols-2 gap-4">
+                                <Field label="Trạng thái">
+                                    <select className={inputCls} value={teacherForm.status} onChange={e => updateTeacher('status', e.target.value)}>
+                                        <option value="ACTIVE">Hoạt động</option>
+                                        <option value="LOCKED">Khóa</option>
+                                    </select>
+                                </Field>
+                                <Field label="Giới tính">
+                                    <select className={inputCls} value={teacherForm.gender} onChange={e => updateTeacher('gender', e.target.value)}>
+                                        <option value="">-- Chọn --</option>
+                                        <option value="MALE">Nam</option>
+                                        <option value="FEMALE">Nữ</option>
+                                        <option value="OTHER">Khác</option>
+                                    </select>
+                                </Field>
+                            </div>
+                            <div className="flex items-center gap-3 bg-white border-2 border-[#1A1A1A]/10 rounded-2xl px-4 py-3">
+                                <input
+                                    id="edit-homeroom"
+                                    type="checkbox"
+                                    className="w-4 h-4 accent-[#FF6B4A]"
+                                    checked={teacherForm.isHomeroomTeacher}
+                                    onChange={e => updateTeacher('isHomeroomTeacher', e.target.checked)}
+                                />
+                                <label htmlFor="edit-homeroom" className="text-sm font-bold text-[#1A1A1A] cursor-pointer select-none">
+                                    Là giáo viên chủ nhiệm
+                                </label>
+                            </div>
+                        </>
+                    ) : (
+                        <>
+                            {/* Section 1: Thông tin cơ bản */}
+                            <div className="rounded-2xl border-2 border-[#1A1A1A]/10 overflow-hidden">
+                                <div className="flex items-center gap-2 px-4 py-2.5 bg-[#FF6B4A]/8 border-b-2 border-[#1A1A1A]/10">
+                                    <span className="w-5 h-5 rounded-lg bg-[#FF6B4A] flex items-center justify-center text-white text-xs font-extrabold">1</span>
+                                    <p className="text-xs font-extrabold text-[#FF6B4A] uppercase tracking-wider">Thông tin tài khoản</p>
+                                </div>
+                                <div className="p-4 space-y-3 bg-white">
+                                    <div className="grid grid-cols-2 gap-3">
+                                        <Field label="Email" required>
+                                            <input type="email" className={inputCls} value={studentForm.email} onChange={e => updateStudent('email', e.target.value)} />
+                                        </Field>
+                                        <Field label="Số điện thoại">
+                                            <input className={inputCls} value={studentForm.phone} onChange={e => updateStudent('phone', e.target.value)} />
+                                        </Field>
+                                    </div>
+                                    <Field label="Trạng thái">
+                                        <select className={inputCls} value={studentForm.status} onChange={e => updateStudent('status', e.target.value)}>
+                                            <option value="ACTIVE">Hoạt động</option>
+                                            <option value="LOCKED">Khóa</option>
+                                        </select>
+                                    </Field>
+                                </div>
+                            </div>
+
+                            {/* Section 2: Thông tin cá nhân */}
+                            <div className="rounded-2xl border-2 border-[#1A1A1A]/10 overflow-hidden">
+                                <div className="flex items-center gap-2 px-4 py-2.5 bg-[#B8B5FF]/20 border-b-2 border-[#1A1A1A]/10">
+                                    <span className="w-5 h-5 rounded-lg bg-[#B8B5FF] flex items-center justify-center text-[#1A1A1A] text-xs font-extrabold">2</span>
+                                    <p className="text-xs font-extrabold text-[#6C63FF] uppercase tracking-wider">Thông tin cá nhân</p>
+                                </div>
+                                <div className="p-4 space-y-3 bg-white">
+                                    <Field label="Họ và tên" required>
+                                        <input className={inputCls} value={studentForm.fullName} onChange={e => updateStudent('fullName', e.target.value)} />
+                                    </Field>
+                                    <div className="grid grid-cols-2 gap-3">
+                                        <Field label="Ngày sinh">
+                                            <input type="date" className={inputCls} value={studentForm.dateOfBirth} onChange={e => updateStudent('dateOfBirth', e.target.value)} />
+                                        </Field>
+                                        <Field label="Giới tính">
+                                            <select className={inputCls} value={studentForm.gender} onChange={e => updateStudent('gender', e.target.value)}>
+                                                <option value="">-- Chọn --</option>
+                                                <option value="MALE">Nam</option>
+                                                <option value="FEMALE">Nữ</option>
+                                                <option value="OTHER">Khác</option>
+                                            </select>
+                                        </Field>
+                                    </div>
+                                    <Field label="Địa chỉ">
+                                        <input className={inputCls} value={studentForm.address} onChange={e => updateStudent('address', e.target.value)} />
+                                    </Field>
+                                </div>
+                            </div>
+
+                            {/* Section 3: Thông tin phụ huynh */}
+                            <div className="rounded-2xl border-2 border-[#1A1A1A]/10 overflow-hidden">
+                                <div className="flex items-center gap-2 px-4 py-2.5 bg-[#95E1D3]/20 border-b-2 border-[#1A1A1A]/10">
+                                    <span className="w-5 h-5 rounded-lg bg-[#95E1D3] flex items-center justify-center text-[#1A1A1A] text-xs font-extrabold">3</span>
+                                    <p className="text-xs font-extrabold text-[#1A7A6E] uppercase tracking-wider">Thông tin phụ huynh</p>
+                                </div>
+                                <div className="p-4 space-y-3 bg-white">
+                                    <div className="grid grid-cols-2 gap-3">
+                                        <Field label="Họ tên phụ huynh">
+                                            <input className={inputCls} value={studentForm.parentName} onChange={e => updateStudent('parentName', e.target.value)} />
+                                        </Field>
+                                        <Field label="Quan hệ">
+                                            <select className={inputCls} value={studentForm.parentRelationship} onChange={e => updateStudent('parentRelationship', e.target.value)}>
+                                                <option value="">-- Chọn --</option>
+                                                <option value="Father">Cha</option>
+                                                <option value="Mother">Mẹ</option>
+                                                <option value="Grandfather">Ông</option>
+                                                <option value="Grandmother">Bà</option>
+                                                <option value="Sibling">Anh / Chị</option>
+                                                <option value="Guardian">Người giám hộ</option>
+                                            </select>
+                                        </Field>
+                                    </div>
+                                    <div className="grid grid-cols-2 gap-3">
+                                        <Field label="SĐT phụ huynh">
+                                            <input className={inputCls} value={studentForm.parentPhone} onChange={e => updateStudent('parentPhone', e.target.value)} />
+                                        </Field>
+                                        <Field label="Email phụ huynh">
+                                            <input type="email" className={inputCls} value={studentForm.parentEmail} onChange={e => updateStudent('parentEmail', e.target.value)} />
+                                        </Field>
+                                    </div>
+                                </div>
+                            </div>
+                        </>
+                    )}
+
+                    {/* Feedback */}
+                    {error && (
+                        <div className="bg-[#FFB5B5]/40 border-2 border-[#FF6B4A]/40 text-[#c0392b] text-sm font-bold px-4 py-2.5 rounded-2xl">
+                            ⚠️ {error}
+                        </div>
+                    )}
+                    {success && (
+                        <div className="bg-[#95E1D3]/40 border-2 border-[#95E1D3] text-[#1A7A6E] text-sm font-bold px-4 py-2.5 rounded-2xl">
+                            ✅ {success}
+                        </div>
+                    )}
+                </div>
+
+                {/* Footer */}
+                <div className="flex justify-end gap-3 px-6 pb-6 pt-3 border-t-2 border-[#1A1A1A]/10">
+                    <button
+                        onClick={onClose}
+                        className="px-5 py-2.5 rounded-2xl border-2 border-[#1A1A1A]/20 font-extrabold text-sm text-[#1A1A1A]/60 hover:bg-[#1A1A1A]/5 transition-colors"
+                    >
+                        Hủy
+                    </button>
+                    <button
+                        onClick={handleSubmit}
+                        disabled={loading}
+                        className="flex items-center gap-2 px-5 py-2.5 rounded-2xl bg-[#FF6B4A] hover:bg-[#ff5535] font-extrabold text-sm text-white transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
+                    >
+                        {loading ? (
+                            <svg className="animate-spin w-4 h-4" viewBox="0 0 24 24" fill="none">
+                                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4l3-3-3-3v4a8 8 0 100 16v-4l-3 3 3 3v-4a8 8 0 01-8-8z" />
+                            </svg>
+                        ) : <PencilSimple className="w-4 h-4" weight="fill" />}
+                        {loading ? 'Đang cập nhật...' : 'Cập nhật'}
+                    </button>
+                </div>
+            </div>
+        </div>
+    );
+}
+
+function UserDetailModal({ user, onClose }: { user: UserResponse; onClose: () => void }) {
+    const isTeacher = user.role?.roleName?.toUpperCase().includes('TEACHER');
+    const [detail, setDetail] = useState<UserDetailResponse | null>(null);
+    const [loading, setLoading] = useState(true);
+
+    useEffect(() => {
+        async function loadDetail() {
+            const token = authService.getToken();
+            if (!token) {
+                setLoading(false);
+                return;
+            }
+            try {
+                const resp = await api.get<ApiResponse<UserDetailResponse>>(`/users/${user.userID}`, token);
+                setDetail(resp.result ?? null);
+            } finally {
+                setLoading(false);
+            }
+        }
+        loadDetail();
+    }, [user.userID]);
+
+    const teacherDetail = isTeacher ? detail as TeacherDetailResponse | null : null;
+    const studentDetail = !isTeacher ? detail as StudentDetailResponse | null : null;
+    const fullName = detail?.fullName ?? user.fullName ?? user.username;
+    const email = detail?.email ?? user.email ?? '—';
+    const phone = detail?.phone ?? user.phone ?? '—';
+    const classes = isTeacher
+        ? (teacherDetail?.classes ?? user.classes ?? [])
+        : (user.classes ?? []);
+    const statusLabel = user.status === 'ACTIVE' ? 'Hoạt động' : 'Khóa';
+    const infoRows = [
+        { label: 'Tên đăng nhập', value: user.username ?? '—' },
+        { label: 'Vai trò', value: getRoleLabel(user.role?.roleName ?? '') },
+        { label: 'Trạng thái', value: statusLabel },
+        { label: 'Ngày tạo', value: formatDate(detail?.createdAt ?? user.createdAt) },
+        { label: 'Email', value: email },
+        { label: 'Số điện thoại', value: phone || '—' },
+        { label: 'Ngày sinh', value: formatDate(detail?.dateOfBirth ?? null) },
+        { label: 'Giới tính', value: getGenderLabel(detail?.gender) },
+    ];
+
+    return (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4" onClick={onClose}>
+            <div
+                className="bg-[#FAF9F6] w-full max-w-4xl rounded-3xl border-2 border-[#1A1A1A] shadow-2xl overflow-hidden"
+                style={{ fontFamily: "'Nunito', sans-serif" }}
+                onClick={(e) => e.stopPropagation()}
+            >
+                <div className="bg-gradient-to-r from-[#FF6B4A]/10 via-white to-[#B8B5FF]/20 px-6 pt-6 pb-5 border-b-2 border-[#1A1A1A]/10">
+                    <div className="flex items-start justify-between gap-4">
+                        <div className="flex items-center gap-4">
+                            <div
+                                className="w-14 h-14 rounded-2xl border-2 border-[#1A1A1A] flex items-center justify-center text-lg font-extrabold text-[#1A1A1A]"
+                                style={{ backgroundColor: getAvatarColor(user.userID) }}
+                            >
+                                {getInitials(fullName)}
+                            </div>
+                            <div>
+                                <p className="text-xs font-extrabold text-gray-400 uppercase tracking-widest mb-0.5">Chi tiết người dùng</p>
+                                <h2 className="text-2xl font-extrabold text-[#1A1A1A] leading-tight">{fullName}</h2>
+                                <p className="text-sm text-gray-500 font-bold mt-0.5">{getUserCode(user)} — {user.username}</p>
+                                <div className="mt-2 flex flex-wrap gap-2">
+                                    <span
+                                        className="inline-flex px-3 py-1 rounded-full border-2 border-[#1A1A1A]/20 text-xs font-extrabold"
+                                        style={{ backgroundColor: getRoleBg(user.role?.roleName ?? ''), color: '#1A1A1A' }}
+                                    >
+                                        {getRoleLabel(user.role?.roleName ?? '')}
+                                    </span>
+                                    <span className={`inline-flex px-3 py-1 rounded-full border-2 border-[#1A1A1A]/20 text-xs font-extrabold ${user.status === 'ACTIVE' ? 'bg-[#95E1D3]' : 'bg-[#FFB5B5]'}`}>
+                                        {statusLabel}
+                                    </span>
+                                </div>
+                            </div>
+                        </div>
+                        <button onClick={onClose} className="w-8 h-8 rounded-xl bg-[#1A1A1A]/10 hover:bg-[#1A1A1A]/20 flex items-center justify-center transition-colors">
+                        <X className="w-4 h-4 text-[#1A1A1A]" />
+                        </button>
+                    </div>
+                </div>
+
+                <div className="px-6 py-5 space-y-4 max-h-[70vh] overflow-y-auto bg-[#FAF9F6]">
+                    {loading ? (
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-3 py-1">
+                            {[1, 2, 3, 4, 5, 6].map((i) => (
+                                <div key={i} className="h-16 bg-[#1A1A1A]/8 rounded-2xl animate-pulse" />
+                            ))}
+                        </div>
+                    ) : (
+                        <>
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                                {infoRows.map((item) => (
+                                    <DetailItem key={item.label} label={item.label} value={item.value} />
+                                ))}
+                                {isTeacher ? (
+                                    <DetailItem label="Chuyên môn" value={teacherDetail?.specialization || '—'} />
+                                ) : (
+                                    <DetailItem label="Địa chỉ" value={studentDetail?.address || '—'} />
+                                )}
+                            </div>
+
+                            {!isTeacher && (
+                                <div className="rounded-2xl border-2 border-[#1A1A1A]/10 p-4 bg-white">
+                                    <p className="text-xs font-extrabold text-gray-400 uppercase tracking-widest mb-3">Thông tin phụ huynh</p>
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                                        <DetailItem label="Họ tên phụ huynh" value={studentDetail?.parentName || '—'} />
+                                        <DetailItem label="Quan hệ" value={studentDetail?.parentRelationship || '—'} />
+                                        <DetailItem label="SĐT phụ huynh" value={studentDetail?.parentPhone || '—'} />
+                                        <DetailItem label="Email phụ huynh" value={studentDetail?.parentEmail || '—'} />
+                                    </div>
+                                </div>
+                            )}
+
+                            <div className="rounded-2xl border-2 border-[#1A1A1A]/10 bg-white p-4">
+                                <p className="text-xs font-extrabold uppercase tracking-wider text-[#1A1A1A]/40 mb-2">Danh sách lớp học</p>
+                                <p className="text-sm font-bold text-[#1A1A1A]/80 leading-7">{classes.length > 0 ? classes.join(', ') : '—'}</p>
+                            </div>
+                        </>
+                    )}
+                </div>
+
+                <div className="px-6 pb-6 pt-1 border-t-2 border-[#1A1A1A]/10 flex justify-end bg-[#FAF9F6]">
+                    <button
+                        onClick={onClose}
+                        className="px-5 py-2.5 rounded-2xl border-2 border-[#1A1A1A]/20 font-extrabold text-sm text-[#1A1A1A]/70 hover:bg-[#1A1A1A]/5 transition-colors"
+                    >
+                        Đóng
+                    </button>
+                </div>
+            </div>
+        </div>
+    );
+}
+
+/* ─── Main Component ─────────────────────────────────────────────────────── */
+export function UserManage() {
+    const [searchInput, setSearchInput] = useState('');
+    const [searchTerm, setSearchTerm] = useState('');
+    const [roleFilter, setRoleFilter] = useState('all');
+    const [statusFilter, setStatusFilter] = useState('all');
+    const [classFilter, setClassFilter] = useState('all');
+    const [currentPage, setCurrentPage] = useState(1);
+    const [pageSize] = useState(10);
+    const [allUsers, setAllUsers] = useState<UserResponse[]>([]);
+    const [users, setUsers] = useState<UserResponse[]>([]);
+    const [totalPages, setTotalPages] = useState(1);
+    const [totalElements, setTotalElements] = useState(0);
+    const [loading, setLoading] = useState(false);
+    const [error, setError] = useState<string | null>(null);
+    const [showAddModal, setShowAddModal] = useState(false);
+    const [detailUser, setDetailUser] = useState<UserResponse | null>(null);
+    const [editUser, setEditUser] = useState<UserResponse | null>(null);
+    const [lockConfirmUser, setLockConfirmUser] = useState<UserResponse | null>(null);
+    const [lockLoading, setLockLoading] = useState(false);
+    const [deleteConfirmUser, setDeleteConfirmUser] = useState<UserResponse | null>(null);
+    const [deleteLoading, setDeleteLoading] = useState(false);
+    const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+    async function fetchUsers(page: number, role: string, keyword: string) {
+        const token = authService.getToken();
+        if (!token) return;
+        setLoading(true);
+        setError(null);
+        try {
+            const roleParam = role !== 'all' ? role.toUpperCase() : '';
+            let url = `/users/paging?page=${page}&size=${pageSize}`;
+            if (roleParam) url += `&roleName=${encodeURIComponent(roleParam)}`;
+            if (keyword) url += `&keyword=${encodeURIComponent(keyword)}`;
+            const resp = await api.get<ApiResponse<PageResponse<UserResponse>>>(url, token);
+            if (resp.result) {
+                setAllUsers(resp.result.data ?? []);
+                setTotalPages(resp.result.totalPages ?? 1);
+                setTotalElements(resp.result.totalElements ?? 0);
+            } else {
+                setAllUsers([]);
+                setTotalPages(1);
+                setTotalElements(0);
+            }
+        } catch (e: any) {
+            setError(e?.message ?? 'Không thể tải danh sách người dùng.');
+            setAllUsers([]);
+        } finally {
+            setLoading(false);
+        }
+    }
+
+    // Derive unique class names from all fetched users
+    const uniqueClasses = Array.from(
+        new Set(
+            allUsers.flatMap(u => u.classes ?? []).filter(Boolean)
+        )
+    ).sort();
+
+    // Apply client-side filters (status + class) on top of server-filtered data
+    useEffect(() => {
+        let filtered = allUsers;
+        if (statusFilter !== 'all') {
+            filtered = filtered.filter(u => u.status === statusFilter);
+        }
+        if (classFilter !== 'all') {
+            filtered = filtered.filter(u => u.classes?.includes(classFilter));
+        }
+        setUsers(filtered);
+    }, [allUsers, statusFilter, classFilter]);
+
+    // Fetch whenever page, role or searchTerm changes
+    useEffect(() => {
+        fetchUsers(currentPage, roleFilter, searchTerm);
+    }, [currentPage, roleFilter, searchTerm]);
+
+    // Debounce search input → update searchTerm and reset to page 1
+    function handleSearchChange(value: string) {
+        setSearchInput(value);
+        if (debounceRef.current) clearTimeout(debounceRef.current);
+        debounceRef.current = setTimeout(() => {
+            setSearchTerm(value.trim());
+            setCurrentPage(1);
+        }, 400);
+    }
+
+    function handleRoleChange(value: string) {
+        setRoleFilter(value);
+        setCurrentPage(1);
+    }
+
+    function handleStatusChange(value: string) {
+        setStatusFilter(value);
+    }
+
+    function handleClassChange(value: string) {
+        setClassFilter(value);
+    }
+
+    async function handleLockUser() {
+        if (!lockConfirmUser) return;
+        const token = authService.getToken();
+        if (!token) return;
+        setLockLoading(true);
+        const isActive = lockConfirmUser.status === 'ACTIVE';
+        try {
+            await api.authDelete(`/users/${lockConfirmUser.userID}`, token);
+            setLockConfirmUser(null);
+            fetchUsers(currentPage, roleFilter, searchTerm);
+        } catch (e: any) {
+            setError(e?.message ?? (isActive ? 'Không thể khóa tài khoản.' : 'Không thể mở khóa tài khoản.'));
+            setLockConfirmUser(null);
+        } finally {
+            setLockLoading(false);
+        }
+    }
+
+    async function handleDeleteUser() {
+        if (!deleteConfirmUser) return;
+        const token = authService.getToken();
+        if (!token) return;
+        setDeleteLoading(true);
+        try {
+            await api.authDelete(`/users/${deleteConfirmUser.userID}/delete`, token);
+            setDeleteConfirmUser(null);
+            fetchUsers(currentPage, roleFilter, searchTerm);
+        } catch (e: any) {
+            setError(e?.message ?? 'Không thể xóa người dùng.');
+            setDeleteConfirmUser(null);
+        } finally {
+            setDeleteLoading(false);
+        }
+    }
+
+    const startItem = totalElements === 0 ? 0 : (currentPage - 1) * pageSize + 1;
+    const endItem = Math.min(currentPage * pageSize, totalElements);
+
+    return (
+        <div className="p-8 space-y-6" style={{ fontFamily: "'Nunito', sans-serif" }}>
+            {/* Header */}
+            <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+                <div>
+                    <p className="text-xs font-extrabold text-gray-400 uppercase tracking-widest mb-1">Quản trị hệ thống</p>
+                    <h1 className="text-3xl font-extrabold text-[#1A1A1A]">Quản lý Người dùng</h1>
+                </div>
+                <div className="flex gap-3 w-full md:w-auto">
+                    <div className="relative flex-1 md:w-72">
+                        <MagnifyingGlass className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+                        <input
+                            type="text"
+                            placeholder="Tìm kiếm tên, email..."
+                            className="w-full pl-10 pr-4 py-2.5 bg-white border-2 border-[#1A1A1A]/20 rounded-2xl text-sm font-semibold focus:outline-none focus:border-[#FF6B4A] transition-colors"
+                            value={searchInput}
+                            onChange={(e) => handleSearchChange(e.target.value)}
+                        />
+                    </div>
+                    <button
+                        onClick={() => setShowAddModal(true)}
+                        className="flex items-center gap-2 bg-[#FF6B4A] hover:bg-[#ff5535] px-4 py-2.5 rounded-2xl font-extrabold text-sm text-white transition-colors shrink-0"
+                    >
+                        <UserPlus className="w-4 h-4" weight="fill" />
+                        <span className="hidden sm:inline">Thêm người dùng</span>
+                    </button>
+                </div>
+            </div>
+
+            {/* Filters */}
+            <div className="flex flex-wrap gap-3">
+                <div>
+                    <p className="text-xs font-extrabold text-gray-400 uppercase tracking-widest mb-1">Vai trò</p>
+                    <Select value={roleFilter} onValueChange={handleRoleChange}>
+                        <SelectTrigger className="w-36 bg-white rounded-2xl border-2 border-[#1A1A1A]/20 h-9 font-bold text-[#1A1A1A]">
+                            <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                            <SelectItem value="all">Tất cả vai trò</SelectItem>
+                            <SelectItem value="teacher">Giáo viên</SelectItem>
+                            <SelectItem value="student">Học sinh</SelectItem>
+                        </SelectContent>
+                    </Select>
+                </div>
+                <div>
+                    <p className="text-xs font-extrabold text-gray-400 uppercase tracking-widest mb-1">Trạng thái</p>
+                    <Select value={statusFilter} onValueChange={handleStatusChange}>
+                        <SelectTrigger className="w-36 bg-white rounded-2xl border-2 border-[#1A1A1A]/20 h-9 font-bold text-[#1A1A1A]">
+                            <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                            <SelectItem value="all">Tất cả</SelectItem>
+                            <SelectItem value="ACTIVE">Hoạt động</SelectItem>
+                            <SelectItem value="LOCKED">Khóa</SelectItem>
+                        </SelectContent>
+                    </Select>
+                </div>
+                <div>
+                    <p className="text-xs font-extrabold text-gray-400 uppercase tracking-widest mb-1">Lớp học</p>
+                    <Select value={classFilter} onValueChange={handleClassChange}>
+                        <SelectTrigger className="w-36 bg-white rounded-2xl border-2 border-[#1A1A1A]/20 h-9 font-bold text-[#1A1A1A]">
+                            <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                            <SelectItem value="all">Tất cả lớp</SelectItem>
+                            {uniqueClasses.map(cls => (
+                                <SelectItem key={cls} value={cls}>{cls}</SelectItem>
+                            ))}
+                        </SelectContent>
+                    </Select>
+                </div>
+            </div>
+
+            {/* Error */}
+            {error && (
+                <div className="bg-[#FFB5B5]/40 border-2 border-[#FF6B4A]/40 text-[#c0392b] text-sm font-bold px-4 py-3 rounded-2xl">
+                    ⚠️ {error}
+                </div>
+            )}
+
+            {/* Table */}
+            <div className="bg-white rounded-3xl border-2 border-[#1A1A1A] overflow-hidden">
+                <table className="w-full text-left text-sm">
+                    <thead className="bg-[#1A1A1A]/5 border-b-2 border-[#1A1A1A]/20">
+                        <tr>
+                            {['Mã số', 'Họ tên', 'Vai trò', 'Lớp', 'Ngày tạo', 'Trạng thái', 'Thao tác'].map(h => (
+                                <th key={h} className="px-6 py-4 text-xs font-extrabold text-[#1A1A1A]/50 uppercase tracking-wider">{h}</th>
+                            ))}
+                        </tr>
+                    </thead>
+                    <tbody className="divide-y divide-[#1A1A1A]/10">
+                        {loading ? (
+                            <tr>
+                                <td colSpan={7} className="px-6 py-12 text-center text-gray-400 font-semibold">
+                                    <div className="flex items-center justify-center gap-2">
+                                        <svg className="animate-spin w-5 h-5 text-[#FF6B4A]" viewBox="0 0 24 24" fill="none">
+                                            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                                            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4l3-3-3-3v4a8 8 0 100 16v-4l-3 3 3 3v-4a8 8 0 01-8-8z" />
+                                        </svg>
+                                        Đang tải...
+                                    </div>
+                                </td>
+                            </tr>
+                        ) : users.length === 0 ? (
+                            <tr>
+                                <td colSpan={7} className="px-6 py-12 text-center text-gray-400 font-semibold">
+                                    Không có người dùng nào.
+                                </td>
+                            </tr>
+                        ) : users.map(user => (
+                            <tr
+                                key={user.userID}
+                                className="cursor-pointer transition-all duration-200 hover:bg-[#FF6B4A]/6 hover:shadow-[inset_0_0_0_1px_rgba(255,107,74,0.12)] hover:scale-[1.002]"
+                                onClick={() => setDetailUser(user)}
+                            >
+                                <td className="px-6 py-4">
+                                    <span className="text-xs font-extrabold text-[#1A1A1A]/50 bg-[#1A1A1A]/5 px-2.5 py-1 rounded-xl border-2 border-[#1A1A1A]/10 tracking-wider">
+                                        {getUserCode(user)}
+                                    </span>
+                                </td>
+                                <td className="px-6 py-4">
+                                    <div className="flex items-center gap-3">
+                                        <div
+                                            className="w-10 h-10 rounded-full border-2 border-[#1A1A1A] flex items-center justify-center font-extrabold text-sm text-[#1A1A1A]"
+                                            style={{ backgroundColor: getAvatarColor(user.userID) }}
+                                        >
+                                            {getInitials(user.fullName ?? user.username ?? '')}
+                                        </div>
+                                        <div>
+                                            <p className="font-extrabold text-[#1A1A1A]">{user.fullName || user.username}</p>
+                                            <p className="text-xs text-gray-400 font-semibold">{user.email}</p>
+                                        </div>
+                                    </div>
+                                </td>
+                                <td className="px-6 py-4">
+                                    <span
+                                        className="text-sm font-bold px-3 py-1 rounded-full border-2 border-[#1A1A1A]/20"
+                                        style={{ backgroundColor: getRoleBg(user.role?.roleName ?? ''), color: '#1A1A1A' }}
+                                    >
+                                        {getRoleLabel(user.role?.roleName ?? '')}
+                                    </span>
+                                </td>
+                                <td className="px-6 py-4">
+                                    {renderClassPreview(user.classes)}
+                                </td>
+                                <td className="px-6 py-4 font-semibold text-gray-400">{formatDate(user.createdAt)}</td>
+                                <td className="px-6 py-4">
+                                    <button
+                                        onClick={(e) => {
+                                            e.stopPropagation();
+                                            setLockConfirmUser(user);
+                                        }}
+                                        title={user.status === 'ACTIVE' ? 'Bấm để khóa tài khoản' : 'Tài khoản đang bị khóa'}
+                                        className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-extrabold border-2 transition-all hover:opacity-80 active:scale-95 ${user.status === 'ACTIVE' ? 'bg-[#95E1D3] border-[#1A1A1A]/20 text-[#1A1A1A]' : 'bg-[#FFB5B5] border-[#1A1A1A]/20 text-[#1A1A1A]'}`}
+                                    >
+                                        {user.status === 'ACTIVE'
+                                            ? <><LockOpen className="w-3 h-3" weight="fill" /> Hoạt động</>
+                                            : <><Lock className="w-3 h-3" weight="fill" /> Khóa</>
+                                        }
+                                    </button>
+                                </td>
+                                <td className="px-6 py-4">
+                                    <div className="flex gap-2">
+                                        <button
+                                            onClick={(e) => {
+                                                e.stopPropagation();
+                                                setEditUser(user);
+                                            }}
+                                            className="flex items-center gap-1 text-xs font-extrabold text-[#FF6B4A] hover:text-[#ff5535] bg-[#FF6B4A]/10 px-3 py-1.5 rounded-xl transition-colors"
+                                        >
+                                            <PencilSimple className="w-3.5 h-3.5" /> Sửa
+                                        </button>
+                                        <button
+                                            onClick={(e) => {
+                                                e.stopPropagation();
+                                                setDeleteConfirmUser(user);
+                                            }}
+                                            className="flex items-center gap-1 text-xs font-extrabold text-red-500 hover:text-red-700 bg-red-50 hover:bg-red-100 px-3 py-1.5 rounded-xl transition-colors"
+                                        >
+                                            <Trash className="w-3.5 h-3.5" /> Xóa
+                                        </button>
+                                    </div>
+                                </td>
+                            </tr>
+                        ))}
+                    </tbody>
+                </table>
+                <div className="p-4 border-t-2 border-[#1A1A1A]/10 flex items-center justify-between text-sm font-bold text-gray-400">
+                    <span>
+                        {totalElements === 0
+                            ? 'Không có dữ liệu'
+                            : `Hiển thị ${startItem}–${endItem} trên ${totalElements.toLocaleString('vi-VN')} người dùng`}
+                    </span>
+                    <div className="flex gap-2">
+                        <button
+                            disabled={currentPage <= 1}
+                            onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+                            className="w-8 h-8 rounded-xl font-extrabold text-sm border-2 border-[#1A1A1A]/20 bg-white text-[#1A1A1A] hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed"
+                        >
+                            {'<'}
+                        </button>
+                        {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
+                            const page = i + 1;
+                            return (
+                                <button
+                                    key={page}
+                                    onClick={() => setCurrentPage(page)}
+                                    className={`w-8 h-8 rounded-xl font-extrabold text-sm border-2 border-[#1A1A1A]/20 ${currentPage === page ? 'bg-[#FF6B4A] text-white border-[#FF6B4A]' : 'bg-white text-[#1A1A1A] hover:bg-gray-50'}`}
+                                >
+                                    {page}
+                                </button>
+                            );
+                        })}
+                        <button
+                            disabled={currentPage >= totalPages}
+                            onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+                            className="w-8 h-8 rounded-xl font-extrabold text-sm border-2 border-[#1A1A1A]/20 bg-white text-[#1A1A1A] hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed"
+                        >
+                            {'>'}
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            {/* Add User Modal */}
+            {showAddModal && (
+                <AddUserModal
+                    onClose={() => setShowAddModal(false)}
+                    onSuccess={() => fetchUsers(currentPage, roleFilter, searchTerm)}
+                />
+            )}
+
+            {/* User Detail Modal */}
+            {detailUser && (
+                <UserDetailModal
+                    user={detailUser}
+                    onClose={() => setDetailUser(null)}
+                />
+            )}
+
+            {/* Edit User Modal */}
+            {editUser && (
+                <EditUserModal
+                    user={editUser}
+                    onClose={() => setEditUser(null)}
+                    onSuccess={() => fetchUsers(currentPage, roleFilter, searchTerm)}
+                />
+            )}
+
+            {/* Lock / Unlock Confirm Modal */}
+            {lockConfirmUser && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4" onClick={() => !lockLoading && setLockConfirmUser(null)}>
+                    <div
+                        className="bg-[#FAF9F6] w-full max-w-sm rounded-3xl border-2 border-[#1A1A1A] shadow-2xl overflow-hidden"
+                        style={{ fontFamily: "'Nunito', sans-serif" }}
+                        onClick={e => e.stopPropagation()}
+                    >
+                        {(() => {
+                            const isActive = lockConfirmUser.status === 'ACTIVE';
+                            return (
+                                <>
+                                    <div className="flex items-center justify-between px-6 pt-6 pb-4 border-b-2 border-[#1A1A1A]/10">
+                                        <div className="flex items-center gap-3">
+                                            <div className={`w-10 h-10 rounded-2xl flex items-center justify-center ${isActive ? 'bg-[#FFB5B5]' : 'bg-[#95E1D3]'}`}>
+                                                {isActive
+                                                    ? <Lock className="w-5 h-5 text-red-600" weight="fill" />
+                                                    : <LockOpen className="w-5 h-5 text-[#1A7A6E]" weight="fill" />
+                                                }
+                                            </div>
+                                            <div>
+                                                <h2 className="text-base font-extrabold text-[#1A1A1A]">
+                                                    {isActive ? 'Khóa tài khoản' : 'Mở khóa tài khoản'}
+                                                </h2>
+                                                <p className="text-xs text-gray-400 font-semibold">{getUserCode(lockConfirmUser)}</p>
+                                            </div>
+                                        </div>
+                                        <button onClick={() => !lockLoading && setLockConfirmUser(null)} className="w-8 h-8 rounded-xl bg-[#1A1A1A]/10 hover:bg-[#1A1A1A]/20 flex items-center justify-center transition-colors">
+                                            <X className="w-4 h-4 text-[#1A1A1A]" />
+                                        </button>
+                                    </div>
+                                    <div className="px-6 py-5">
+                                        <p className="text-sm font-bold text-[#1A1A1A]">
+                                            Bạn có chắc muốn{' '}
+                                            <span className={isActive ? 'text-red-500' : 'text-[#1A7A6E]'}>
+                                                {isActive ? 'khóa tài khoản' : 'mở khóa tài khoản'}
+                                            </span>{' '}
+                                            của <span className="font-extrabold">{lockConfirmUser.fullName || lockConfirmUser.username}</span> không?
+                                        </p>
+                                        <p className="text-xs text-gray-400 font-semibold mt-1">
+                                            {isActive
+                                                ? 'Tài khoản bị khóa sẽ không thể đăng nhập vào hệ thống.'
+                                                : 'Tài khoản được mở khóa sẽ có thể đăng nhập lại bình thường.'
+                                            }
+                                        </p>
+                                    </div>
+                                    <div className="flex justify-end gap-3 px-6 pb-6">
+                                        <button
+                                            onClick={() => setLockConfirmUser(null)}
+                                            disabled={lockLoading}
+                                            className="px-5 py-2.5 rounded-2xl border-2 border-[#1A1A1A]/20 font-extrabold text-sm text-[#1A1A1A]/60 hover:bg-[#1A1A1A]/5 transition-colors disabled:opacity-50"
+                                        >
+                                            Hủy
+                                        </button>
+                                        <button
+                                            onClick={handleLockUser}
+                                            disabled={lockLoading}
+                                            className={`flex items-center gap-2 px-5 py-2.5 rounded-2xl font-extrabold text-sm text-white transition-colors disabled:opacity-60 disabled:cursor-not-allowed ${isActive ? 'bg-red-500 hover:bg-red-600' : 'bg-[#1A7A6E] hover:bg-[#155f55]'}`}
+                                        >
+                                            {lockLoading ? (
+                                                <svg className="animate-spin w-4 h-4" viewBox="0 0 24 24" fill="none">
+                                                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                                                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4l3-3-3-3v4a8 8 0 100 16v-4l-3 3 3 3v-4a8 8 0 01-8-8z" />
+                                                </svg>
+                                            ) : isActive
+                                                ? <Lock className="w-4 h-4" weight="fill" />
+                                                : <LockOpen className="w-4 h-4" weight="fill" />
+                                            }
+                                            {lockLoading
+                                                ? (isActive ? 'Đang khóa...' : 'Đang mở khóa...')
+                                                : (isActive ? 'Xác nhận khóa' : 'Xác nhận mở khóa')
+                                            }
+                                        </button>
+                                    </div>
+                                </>
+                            );
+                        })()}
+                    </div>
+                </div>
+            )}
+
+            {/* Delete Confirm Modal */}
+            {deleteConfirmUser && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4" onClick={() => !deleteLoading && setDeleteConfirmUser(null)}>
+                    <div
+                        className="bg-[#FAF9F6] w-full max-w-sm rounded-3xl border-2 border-[#1A1A1A] shadow-2xl overflow-hidden"
+                        style={{ fontFamily: "'Nunito', sans-serif" }}
+                        onClick={e => e.stopPropagation()}
+                    >
+                        <div className="flex items-center justify-between px-6 pt-6 pb-4 border-b-2 border-[#1A1A1A]/10">
+                            <div className="flex items-center gap-3">
+                                <div className="w-10 h-10 rounded-2xl bg-red-100 flex items-center justify-center">
+                                    <Trash className="w-5 h-5 text-red-600" weight="fill" />
+                                </div>
+                                <div>
+                                    <h2 className="text-base font-extrabold text-[#1A1A1A]">Xóa người dùng</h2>
+                                    <p className="text-xs text-gray-400 font-semibold">{getUserCode(deleteConfirmUser)}</p>
+                                </div>
+                            </div>
+                            <button onClick={() => !deleteLoading && setDeleteConfirmUser(null)} className="w-8 h-8 rounded-xl bg-[#1A1A1A]/10 hover:bg-[#1A1A1A]/20 flex items-center justify-center transition-colors">
+                                <X className="w-4 h-4 text-[#1A1A1A]" />
+                            </button>
+                        </div>
+                        <div className="px-6 py-5">
+                            <p className="text-sm font-bold text-[#1A1A1A]">
+                                Bạn có chắc muốn <span className="text-red-500">xóa vĩnh viễn</span> tài khoản của{' '}
+                                <span className="font-extrabold">{deleteConfirmUser.fullName || deleteConfirmUser.username}</span> không?
+                            </p>
+                            <p className="text-xs text-gray-400 font-semibold mt-1">Hành động này không thể hoàn tác.</p>
+                        </div>
+                        <div className="flex justify-end gap-3 px-6 pb-6">
+                            <button
+                                onClick={() => setDeleteConfirmUser(null)}
+                                disabled={deleteLoading}
+                                className="px-5 py-2.5 rounded-2xl border-2 border-[#1A1A1A]/20 font-extrabold text-sm text-[#1A1A1A]/60 hover:bg-[#1A1A1A]/5 transition-colors disabled:opacity-50"
+                            >
+                                Hủy
+                            </button>
+                            <button
+                                onClick={handleDeleteUser}
+                                disabled={deleteLoading}
+                                className="flex items-center gap-2 px-5 py-2.5 rounded-2xl bg-red-500 hover:bg-red-600 font-extrabold text-sm text-white transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
+                            >
+                                {deleteLoading ? (
+                                    <svg className="animate-spin w-4 h-4" viewBox="0 0 24 24" fill="none">
+                                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4l3-3-3-3v4a8 8 0 100 16v-4l-3 3 3 3v-4a8 8 0 01-8-8z" />
+                                    </svg>
+                                ) : <Trash className="w-4 h-4" weight="fill" />}
+                                {deleteLoading ? 'Đang xóa...' : 'Xác nhận xóa'}
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+        </div>
+    );
+}
