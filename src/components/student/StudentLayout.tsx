@@ -71,8 +71,8 @@ export function StudentLayout() {
             </aside>
 
             {/* Dark canvas with floating content panel */}
-            <main className="flex-1 overflow-auto min-h-screen p-3">
-                <div className="min-h-full bg-[#F7F7F2] rounded-3xl overflow-auto shadow-2xl">
+            <main className="flex-1 h-screen overflow-hidden p-3 relative">
+                <div className="h-full bg-[#F7F7F2] rounded-3xl overflow-auto shadow-2xl relative flex flex-col">
                     <Outlet />
                 </div>
             </main>
