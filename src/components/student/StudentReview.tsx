@@ -124,27 +124,29 @@ export function StudentReview() {
             : [mockQuestions[currentQuestion]];
 
         return (
-            <div className="p-4 md:p-6 space-y-4 max-w-6xl mx-auto" style={{ fontFamily: "'Nunito', sans-serif" }}>
-                {/* Quiz Header - More compact */}
-                <div className="flex items-center justify-between bg-white rounded-2xl border-2 border-[#1A1A1A] p-4 shadow-sm">
-                    <div className="flex items-center gap-4">
-                        <button onClick={() => setIsReviewing(false)} className="w-9 h-9 rounded-lg bg-gray-50 flex items-center justify-center text-gray-500 hover:bg-gray-100 transition-colors">
+            <div className="p-4 md:p-6 max-w-6xl mx-auto space-y-5" style={{ fontFamily: "'Nunito', sans-serif" }}>
+                <div className="bg-white rounded-3xl border-2 border-[#1A1A1A] p-5 flex flex-col md:flex-row md:items-center justify-between gap-4 shadow-[4px_4px_0_0_rgba(26,26,26,1)]">
+                    <div className="flex items-center gap-3">
+                        <button
+                            onClick={() => setIsReviewing(false)}
+                            className="w-10 h-10 rounded-xl border-2 border-[#1A1A1A]/10 bg-[#F7F7F2] text-[#1A1A1A]/60 hover:text-[#1A1A1A] hover:bg-white transition-colors flex items-center justify-center"
+                        >
                             <ArrowLeft className="w-4 h-4" />
                         </button>
                         <div>
-                            <h2 className="font-extrabold text-[#1A1A1A] text-sm md:text-base">Đang ôn tập: Toán học</h2>
-                            <div className="flex items-center gap-3">
-                                <span className="text-[10px] font-bold text-gray-400">Tiến độ: {answers.filter(a => a !== null).length}/{mockQuestions.length}</span>
-                                <div className="flex gap-1 bg-gray-100 p-1 rounded-lg">
-                                    <button 
+                            <h2 className="text-xl font-extrabold text-[#1A1A1A]">Đang ôn tập: Toán học</h2>
+                            <div className="flex flex-wrap items-center gap-2 mt-1">
+                                <span className="text-[10px] font-extrabold text-gray-400">Tiến độ: {answers.filter(a => a !== null).length}/{mockQuestions.length}</span>
+                                <div className="flex bg-[#1A1A1A]/5 rounded-xl p-1 border border-[#1A1A1A]/10">
+                                    <button
                                         onClick={() => setDisplayMode('single')}
-                                        className={`px-2 py-0.5 text-[10px] font-extrabold rounded-md transition-all ${displayMode === 'single' ? 'bg-[#1A1A1A] text-white' : 'text-gray-400 hover:text-gray-600'}`}
+                                        className={`px-3 py-1 rounded-lg text-[11px] font-extrabold transition-colors ${displayMode === 'single' ? 'bg-[#1A1A1A] text-white' : 'text-[#1A1A1A]/50'}`}
                                     >
                                         Từng câu
                                     </button>
-                                    <button 
+                                    <button
                                         onClick={() => setDisplayMode('list')}
-                                        className={`px-2 py-0.5 text-[10px] font-extrabold rounded-md transition-all ${displayMode === 'list' ? 'bg-[#1A1A1A] text-white' : 'text-gray-400 hover:text-gray-600'}`}
+                                        className={`px-3 py-1 rounded-lg text-[11px] font-extrabold transition-colors ${displayMode === 'list' ? 'bg-[#1A1A1A] text-white' : 'text-[#1A1A1A]/50'}`}
                                     >
                                         Danh sách
                                     </button>
@@ -152,181 +154,162 @@ export function StudentReview() {
                             </div>
                         </div>
                     </div>
-                    <div className="flex items-center gap-4">
-                        <button
-                            onClick={() => setShowResult(true)}
-                            className="px-4 py-2 rounded-xl bg-[#FF6B4A] text-white font-extrabold text-xs shadow-md hover:shadow-lg transition-all"
-                        >
-                            Nộp bài
-                        </button>
-                    </div>
+                    <button
+                        onClick={() => setShowResult(true)}
+                        className="h-11 px-6 rounded-2xl bg-[#FF6B4A] hover:bg-[#ff5535] text-white font-extrabold text-sm transition-all shadow-[0_4px_0_0_#A83F2A] hover:translate-y-0.5 hover:shadow-[0_2px_0_0_#A83F2A]"
+                    >
+                        Nộp bài
+                    </button>
                 </div>
 
-                <div className="grid grid-cols-1 lg:grid-cols-[240px_1fr] gap-4">
-                    {/* LEFT SIDEBAR: Question Nav */}
+                <div className="grid grid-cols-1 lg:grid-cols-[260px_1fr] gap-5">
                     <div className="space-y-4">
-                        <div className="bg-white rounded-2xl border-2 border-[#1A1A1A] p-4 space-y-3">
-                            <p className="text-[10px] font-extrabold text-gray-400 uppercase tracking-widest">Danh sách câu hỏi</p>
-                            <div className="grid grid-cols-5 gap-1.5">
-                                {mockQuestions.map((_, idx) => (
-                                    <button
-                                        key={idx}
-                                        onClick={() => {
-                                            if (displayMode === 'single') {
-                                                setCurrentQuestion(idx);
-                                            } else {
-                                                setCurrentPage(Math.floor(idx / questionsPerPage));
-                                                // Smooth scroll to question if needed
-                                                document.getElementById(`q-${idx}`)?.scrollIntoView({ behavior: 'smooth' });
-                                            }
-                                        }}
-                                        className={`w-full aspect-square rounded-lg border-2 font-extrabold text-[10px] transition-all ${
-                                            (displayMode === 'single' ? currentQuestion === idx : false)
-                                                ? 'bg-[#1A1A1A] text-white border-[#1A1A1A]'
-                                                : answers[idx] !== null
-                                                    ? 'bg-[#10B981]/10 border-[#10B981]/30 text-[#10B981]'
-                                                    : 'bg-white border-[#1A1A1A]/10 text-gray-400 hover:border-[#1A1A1A]/30'
-                                        }`}
-                                    >
-                                        {idx + 1}
-                                    </button>
-                                ))}
+                        <div className="bg-white rounded-3xl border-2 border-[#1A1A1A] p-4 shadow-[4px_4px_0_0_rgba(26,26,26,1)]">
+                            <p className="text-[10px] font-extrabold text-gray-400 uppercase tracking-widest mb-3">Danh sách câu hỏi</p>
+                            <div className="grid grid-cols-5 gap-2">
+                                {mockQuestions.map((_, idx) => {
+                                    const answered = answers[idx] !== null;
+                                    const active = displayMode === 'single' && currentQuestion === idx;
+
+                                    return (
+                                        <button
+                                            key={idx}
+                                            onClick={() => {
+                                                if (displayMode === 'single') {
+                                                    setCurrentQuestion(idx);
+                                                } else {
+                                                    setCurrentPage(Math.floor(idx / questionsPerPage));
+                                                    document.getElementById(`q-${idx}`)?.scrollIntoView({ behavior: 'smooth' });
+                                                }
+                                            }}
+                                            className={`w-full aspect-square rounded-xl border-2 font-extrabold text-xs transition-all ${
+                                                active
+                                                    ? 'bg-[#FF6B4A] border-[#FF6B4A] text-white'
+                                                    : answered
+                                                        ? 'bg-emerald-100 border-emerald-300 text-emerald-700'
+                                                        : 'bg-white border-[#1A1A1A]/15 text-[#1A1A1A]/40 hover:border-[#1A1A1A]/30'
+                                            }`}
+                                        >
+                                            {idx + 1}
+                                        </button>
+                                    );
+                                })}
                             </div>
                         </div>
 
-                        {/* AI Support - Compact */}
-                        <div className="bg-[#1A1A1A] rounded-2xl p-4 space-y-2 relative overflow-hidden">
+                        <div className="bg-[#1A1A1A] rounded-3xl p-4 space-y-2">
                             <div className="flex items-center gap-2 text-[#FCE38A]">
                                 <Brain weight="fill" className="w-4 h-4" />
                                 <span className="text-[10px] font-extrabold uppercase tracking-widest">AI Support</span>
                             </div>
-                            <p className="text-[10px] text-gray-400 font-semibold leading-relaxed italic">
+                            <p className="text-xs text-white/60 font-semibold leading-relaxed italic">
                                 Khuyên bạn nên tập trung vào phần đạo hàm bậc 2.
                             </p>
                         </div>
                     </div>
 
-                    {/* MAIN CONTENT AREA */}
-                    <div className="space-y-4">
+                    <div>
                         {displayMode === 'single' ? (
-                            // SINGLE MODE
-                            <div className="bg-white rounded-3xl border-2 border-[#1A1A1A] p-6 space-y-6 relative overflow-hidden min-h-[400px]">
-                                <div className="flex items-center gap-2">
-                                     <span className="text-[10px] font-extrabold px-2 py-0.5 rounded-full border-2 border-[#B8B5FF] bg-[#B8B5FF]/20 text-[#1A1A1A]">
-                                        {mockQuestions[currentQuestion].type}
-                                    </span>
-                                    <span className="text-[10px] font-extrabold px-2 py-0.5 rounded-full border border-gray-100 bg-gray-50 text-gray-400">
-                                        Câu {currentQuestion + 1}
-                                    </span>
+                            <div className="bg-white rounded-3xl border-2 border-[#1A1A1A] overflow-hidden shadow-[4px_4px_0_0_rgba(26,26,26,1)] min-h-[460px]">
+                                <div className="p-6 border-b-2 border-[#1A1A1A]/10">
+                                    <div className="flex flex-wrap items-center gap-2 mb-3">
+                                        <span className="text-[10px] font-extrabold px-2 py-1 rounded-full border border-[#B8B5FF] bg-[#B8B5FF]/20 text-[#1A1A1A]">{mockQuestions[currentQuestion].type}</span>
+                                        <span className="text-[10px] font-extrabold px-2 py-1 rounded-full border border-[#1A1A1A]/10 bg-[#F7F7F2] text-[#1A1A1A]/50">Câu {currentQuestion + 1}</span>
+                                    </div>
+                                    <h3 className="text-2xl font-extrabold text-[#1A1A1A] leading-relaxed">{mockQuestions[currentQuestion].question}</h3>
                                 </div>
 
-                                <h3 className="text-xl font-extrabold text-[#1A1A1A] leading-relaxed">
-                                    {mockQuestions[currentQuestion].question}
-                                </h3>
-
-                                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                                <div className="p-6 grid grid-cols-1 md:grid-cols-2 gap-3">
                                     {mockQuestions[currentQuestion].options.map((option, idx) => (
                                         <button
                                             key={idx}
                                             onClick={() => handleAnswer(currentQuestion, idx)}
-                                            className={`group flex items-center gap-4 p-4 rounded-xl border-2 transition-all text-left ${
+                                            className={`group flex items-center gap-3 p-4 rounded-2xl border-2 transition-all text-left ${
                                                 answers[currentQuestion] === idx
                                                     ? 'border-[#FF6B4A] bg-[#FF6B4A]/5'
-                                                    : 'border-[#1A1A1A]/5 bg-white hover:border-[#1A1A1A]/20'
+                                                    : 'border-[#1A1A1A]/10 hover:border-[#1A1A1A]/30 bg-white'
                                             }`}
                                         >
-                                            <div className={`w-8 h-8 rounded-lg flex items-center justify-center font-extrabold transition-all border-2 ${
-                                                answers[currentQuestion] === idx ? 'bg-[#FF6B4A] text-white border-none' : 'bg-[#F7F7F2] text-gray-400 border-[#1A1A1A]/5'
+                                            <div className={`w-8 h-8 rounded-lg border-2 flex items-center justify-center text-xs font-extrabold ${
+                                                answers[currentQuestion] === idx
+                                                    ? 'bg-[#FF6B4A] border-[#FF6B4A] text-white'
+                                                    : 'bg-[#F7F7F2] border-[#1A1A1A]/15 text-[#1A1A1A]/50'
                                             }`}>
                                                 {String.fromCharCode(65 + idx)}
                                             </div>
-                                            <span className={`text-sm font-bold transition-all ${answers[currentQuestion] === idx ? 'text-[#1A1A1A]' : 'text-gray-500'}`}>
-                                                {option}
-                                            </span>
+                                            <span className="text-sm font-bold text-[#1A1A1A]">{option}</span>
                                         </button>
                                     ))}
                                 </div>
 
-                                <div className="flex items-center justify-between pt-6 border-t border-gray-50">
+                                <div className="p-5 bg-gray-50 border-t-2 border-[#1A1A1A]/10 flex items-center justify-between">
                                     <button
                                         onClick={() => setCurrentQuestion(Math.max(0, currentQuestion - 1))}
                                         disabled={currentQuestion === 0}
-                                        className="h-10 px-6 rounded-xl font-extrabold text-[#1A1A1A] hover:bg-gray-50 transition-colors disabled:opacity-30 flex items-center gap-2 text-sm"
+                                        className="h-10 px-5 rounded-xl border-2 border-[#1A1A1A]/15 text-[#1A1A1A]/60 font-extrabold hover:text-[#1A1A1A] hover:bg-white disabled:opacity-30 transition-colors flex items-center gap-2"
                                     >
                                         <ArrowLeft className="w-4 h-4" /> Câu trước
                                     </button>
                                     <button
                                         onClick={() => currentQuestion < mockQuestions.length - 1 ? setCurrentQuestion(currentQuestion + 1) : setShowResult(true)}
-                                        className="h-10 px-8 rounded-xl bg-[#1A1A1A] text-white font-extrabold transition-all shadow-md flex items-center gap-2 text-sm"
+                                        className="h-10 px-6 rounded-xl bg-[#1A1A1A] text-white font-extrabold text-sm hover:bg-[#333] transition-colors flex items-center gap-2"
                                     >
                                         {currentQuestion === mockQuestions.length - 1 ? 'Nộp bài' : 'Câu tiếp'} <ArrowRight className="w-4 h-4" />
                                     </button>
                                 </div>
                             </div>
                         ) : (
-                            // LIST MODE
                             <div className="space-y-4">
-                                <div className="space-y-4">
-                                    {currentQuestions.map((q, qIndex) => {
-                                        const actualIndex = currentPage * questionsPerPage + qIndex;
-                                        return (
-                                            <div id={`q-${actualIndex}`} key={actualIndex} className="bg-white rounded-2xl border-2 border-[#1A1A1A] p-5 space-y-4">
-                                                <div className="flex items-center gap-2">
-                                                    <span className="w-7 h-7 bg-[#1A1A1A] text-white rounded-lg flex items-center justify-center text-xs font-bold">
-                                                        {actualIndex + 1}
-                                                    </span>
-                                                    <span className="text-[10px] font-extrabold text-gray-400">{q.subject}</span>
-                                                </div>
-                                                <p className="font-extrabold text-[#1A1A1A]">{q.question}</p>
-                                                <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
-                                                    {q.options.map((opt, oIdx) => (
-                                                        <button
-                                                            key={oIdx}
-                                                            onClick={() => handleAnswer(actualIndex, oIdx)}
-                                                            className={`flex items-center gap-3 p-3 rounded-lg border-2 transition-all text-left ${
-                                                                answers[actualIndex] === oIdx
-                                                                    ? 'border-[#FF6B4A] bg-[#FF6B4A]/5'
-                                                                    : 'border-gray-100 bg-white hover:border-gray-200'
-                                                            }`}
-                                                        >
-                                                            <div className={`w-6 h-6 rounded flex items-center justify-center text-[10px] font-bold border ${
-                                                                answers[actualIndex] === oIdx ? 'bg-[#FF6B4A] text-white border-transparent' : 'bg-gray-50 text-gray-400 border-gray-200'
-                                                            }`}>
-                                                                {String.fromCharCode(65 + oIdx)}
-                                                            </div>
-                                                            <span className="text-xs font-bold">{opt}</span>
-                                                        </button>
-                                                    ))}
-                                                </div>
-                                            </div>
-                                        );
-                                    })}
-                                </div>
+                                {currentQuestions.map((q, qIndex) => {
+                                    const actualIndex = currentPage * questionsPerPage + qIndex;
 
-                                {/* Pagination for List Mode */}
-                                <div className="flex items-center justify-center gap-4 py-4">
+                                    return (
+                                        <div key={actualIndex} id={`q-${actualIndex}`} className="bg-white rounded-2xl border-2 border-[#1A1A1A] p-5 space-y-4">
+                                            <div className="flex items-center gap-2">
+                                                <span className="w-7 h-7 rounded-lg bg-[#1A1A1A] text-white text-xs font-extrabold flex items-center justify-center">{actualIndex + 1}</span>
+                                                <span className="text-[10px] font-extrabold text-gray-400">{q.subject}</span>
+                                            </div>
+                                            <p className="font-extrabold text-[#1A1A1A]">{q.question}</p>
+                                            <div className="grid grid-cols-1 md:grid-cols-2 gap-2.5">
+                                                {q.options.map((option, optionIdx) => (
+                                                    <button
+                                                        key={optionIdx}
+                                                        onClick={() => handleAnswer(actualIndex, optionIdx)}
+                                                        className={`rounded-xl border-2 px-3 py-2.5 text-left text-sm font-bold transition-colors ${
+                                                            answers[actualIndex] === optionIdx
+                                                                ? 'border-[#FF6B4A] bg-[#FF6B4A]/5'
+                                                                : 'border-[#1A1A1A]/10 hover:border-[#1A1A1A]/30 bg-white'
+                                                        }`}
+                                                    >
+                                                        {String.fromCharCode(65 + optionIdx)}. {option}
+                                                    </button>
+                                                ))}
+                                            </div>
+                                        </div>
+                                    );
+                                })}
+
+                                <div className="flex items-center justify-center gap-3 py-2">
                                     <button
                                         onClick={() => setCurrentPage(Math.max(0, currentPage - 1))}
                                         disabled={currentPage === 0}
-                                        className="w-10 h-10 rounded-xl border border-gray-200 flex items-center justify-center disabled:opacity-20 hover:bg-gray-50"
+                                        className="w-10 h-10 rounded-xl border border-[#1A1A1A]/20 flex items-center justify-center disabled:opacity-30"
                                     >
                                         <ArrowLeft className="w-4 h-4" />
                                     </button>
-                                    <div className="flex items-center gap-2">
-                                        {Array.from({ length: Math.ceil(mockQuestions.length / questionsPerPage) }).map((_, pIdx) => (
-                                            <button
-                                                key={pIdx}
-                                                onClick={() => setCurrentPage(pIdx)}
-                                                className={`w-10 h-10 rounded-xl font-extrabold text-xs border ${currentPage === pIdx ? 'bg-[#1A1A1A] text-white border-[#1A1A1A]' : 'border-gray-200 text-gray-400'}`}
-                                            >
-                                                {pIdx + 1}
-                                            </button>
-                                        ))}
-                                    </div>
+                                    {Array.from({ length: Math.ceil(mockQuestions.length / questionsPerPage) }).map((_, pageIdx) => (
+                                        <button
+                                            key={pageIdx}
+                                            onClick={() => setCurrentPage(pageIdx)}
+                                            className={`w-10 h-10 rounded-xl text-xs font-extrabold border ${currentPage === pageIdx ? 'bg-[#1A1A1A] text-white border-[#1A1A1A]' : 'border-[#1A1A1A]/20 text-[#1A1A1A]/60'}`}
+                                        >
+                                            {pageIdx + 1}
+                                        </button>
+                                    ))}
                                     <button
                                         onClick={() => setCurrentPage(Math.min(Math.ceil(mockQuestions.length / questionsPerPage) - 1, currentPage + 1))}
                                         disabled={currentPage === Math.ceil(mockQuestions.length / questionsPerPage) - 1}
-                                        className="w-10 h-10 rounded-xl border border-gray-200 flex items-center justify-center disabled:opacity-20 hover:bg-gray-50"
+                                        className="w-10 h-10 rounded-xl border border-[#1A1A1A]/20 flex items-center justify-center disabled:opacity-30"
                                     >
                                         <ArrowRight className="w-4 h-4" />
                                     </button>
