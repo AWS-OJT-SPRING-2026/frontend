@@ -1,4 +1,5 @@
 import { useMemo, useState, useEffect, useRef } from 'react';
+import { useNavigate } from 'react-router-dom';
 import {
     CalendarBlank, Clock, BookOpen, ChalkboardTeacher, CaretLeft, CaretRight,
     Video, Rows, SquaresFour, WarningCircle, MapPin, X, Target, CalendarDots,
@@ -58,19 +59,20 @@ interface ScheduleEntry {
     className?: string;
     room?: string;
     hasHomework?: boolean;
+    homeworkCount?: number;
     attendanceStatus?: 'present' | 'absent' | 'none';
     materials?: { name: string; url: string; type: 'pdf' | 'slide' }[];
     studentsCount?: number;
 }
 
 const BASE_EVENTS = [
-    { dayOfWeek: 0, time: '08:00-09:30', subject: 'Toán học', teacher: 'Thầy Nguyễn Văn Bình', initials: 'NB', bg: '#FCE38A', meet: 'https://meet.google.com', topic: 'Đại số tổ hợp', className: '11C1', hasHomework: true, attendanceStatus: 'present', materials: [{name: 'BT_Dai_So_11.pdf', url: '#', type: 'pdf'}], studentsCount: 45 },
+    { dayOfWeek: 0, time: '08:00-09:30', subject: 'Toán học', teacher: 'Thầy Nguyễn Văn Bình', initials: 'NB', bg: '#FCE38A', meet: 'https://meet.google.com', topic: 'Đại số tổ hợp', className: '11C1', hasHomework: true, homeworkCount: 2, attendanceStatus: 'present', materials: [{name: 'BT_Dai_So_11.pdf', url: '#', type: 'pdf'}], studentsCount: 45 },
     { dayOfWeek: 0, time: '13:30-15:00', subject: 'Tiếng Anh', teacher: 'Ms. Emily Wilson', initials: 'EW', bg: '#B8B5FF', topic: 'Grammar and Vocabulary', className: '11C1', room: 'P.302', attendanceStatus: 'absent', studentsCount: 45 },
     { dayOfWeek: 1, time: '08:00-09:30', subject: 'Ngữ văn', teacher: 'Cô Trần Thị Lan', initials: 'TL', bg: '#95E1D3', meet: 'https://meet.google.com', topic: 'Phân tích tác phẩm', className: '11C1', attendanceStatus: 'present', studentsCount: 45 },
-    { dayOfWeek: 1, time: '10:00-11:30', subject: 'Vật lý', teacher: 'Thầy Lê Văn Hùng', initials: 'LH', bg: '#FFB5B5', topic: 'Động lực học', className: '11C1', hasHomework: true, room: 'Lab Lý 1', studentsCount: 45 },
+    { dayOfWeek: 1, time: '10:00-11:30', subject: 'Vật lý', teacher: 'Thầy Lê Văn Hùng', initials: 'LH', bg: '#FFB5B5', topic: 'Động lực học', className: '11C1', hasHomework: true, homeworkCount: 1, room: 'Lab Lý 1', studentsCount: 45 },
     { dayOfWeek: 2, time: '07:30-09:00', subject: 'Hóa học', teacher: 'Cô Phạm Ngọc Bích', initials: 'PB', bg: '#FFD9A0', meet: 'https://meet.google.com', topic: 'Phản ứng hóa học', className: '11C1', materials: [{name: 'Slide_Phan_Ung.pdf', url: '#', type: 'slide'}], studentsCount: 45 },
     { dayOfWeek: 2, time: '14:00-15:30', subject: 'Toán học', teacher: 'Thầy Nguyễn Văn Bình', initials: 'NB', bg: '#FCE38A', topic: 'Xác suất', className: '11C1', studentsCount: 45 },
-    { dayOfWeek: 3, time: '08:00-09:30', subject: 'Lịch sử', teacher: 'Thầy Đặng Minh Tuấn', initials: 'DT', bg: '#C8F7C5', meet: 'https://meet.google.com', topic: 'Chiến tranh thế giới', className: '11C1', hasHomework: true, materials: [{name: 'The_Chien_II.pdf', url: '#', type: 'pdf'}], studentsCount: 45 },
+    { dayOfWeek: 3, time: '08:00-09:30', subject: 'Lịch sử', teacher: 'Thầy Đặng Minh Tuấn', initials: 'DT', bg: '#C8F7C5', meet: 'https://meet.google.com', topic: 'Chiến tranh thế giới', className: '11C1', hasHomework: true, homeworkCount: 1, materials: [{name: 'The_Chien_II.pdf', url: '#', type: 'pdf'}], studentsCount: 45 },
     { dayOfWeek: 4, time: '07:30-09:00', subject: 'Tiếng Anh', teacher: 'Ms. Emily Wilson', initials: 'EW', bg: '#B8B5FF', meet: 'https://meet.google.com', topic: 'Reading Comprehension', className: '11C1', studentsCount: 45 },
     { dayOfWeek: 4, time: '10:00-11:30', subject: 'Sinh học', teacher: 'Cô Hoàng Thu Hà', initials: 'HH', bg: '#95E1D3', topic: 'Di truyền học', className: '11C1', room: 'Lab Sinh', studentsCount: 45 },
 ];
@@ -181,7 +183,7 @@ function EventTooltip({ event, x, y, now }: { event: ScheduleEntry; x: number; y
     );
 }
 
-function EventDetailDialog({ event, onClose }: { event: ScheduleEntry | null; onClose: () => void; now: Date }) {
+function EventDetailDialog({ event, onClose, onViewHomework }: { event: ScheduleEntry | null; onClose: () => void; onViewHomework: (event: ScheduleEntry) => void }) {
     if (!event) return null;
 
     return (
@@ -265,10 +267,11 @@ function EventDetailDialog({ event, onClose }: { event: ScheduleEntry | null; on
                         )}
                         {event.hasHomework && (
                             <button
+                                onClick={() => onViewHomework(event)}
                                 className="inline-flex w-full items-center justify-center gap-2 rounded-2xl border-2 border-[#D97706]/20 bg-[#FEF3C7] px-3 py-3.5 text-[#D97706] hover:bg-[#FDE68A] text-sm font-extrabold transition-colors active:scale-95"
                             >
                                 <WarningCircle className="w-5 h-5" weight="fill" />
-                                Xem bài tập
+                                Xem bài tập ({event.homeworkCount || 1})
                             </button>
                         )}
                     </div>
@@ -288,6 +291,7 @@ function EventDetailDialog({ event, onClose }: { event: ScheduleEntry | null; on
 }
 
 export function StudentSchedule() {
+    const navigate = useNavigate();
     const today = new Date();
     const [now, setNow] = useState(new Date());
     const [currentDate, setCurrentDate] = useState(today);
@@ -461,6 +465,24 @@ export function StudentSchedule() {
         else if (viewMode === 'day') d.setDate(d.getDate() + 1);
         else d.setMonth(d.getMonth() + 1);
         setCurrentDate(d);
+    };
+
+    const handleViewHomework = (event: ScheduleEntry) => {
+        if (!event.hasHomework) return;
+
+        const params = new URLSearchParams({
+            source: 'schedule',
+            tab: 'available',
+            category: 'homework',
+            subject: event.subject,
+            className: event.className ?? '',
+            lessonKey: `${event.subject}|${event.className ?? ''}|${pad(event.startHour)}:${pad(event.startMin)}`,
+            date: event.dateKey,
+            time: `${pad(event.startHour)}:${pad(event.startMin)} - ${pad(event.endHour)}:${pad(event.endMin)}`,
+        });
+
+        setSelectedEvent(null);
+        navigate(`/student/exercises?${params.toString()}`);
     };
 
     return (
@@ -879,7 +901,7 @@ export function StudentSchedule() {
                 </div>
             </div>
 
-            <EventDetailDialog event={selectedEvent} onClose={() => setSelectedEvent(null)} now={now} />
+            <EventDetailDialog event={selectedEvent} onClose={() => setSelectedEvent(null)} onViewHomework={handleViewHomework} />
             {tooltipData && <EventTooltip event={tooltipData.event} x={tooltipData.x} y={tooltipData.y} now={now} />}
 
             {/* Classmates Dialog */}
