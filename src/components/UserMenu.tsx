@@ -59,12 +59,20 @@ export function UserMenu({ role }: UserMenuProps) {
                 onClick={() => setIsOpen(!isOpen)}
                 className="flex items-center gap-3 px-3 py-2 cursor-pointer hover:bg-white/5 rounded-2xl transition-colors"
             >
-                <div className={cn(
-                    "w-9 h-9 rounded-full flex items-center justify-center text-white font-extrabold text-sm shrink-0 ring-2 ring-white/20 shadow-lg",
-                    role === 'teacher' ? 'bg-emerald-500' : 'bg-[#FF6B4A]'
-                )}>
-                    {user?.name?.[0]?.toUpperCase() || 'U'}
-                </div>
+                {user?.avatarUrl ? (
+                    <img
+                        src={user.avatarUrl}
+                        alt={user?.name || 'User'}
+                        className="w-9 h-9 rounded-full object-cover shrink-0 ring-2 ring-white/20 shadow-lg"
+                    />
+                ) : (
+                    <div className={cn(
+                        "w-9 h-9 rounded-full flex items-center justify-center text-white font-extrabold text-sm shrink-0 ring-2 ring-white/20 shadow-lg",
+                        role === 'teacher' ? 'bg-emerald-500' : 'bg-[#FF6B4A]'
+                    )}>
+                        {user?.name?.[0]?.toUpperCase() || 'U'}
+                    </div>
+                )}
                 <div className="opacity-0 group-hover/sidebar:opacity-100 transition-opacity duration-200 delay-100 overflow-hidden text-left">
                     <p className="text-white text-xs font-extrabold whitespace-nowrap">{user?.name || 'User'}</p>
                     <p className="text-gray-500 text-[10px] whitespace-nowrap">{role === 'teacher' ? 'Giáo viên' : 'Lớp 12A1'}</p>

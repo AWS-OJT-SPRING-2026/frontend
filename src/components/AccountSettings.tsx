@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import {
     UserCircle, Users, Camera, Check, ArrowLeft, ShieldCheck,
     DeviceMobile, EnvelopeSimple, PencilSimple, Eye, EyeSlash,
-    Lock, GraduationCap
+    Lock, CalendarBlank, GenderIntersex, MapPinLine
 } from '@phosphor-icons/react';
 import { useAuth } from '../context/AuthContext';
 import { useNavigate } from 'react-router-dom';
@@ -25,12 +25,17 @@ export function AccountSettings() {
         name: user?.name || 'Phạm Thị Dung',
         email: user?.email || 'student1@educare.com',
         phone: '0912 345 678',
-        school: 'THPT Chu Văn An',
+        dateOfBirth: '2008-09-15',
+        gender: 'Nam',
+        address: '12 Nguyễn Trãi, Quận 1, TP.HCM',
         parentName: 'Phạm Văn A',
         parentPhone: '0987 654 321',
         parentEmail: 'phuhuynh@example.com',
         parentRelation: 'Bố',
     });
+
+    const parentRelationOptions = ['Bố', 'Mẹ', 'Ông/Bà', 'Anh/Chị', 'Người giám hộ', 'Khác'];
+    const genderOptions = ['Nam', 'Nữ', 'Khác'];
 
     // Password Update States
     const [showPassword, setShowPassword] = useState(false);
@@ -206,14 +211,25 @@ export function AccountSettings() {
         );
     };
 
-    const renderField = (label: string, fieldKey: keyof typeof formData, value: string, Icon: any, type = "text") => {
+    const renderField = (
+        label: string,
+        fieldKey: keyof typeof formData,
+        value: string,
+        Icon: any,
+        type: 'text' | 'email' | 'tel' | 'date' | 'select' = 'text',
+        selectOptions?: string[]
+    ) => {
+        const displayValue = fieldKey === 'dateOfBirth' && value
+            ? new Date(value).toLocaleDateString('vi-VN')
+            : value;
+
         if (!isEditing) {
             return (
                 <div className="flex flex-col gap-1.5 p-4 rounded-2xl border border-gray-100 bg-gray-50/50">
                     <span className="text-[11px] font-extrabold text-gray-400 uppercase tracking-widest">{label}</span>
                     <div className="flex items-center gap-3">
                         <Icon size={20} className="text-gray-400" />
-                        <span className="font-extrabold text-[#1A1A1A] text-base">{value}</span>
+                        <span className="font-extrabold text-[#1A1A1A] text-base">{displayValue}</span>
                     </div>
                 </div>
             );
@@ -232,12 +248,9 @@ export function AccountSettings() {
                             onChange={(e) => setFormData({ ...formData, [fieldKey]: e.target.value })}
                             className="w-full bg-[#F7F7F2] border-2 border-[#1A1A1A]/10 rounded-2xl pl-12 pr-5 py-4 font-bold text-[#1A1A1A] focus:outline-none focus:border-[#FF6B4A] transition-all appearance-none cursor-pointer relative"
                         >
-                            <option value="Bố">Bố</option>
-                            <option value="Mẹ">Mẹ</option>
-                            <option value="Ông/Bà">Ông/Bà</option>
-                            <option value="Anh/Chị">Anh/Chị</option>
-                            <option value="Người giám hộ">Người giám hộ</option>
-                            <option value="Khác">Khác</option>
+                            {(selectOptions || parentRelationOptions).map((option) => (
+                                <option key={option} value={option}>{option}</option>
+                            ))}
                         </select>
                     ) : (
                         <input
@@ -404,15 +417,17 @@ export function AccountSettings() {
                     </div>
                     <div>
                         <h3 className="text-xl font-extrabold text-[#1A1A1A]">Thông tin cá nhân</h3>
-                        <p className="text-xs font-bold text-gray-400">Chi tiết liên lạc và thông tin trường lớp</p>
+                        <p className="text-xs font-bold text-gray-400">Chi tiết liên lạc và thông tin cơ bản</p>
                     </div>
                 </div>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                     {renderField('Họ và tên', 'name', formData.name, UserCircle)}
-                    {renderField('Trường / Tổ chức', 'school', formData.school, GraduationCap)}
+                    {renderField('Ngày sinh', 'dateOfBirth', formData.dateOfBirth, CalendarBlank, 'date')}
+                    {renderField('Giới tính', 'gender', formData.gender, GenderIntersex, 'select', genderOptions)}
                     {renderField('Email cá nhân', 'email', formData.email, EnvelopeSimple)}
                     {renderField('Số điện thoại', 'phone', formData.phone, DeviceMobile)}
+                    {renderField('Địa chỉ', 'address', formData.address, MapPinLine)}
                 </div>
 
                 {/* Parent Info */}
@@ -423,7 +438,7 @@ export function AccountSettings() {
                     </div>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                         {renderField('Họ tên phụ huynh', 'parentName', formData.parentName, UserCircle)}
-                        {renderField('Mối quan hệ', 'parentRelation', formData.parentRelation, Users, 'select')}
+                        {renderField('Mối quan hệ', 'parentRelation', formData.parentRelation, Users, 'select', parentRelationOptions)}
                         {renderField('SĐT phụ huynh', 'parentPhone', formData.parentPhone, DeviceMobile)}
                         {renderField('Email phụ huynh', 'parentEmail', formData.parentEmail, EnvelopeSimple)}
                     </div>

@@ -80,9 +80,17 @@ export function AdminLayout() {
                 {/* User + Logout */}
                 <div className="flex flex-col gap-2 w-full px-2 mt-auto">
                     <div className="flex items-center gap-3 px-3 py-2 min-w-0">
-                        <div className="w-9 h-9 rounded-full bg-blue-500 flex items-center justify-center text-white font-extrabold text-sm shrink-0 ring-2 ring-white/20">
-                            {user?.name?.[0]?.toUpperCase() || 'A'}
-                        </div>
+                        {user?.avatarUrl ? (
+                            <img
+                                src={user.avatarUrl}
+                                alt={user?.name || 'Admin'}
+                                className="w-9 h-9 rounded-full object-cover shrink-0 ring-2 ring-white/20"
+                            />
+                        ) : (
+                            <div className="w-9 h-9 rounded-full bg-blue-500 flex items-center justify-center text-white font-extrabold text-sm shrink-0 ring-2 ring-white/20">
+                                {user?.name?.[0]?.toUpperCase() || 'A'}
+                            </div>
+                        )}
                         {sidebarOpen && (
                             <div className="overflow-hidden min-w-0">
                                 <p className="text-white text-xs font-extrabold whitespace-nowrap">{user?.name || 'Quản trị viên'}</p>

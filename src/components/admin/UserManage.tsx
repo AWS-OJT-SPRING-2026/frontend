@@ -18,6 +18,7 @@ interface UserResponse {
     email: string;
     phone: string;
     status: string;
+    avatarUrl?: string;
     createdAt: string;
     classes: string[] | null;
     role: RoleResponse;
@@ -93,6 +94,89 @@ function Field({ label, required, children }: { label: string; required?: boolea
 
 const inputCls = "w-full px-3 py-2 bg-white border-2 border-[#1A1A1A]/20 rounded-xl text-sm font-semibold focus:outline-none focus:border-[#FF6B4A] transition-colors placeholder:text-gray-300";
 
+const AVATAR_MAX_SIZE_BYTES = 5 * 1024 * 1024;
+const AVATAR_ACCEPT = 'image/png,image/jpeg,image/webp,image/gif';
+const AVATAR_ALLOWED_TYPES = ['image/png', 'image/jpeg', 'image/webp', 'image/gif'];
+
+function getAvatarValidationError(file: File): string | null {
+    if (!AVATAR_ALLOWED_TYPES.includes(file.type)) {
+        return 'Chỉ chấp nhận ảnh PNG, JPG, WEBP hoặc GIF.';
+    }
+    if (file.size > AVATAR_MAX_SIZE_BYTES) {
+        return 'Ảnh đại diện tối đa 5MB.';
+    }
+    return null;
+}
+
+function buildStudentFormData(payload: Record<string, unknown>, avatar?: File | null): FormData {
+    const formData = new FormData();
+    formData.append('data', new Blob([JSON.stringify(payload)], { type: 'application/json' }));
+    if (avatar) {
+        formData.append('avatar', avatar);
+    }
+    return formData;
+}
+
+function AvatarPreview({
+    avatarUrl,
+    fallbackName,
+    userId,
+    sizeClass = 'w-16 h-16',
+    textClass = 'text-xl',
+}: {
+    avatarUrl?: string | null;
+    fallbackName: string;
+    userId: number;
+    sizeClass?: string;
+    textClass?: string;
+}) {
+    if (avatarUrl) {
+        return (
+            <img
+                src={avatarUrl}
+                alt={fallbackName || 'Avatar'}
+                className={`${sizeClass} rounded-full border-2 border-[#1A1A1A] object-cover`}
+            />
+        );
+    }
+
+    return (
+        <div
+            className={`${sizeClass} rounded-full border-2 border-[#1A1A1A] flex items-center justify-center font-extrabold text-[#1A1A1A] ${textClass}`}
+            style={{ backgroundColor: getAvatarColor(userId) }}
+        >
+            {getInitials(fallbackName)}
+        </div>
+    );
+}
+
+function AvatarZoomModal({
+    avatarUrl,
+    onClose,
+    title,
+}: {
+    avatarUrl: string;
+    onClose: () => void;
+    title?: string;
+}) {
+    return (
+        <div className="fixed inset-0 z-[70] flex items-center justify-center bg-black/70 backdrop-blur-sm p-4" onClick={onClose}>
+            <div className="relative max-w-3xl w-full" onClick={(e) => e.stopPropagation()}>
+                <button
+                    onClick={onClose}
+                    className="absolute -top-3 -right-3 w-9 h-9 rounded-full bg-white border-2 border-[#1A1A1A] flex items-center justify-center shadow-xl"
+                >
+                    <X className="w-4 h-4 text-[#1A1A1A]" />
+                </button>
+                <div className="bg-white rounded-3xl border-2 border-[#1A1A1A] p-3 shadow-2xl">
+                    {title && <p className="px-2 pb-2 text-xs font-extrabold text-[#1A1A1A]/50 uppercase tracking-wider">{title}</p>}
+                    <img src={avatarUrl} alt={title || 'Avatar'} className="w-full max-h-[75vh] object-contain rounded-2xl bg-[#F7F7F2]" />
+                </div>
+            </div>
+        </div>
+    );
+}
+
 /* ─── Add User Modal ─────────────────────────────────────────────────────── */
 function AddUserModal({ onClose, onSuccess }: { onClose: () => void; onSuccess: () => void }) {
     const [tab, setTab] = useState<'teacher' | 'student'>('teacher');
@@ -103,6 +187,10 @@ function AddUserModal({ onClose, onSuccess }: { onClose: () => void; onSuccess: 
     const [success, setSuccess] = useState<string | null>(null);
     const [showTeacherPassword, setShowTeacherPassword] = useState(false);
     const [showStudentPassword, setShowStudentPassword] = useState(false);
+    const [studentAvatarFile, setStudentAvatarFile] = useState<File | null>(null);
+    const [studentAvatarPreviewUrl, setStudentAvatarPreviewUrl] = useState<string | null>(null);
+    const [studentAvatarError, setStudentAvatarError] = useState<string | null>(null);
+    const addStudentAvatarInputRef = useRef<HTMLInputElement | null>(null);
 
     function updateTeacher(field: keyof TeacherForm, value: string | boolean) {
         setTeacherForm(prev => ({ ...prev, [field]: value }));
@@ -110,6 +198,36 @@ function AddUserModal({ onClose, onSuccess }: { onClose: () => void; onSuccess: 
     function updateStudent(field: keyof StudentForm, value: string) {
         setStudentForm(prev => ({ ...prev, [field]: value }));
     }
+
+    function handleStudentAvatarChange(file?: File) {
+        setStudentAvatarError(null);
+        if (!file) {
+            setStudentAvatarFile(null);
+            setStudentAvatarPreviewUrl(null);
+            return;
+        }
+
+        const validationError = getAvatarValidationError(file);
+        if (validationError) {
+            setStudentAvatarError(validationError);
+            return;
+        }
+
+        setStudentAvatarFile(file);
+        setStudentAvatarPreviewUrl(URL.createObjectURL(file));
+    }
+
+    function openAddStudentAvatarPicker() {
+        addStudentAvatarInputRef.current?.click();
+    }
+
+    useEffect(() => {
+        return () => {
+            if (studentAvatarPreviewUrl?.startsWith('blob:')) {
+                URL.revokeObjectURL(studentAvatarPreviewUrl);
+            }
+        };
+    }, [studentAvatarPreviewUrl]);
 
     async function handleSubmit() {
         setError(null);
@@ -141,7 +259,8 @@ function AddUserModal({ onClose, onSuccess }: { onClose: () => void; onSuccess: 
                 if (studentForm.parentPhone) payload.parentPhone = studentForm.parentPhone;
                 if (studentForm.parentEmail) payload.parentEmail = studentForm.parentEmail;
                 if (studentForm.parentRelationship) payload.parentRelationship = studentForm.parentRelationship;
-                await api.authPost('/users/students', payload, token);
+                const formData = buildStudentFormData(payload, studentAvatarFile);
+                await api.authPostForm('/users/students', formData, token);
                 setSuccess('Tạo học sinh thành công!');
             }
             setTimeout(() => { onSuccess(); onClose(); }, 1200);
@@ -157,7 +276,7 @@ function AddUserModal({ onClose, onSuccess }: { onClose: () => void; onSuccess: 
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4" onClick={onClose}>
             {/* Modal — wider when student tab */}
             <div
-                className={`bg-[#FAF9F6] w-full rounded-3xl border-2 border-[#1A1A1A] shadow-2xl overflow-hidden transition-all ${tab === 'student' ? 'max-w-2xl' : 'max-w-xl'}`}
+                className={`bg-[#FAF9F6] w-full rounded-3xl border-2 border-[#1A1A1A] shadow-2xl overflow-hidden transition-all ${tab === 'student' ? 'max-w-5xl' : 'max-w-xl'}`}
                 style={{ fontFamily: "'Nunito', sans-serif" }}
                 onClick={e => e.stopPropagation()}
             >
@@ -258,96 +377,118 @@ function AddUserModal({ onClose, onSuccess }: { onClose: () => void; onSuccess: 
                         </>
                     ) : (
                         <>
-                            {/* ── Section 1: Thông tin tài khoản ── */}
-                            <div className="rounded-2xl border-2 border-[#1A1A1A]/10 overflow-hidden">
-                                <div className="flex items-center gap-2 px-4 py-2.5 bg-[#FF6B4A]/8 border-b-2 border-[#1A1A1A]/10">
-                                    <span className="w-5 h-5 rounded-lg bg-[#FF6B4A] flex items-center justify-center text-white text-xs font-extrabold">1</span>
-                                    <p className="text-xs font-extrabold text-[#FF6B4A] uppercase tracking-wider">Thông tin tài khoản</p>
-                                </div>
-                                <div className="p-4 space-y-3 bg-white">
-                                    <div className="grid grid-cols-2 gap-3">
-                                        <Field label="Tên đăng nhập" required>
-                                            <input className={inputCls} placeholder="vd: hs.tranvan" value={studentForm.username} onChange={e => updateStudent('username', e.target.value)} />
-                                        </Field>
-                                        <Field label="Mật khẩu" required>
-                                            <div className="relative">
-                                                <input type={showStudentPassword ? 'text' : 'password'} className={inputCls + ' pr-10'} placeholder="Tối thiểu 6 ký tự, có chữ + số" value={studentForm.password} onChange={e => updateStudent('password', e.target.value)} />
-                                                <button type="button" onClick={() => setShowStudentPassword(p => !p)} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-[#FF6B4A] transition-colors">
-                                                    {showStudentPassword ? <EyeSlash className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                                                </button>
+                            <div className="grid grid-cols-1 lg:grid-cols-5 gap-4">
+                                <div className="rounded-2xl border-2 border-[#1A1A1A]/10 overflow-hidden bg-white lg:col-span-3">
+                                    <div className="flex items-center gap-2 px-4 py-2.5 bg-[#B8B5FF]/20 border-b-2 border-[#1A1A1A]/10">
+                                        <span className="w-5 h-5 rounded-lg bg-[#B8B5FF] flex items-center justify-center text-[#1A1A1A] text-xs font-extrabold">1</span>
+                                        <p className="text-xs font-extrabold text-[#6C63FF] uppercase tracking-wider">Thông tin cá nhân</p>
+                                    </div>
+                                    <div className="p-4 space-y-3">
+                                        <input
+                                            ref={addStudentAvatarInputRef}
+                                            type="file"
+                                            accept={AVATAR_ACCEPT}
+                                            className="hidden"
+                                            onChange={(e) => handleStudentAvatarChange(e.target.files?.[0])}
+                                        />
+                                        <button
+                                            type="button"
+                                            onClick={openAddStudentAvatarPicker}
+                                            className="w-full rounded-2xl border-2 border-dashed border-[#1A1A1A]/15 bg-[#F7F7F2] p-4 hover:border-[#FF6B4A]/40 transition-colors"
+                                        >
+                                            <div className="flex flex-col items-center text-center gap-2">
+                                                <AvatarPreview
+                                                    avatarUrl={studentAvatarPreviewUrl}
+                                                    fallbackName={studentForm.fullName || studentForm.username || 'Học sinh'}
+                                                    userId={0}
+                                                    sizeClass="w-24 h-24"
+                                                    textClass="text-3xl"
+                                                />
+                                                <p className="text-sm font-extrabold text-[#1A1A1A]">{studentAvatarFile ? 'Nhấn để đổi avatar' : 'Nhấn để thêm avatar'}</p>
+                                                <p className="text-[11px] font-bold text-[#1A1A1A]/50">PNG/JPG/WEBP/GIF, tối đa 5MB</p>
                                             </div>
+                                        </button>
+                                        {studentAvatarError && <p className="text-xs font-extrabold text-[#c0392b]">{studentAvatarError}</p>}
+                                        <Field label="Họ và tên" required>
+                                            <input className={inputCls} placeholder="Trần Văn B" value={studentForm.fullName} onChange={e => updateStudent('fullName', e.target.value)} />
                                         </Field>
-                                    </div>
-                                    <div className="grid grid-cols-2 gap-3">
-                                        <Field label="Email" required>
-                                            <input type="email" className={inputCls} placeholder="hocsinh@student.edu.vn" value={studentForm.email} onChange={e => updateStudent('email', e.target.value)} />
-                                        </Field>
-                                        <Field label="Số điện thoại">
-                                            <input className={inputCls} placeholder="0912345678" value={studentForm.phone} onChange={e => updateStudent('phone', e.target.value)} />
+                                        <div className="grid grid-cols-2 gap-3">
+                                            <Field label="Ngày sinh">
+                                                <input type="date" className={inputCls} value={studentForm.dateOfBirth} onChange={e => updateStudent('dateOfBirth', e.target.value)} />
+                                            </Field>
+                                            <Field label="Giới tính">
+                                                <select className={inputCls} value={studentForm.gender} onChange={e => updateStudent('gender', e.target.value)}>
+                                                    <option value="">-- Chọn --</option>
+                                                    <option value="MALE">Nam</option>
+                                                    <option value="FEMALE">Nữ</option>
+                                                    <option value="OTHER">Khác</option>
+                                                </select>
+                                            </Field>
+                                        </div>
+                                        <Field label="Địa chỉ">
+                                            <input className={inputCls} placeholder="123 Đường ABC, Quận 1, TP.HCM" value={studentForm.address} onChange={e => updateStudent('address', e.target.value)} />
                                         </Field>
                                     </div>
                                 </div>
-                            </div>
 
-                            {/* ── Section 2: Thông tin cá nhân ── */}
-                            <div className="rounded-2xl border-2 border-[#1A1A1A]/10 overflow-hidden">
-                                <div className="flex items-center gap-2 px-4 py-2.5 bg-[#B8B5FF]/20 border-b-2 border-[#1A1A1A]/10">
-                                    <span className="w-5 h-5 rounded-lg bg-[#B8B5FF] flex items-center justify-center text-[#1A1A1A] text-xs font-extrabold">2</span>
-                                    <p className="text-xs font-extrabold text-[#6C63FF] uppercase tracking-wider">Thông tin cá nhân</p>
-                                </div>
-                                <div className="p-4 space-y-3 bg-white">
-                                    <Field label="Họ và tên" required>
-                                        <input className={inputCls} placeholder="Trần Văn B" value={studentForm.fullName} onChange={e => updateStudent('fullName', e.target.value)} />
-                                    </Field>
-                                    <div className="grid grid-cols-2 gap-3">
-                                        <Field label="Ngày sinh">
-                                            <input type="date" className={inputCls} value={studentForm.dateOfBirth} onChange={e => updateStudent('dateOfBirth', e.target.value)} />
-                                        </Field>
-                                        <Field label="Giới tính">
-                                            <select className={inputCls} value={studentForm.gender} onChange={e => updateStudent('gender', e.target.value)}>
-                                                <option value="">-- Chọn --</option>
-                                                <option value="MALE">Nam</option>
-                                                <option value="FEMALE">Nữ</option>
-                                                <option value="OTHER">Khác</option>
-                                            </select>
-                                        </Field>
+                                <div className="space-y-4 lg:col-span-2">
+                                    <div className="rounded-2xl border-2 border-[#1A1A1A]/10 overflow-hidden bg-white">
+                                        <div className="flex items-center gap-2 px-4 py-2.5 bg-[#FF6B4A]/8 border-b-2 border-[#1A1A1A]/10">
+                                            <span className="w-5 h-5 rounded-lg bg-[#FF6B4A] flex items-center justify-center text-white text-xs font-extrabold">2</span>
+                                            <p className="text-xs font-extrabold text-[#FF6B4A] uppercase tracking-wider">Thông tin tài khoản</p>
+                                        </div>
+                                        <div className="p-4 space-y-3">
+                                            <Field label="Tên đăng nhập" required>
+                                                <input className={inputCls} placeholder="vd: hs.tranvan" value={studentForm.username} onChange={e => updateStudent('username', e.target.value)} />
+                                            </Field>
+                                            <Field label="Mật khẩu" required>
+                                                <div className="relative">
+                                                    <input type={showStudentPassword ? 'text' : 'password'} className={inputCls + ' pr-10'} placeholder="Tối thiểu 6 ký tự, có chữ + số" value={studentForm.password} onChange={e => updateStudent('password', e.target.value)} />
+                                                    <button type="button" onClick={() => setShowStudentPassword(p => !p)} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-[#FF6B4A] transition-colors">
+                                                        {showStudentPassword ? <EyeSlash className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                                                    </button>
+                                                </div>
+                                            </Field>
+                                            <div className="grid grid-cols-2 gap-3">
+                                                <Field label="Email" required>
+                                                    <input type="email" className={inputCls} placeholder="hocsinh@student.edu.vn" value={studentForm.email} onChange={e => updateStudent('email', e.target.value)} />
+                                                </Field>
+                                                <Field label="Số điện thoại">
+                                                    <input className={inputCls} placeholder="0912345678" value={studentForm.phone} onChange={e => updateStudent('phone', e.target.value)} />
+                                                </Field>
+                                            </div>
+                                        </div>
                                     </div>
-                                    <Field label="Địa chỉ">
-                                        <input className={inputCls} placeholder="123 Đường ABC, Quận 1, TP.HCM" value={studentForm.address} onChange={e => updateStudent('address', e.target.value)} />
-                                    </Field>
-                                </div>
-                            </div>
 
-                            {/* ── Section 3: Thông tin phụ huynh ── */}
-                            <div className="rounded-2xl border-2 border-[#1A1A1A]/10 overflow-hidden">
-                                <div className="flex items-center gap-2 px-4 py-2.5 bg-[#95E1D3]/20 border-b-2 border-[#1A1A1A]/10">
-                                    <span className="w-5 h-5 rounded-lg bg-[#95E1D3] flex items-center justify-center text-[#1A1A1A] text-xs font-extrabold">3</span>
-                                    <p className="text-xs font-extrabold text-[#1A7A6E] uppercase tracking-wider">Thông tin phụ huynh</p>
-                                </div>
-                                <div className="p-4 space-y-3 bg-white">
-                                    <div className="grid grid-cols-2 gap-3">
-                                        <Field label="Họ tên phụ huynh">
-                                            <input className={inputCls} placeholder="Nguyễn Văn C" value={studentForm.parentName} onChange={e => updateStudent('parentName', e.target.value)} />
-                                        </Field>
-                                        <Field label="Quan hệ">
-                                            <select className={inputCls} value={studentForm.parentRelationship} onChange={e => updateStudent('parentRelationship', e.target.value)}>
-                                                <option value="">-- Chọn --</option>
-                                                <option value="Father">Cha</option>
-                                                <option value="Mother">Mẹ</option>
-                                                <option value="Grandfather">Ông</option>
-                                                <option value="Grandmother">Bà</option>
-                                                <option value="Sibling">Anh / Chị</option>
-                                                <option value="Guardian">Người giám hộ</option>
-                                            </select>
-                                        </Field>
-                                    </div>
-                                    <div className="grid grid-cols-2 gap-3">
-                                        <Field label="SĐT phụ huynh">
-                                            <input className={inputCls} placeholder="0987654321" value={studentForm.parentPhone} onChange={e => updateStudent('parentPhone', e.target.value)} />
-                                        </Field>
-                                        <Field label="Email phụ huynh">
-                                            <input type="email" className={inputCls} placeholder="phuhuynh@email.com" value={studentForm.parentEmail} onChange={e => updateStudent('parentEmail', e.target.value)} />
-                                        </Field>
+                                    <div className="rounded-2xl border-2 border-[#1A1A1A]/10 overflow-hidden bg-white">
+                                        <div className="flex items-center gap-2 px-4 py-2.5 bg-[#95E1D3]/20 border-b-2 border-[#1A1A1A]/10">
+                                            <span className="w-5 h-5 rounded-lg bg-[#95E1D3] flex items-center justify-center text-[#1A1A1A] text-xs font-extrabold">3</span>
+                                            <p className="text-xs font-extrabold text-[#1A7A6E] uppercase tracking-wider">Thông tin phụ huynh</p>
+                                        </div>
+                                        <div className="p-4 space-y-3">
+                                            <Field label="Họ tên phụ huynh">
+                                                <input className={inputCls} placeholder="Nguyễn Văn C" value={studentForm.parentName} onChange={e => updateStudent('parentName', e.target.value)} />
+                                            </Field>
+                                            <Field label="Quan hệ">
+                                                <select className={inputCls} value={studentForm.parentRelationship} onChange={e => updateStudent('parentRelationship', e.target.value)}>
+                                                    <option value="">-- Chọn --</option>
+                                                    <option value="Father">Cha</option>
+                                                    <option value="Mother">Mẹ</option>
+                                                    <option value="Grandfather">Ông</option>
+                                                    <option value="Grandmother">Bà</option>
+                                                    <option value="Sibling">Anh / Chị</option>
+                                                    <option value="Guardian">Người giám hộ</option>
+                                                </select>
+                                            </Field>
+                                            <div className="grid grid-cols-2 gap-3">
+                                                <Field label="SĐT phụ huynh">
+                                                    <input className={inputCls} placeholder="0987654321" value={studentForm.parentPhone} onChange={e => updateStudent('parentPhone', e.target.value)} />
+                                                </Field>
+                                                <Field label="Email phụ huynh">
+                                                    <input type="email" className={inputCls} placeholder="phuhuynh@email.com" value={studentForm.parentEmail} onChange={e => updateStudent('parentEmail', e.target.value)} />
+                                                </Field>
+                                            </div>
+                                        </div>
                                     </div>
                                 </div>
                             </div>
@@ -390,6 +531,7 @@ function AddUserModal({ onClose, onSuccess }: { onClose: () => void; onSuccess: 
                     </button>
                 </div>
             </div>
+
         </div>
     );
 }
@@ -448,6 +590,18 @@ function getGenderLabel(gender?: string | null): string {
     return '—';
 }
 
+function getParentRelationshipLabel(relationship?: string | null): string {
+    const value = (relationship ?? '').trim().toLowerCase();
+    if (!value) return '—';
+    if (value === 'father') return 'Ba';
+    if (value === 'mother') return 'Mẹ';
+    if (value === 'grandfather') return 'Ông';
+    if (value === 'grandmother') return 'Bà';
+    if (value === 'sibling') return 'Anh / Chị';
+    if (value === 'guardian') return 'Người giám hộ';
+    return relationship || '—';
+}
+
 function renderClassPreview(classes: string[] | null) {
     if (!classes || classes.length === 0) return '—';
     const visible = classes.slice(0, 3);
@@ -472,9 +626,9 @@ function renderClassPreview(classes: string[] | null) {
 
 function DetailItem({ label, value }: { label: string; value: string }) {
     return (
-        <div className="rounded-2xl border-2 border-[#1A1A1A]/10 bg-white p-3">
-            <p className="text-[11px] font-extrabold uppercase tracking-wider text-[#1A1A1A]/40">{label}</p>
-            <p className="mt-1 text-sm font-bold text-[#1A1A1A] break-words">{value || '—'}</p>
+        <div className="py-2">
+            <p className="text-[11px] font-extrabold uppercase tracking-wider text-[#1A1A1A]/35">{label}</p>
+            <p className="mt-1 text-[18px] leading-6 font-bold text-[#1A1A1A] break-words">{value || '—'}</p>
         </div>
     );
 }
@@ -486,6 +640,7 @@ interface TeacherDetailResponse {
     email: string;
     phone: string;
     status: string;
+    avatarUrl?: string;
     createdAt: string;
     role: RoleResponse;
     fullName: string;
@@ -502,6 +657,7 @@ interface StudentDetailResponse {
     email: string;
     phone: string;
     status: string;
+    avatarUrl?: string;
     createdAt: string;
     role: RoleResponse;
     fullName: string;
@@ -573,6 +729,14 @@ function EditUserModal({ user, onClose, onSuccess }: { user: UserResponse; onClo
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const [success, setSuccess] = useState<string | null>(null);
+    const [studentAvatarFile, setStudentAvatarFile] = useState<File | null>(null);
+    const [studentAvatarPreviewUrl, setStudentAvatarPreviewUrl] = useState<string | null>(null);
+    const [studentAvatarCurrentUrl, setStudentAvatarCurrentUrl] = useState<string | null>(user.avatarUrl ?? null);
+    const [studentAvatarError, setStudentAvatarError] = useState<string | null>(null);
+    const [showAvatarActions, setShowAvatarActions] = useState(false);
+    const [avatarZoomUrl, setAvatarZoomUrl] = useState<string | null>(null);
+    const editStudentAvatarInputRef = useRef<HTMLInputElement | null>(null);
+    const avatarActionRef = useRef<HTMLDivElement | null>(null);
 
     // Fetch full detail from GET /users/{userID} on mount
     useEffect(() => {
@@ -611,6 +775,7 @@ function EditUserModal({ user, onClose, onSuccess }: { user: UserResponse; onClo
                         parentEmail: s.parentEmail ?? '',
                         parentRelationship: s.parentRelationship ?? '',
                     });
+                    setStudentAvatarCurrentUrl(s.avatarUrl ?? user.avatarUrl ?? null);
                 }
             } catch {
                 // giữ nguyên giá trị mặc định nếu lỗi
@@ -627,6 +792,51 @@ function EditUserModal({ user, onClose, onSuccess }: { user: UserResponse; onClo
     function updateStudent(field: keyof StudentEditForm, value: string) {
         setStudentForm(prev => ({ ...prev, [field]: value }));
     }
+
+    function handleStudentAvatarChange(file?: File) {
+        setStudentAvatarError(null);
+        setShowAvatarActions(false);
+        if (!file) {
+            setStudentAvatarFile(null);
+            setStudentAvatarPreviewUrl(null);
+            return;
+        }
+
+        const validationError = getAvatarValidationError(file);
+        if (validationError) {
+            setStudentAvatarError(validationError);
+            return;
+        }
+
+        setStudentAvatarFile(file);
+        setStudentAvatarPreviewUrl(URL.createObjectURL(file));
+    }
+
+    function openEditStudentAvatarPicker() {
+        editStudentAvatarInputRef.current?.click();
+    }
+
+    useEffect(() => {
+        function handleClickOutside(event: MouseEvent) {
+            if (!avatarActionRef.current?.contains(event.target as Node)) {
+                setShowAvatarActions(false);
+            }
+        }
+
+        if (showAvatarActions) {
+            document.addEventListener('mousedown', handleClickOutside);
+        }
+
+        return () => document.removeEventListener('mousedown', handleClickOutside);
+    }, [showAvatarActions]);
+
+    useEffect(() => {
+        return () => {
+            if (studentAvatarPreviewUrl?.startsWith('blob:')) {
+                URL.revokeObjectURL(studentAvatarPreviewUrl);
+            }
+        };
+    }, [studentAvatarPreviewUrl]);
 
     async function handleSubmit() {
         setError(null);
@@ -662,7 +872,8 @@ function EditUserModal({ user, onClose, onSuccess }: { user: UserResponse; onClo
                 if (studentForm.parentPhone) payload.parentPhone = studentForm.parentPhone;
                 if (studentForm.parentEmail) payload.parentEmail = studentForm.parentEmail;
                 if (studentForm.parentRelationship) payload.parentRelationship = studentForm.parentRelationship;
-                await api.authPut(`/users/students/${user.userID}`, payload, token);
+                const formData = buildStudentFormData(payload, studentAvatarFile);
+                await api.authPutForm(`/users/students/${user.userID}`, formData, token);
                 setSuccess('Cập nhật học sinh thành công!');
             }
             setTimeout(() => { onSuccess(); onClose(); }, 1200);
@@ -676,7 +887,7 @@ function EditUserModal({ user, onClose, onSuccess }: { user: UserResponse; onClo
     return (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4" onClick={onClose}>
             <div
-                className={`bg-[#FAF9F6] w-full rounded-3xl border-2 border-[#1A1A1A] shadow-2xl overflow-hidden transition-all ${!isTeacher ? 'max-w-2xl' : 'max-w-xl'}`}
+                className={`bg-[#FAF9F6] w-full rounded-3xl border-2 border-[#1A1A1A] shadow-2xl overflow-hidden transition-all ${!isTeacher ? 'max-w-5xl' : 'max-w-xl'}`}
                 style={{ fontFamily: "'Nunito', sans-serif" }}
                 onClick={e => e.stopPropagation()}
             >
@@ -698,7 +909,7 @@ function EditUserModal({ user, onClose, onSuccess }: { user: UserResponse; onClo
                 <div className="px-6 py-4 space-y-4 max-h-[65vh] overflow-y-auto">
                     {fetchingDetail ? (
                         <div className="space-y-3 py-2">
-                            {[1,2,3,4].map(i => (
+                            {[1, 2, 3, 4].map(i => (
                                 <div key={i} className="h-10 bg-[#1A1A1A]/8 rounded-xl animate-pulse" />
                             ))}
                         </div>
@@ -754,89 +965,147 @@ function EditUserModal({ user, onClose, onSuccess }: { user: UserResponse; onClo
                         </>
                     ) : (
                         <>
-                            {/* Section 1: Thông tin cơ bản */}
-                            <div className="rounded-2xl border-2 border-[#1A1A1A]/10 overflow-hidden">
-                                <div className="flex items-center gap-2 px-4 py-2.5 bg-[#FF6B4A]/8 border-b-2 border-[#1A1A1A]/10">
-                                    <span className="w-5 h-5 rounded-lg bg-[#FF6B4A] flex items-center justify-center text-white text-xs font-extrabold">1</span>
-                                    <p className="text-xs font-extrabold text-[#FF6B4A] uppercase tracking-wider">Thông tin tài khoản</p>
-                                </div>
-                                <div className="p-4 space-y-3 bg-white">
-                                    <div className="grid grid-cols-2 gap-3">
-                                        <Field label="Email" required>
-                                            <input type="email" className={inputCls} value={studentForm.email} onChange={e => updateStudent('email', e.target.value)} />
+                            <div className="grid grid-cols-1 lg:grid-cols-5 gap-4">
+                                <div className="rounded-2xl border-2 border-[#1A1A1A]/10 overflow-hidden bg-white lg:col-span-3">
+                                    <div className="flex items-center gap-2 px-4 py-2.5 bg-[#B8B5FF]/20 border-b-2 border-[#1A1A1A]/10">
+                                        <span className="w-5 h-5 rounded-lg bg-[#B8B5FF] flex items-center justify-center text-[#1A1A1A] text-xs font-extrabold">1</span>
+                                        <p className="text-xs font-extrabold text-[#6C63FF] uppercase tracking-wider">Thông tin cá nhân</p>
+                                    </div>
+                                    <div className="p-4 space-y-3">
+                                        <input
+                                            ref={editStudentAvatarInputRef}
+                                            type="file"
+                                            accept={AVATAR_ACCEPT}
+                                            className="hidden"
+                                            onChange={(e) => handleStudentAvatarChange(e.target.files?.[0])}
+                                        />
+                                        <div ref={avatarActionRef} className="relative">
+                                            <button
+                                                type="button"
+                                                onClick={() => setShowAvatarActions(v => !v)}
+                                                className="w-full rounded-2xl border-2 border-dashed border-[#1A1A1A]/15 bg-[#F7F7F2] p-4 hover:border-[#FF6B4A]/40 transition-colors"
+                                            >
+                                                <div className="flex flex-col items-center text-center gap-2">
+                                                    <AvatarPreview
+                                                        avatarUrl={studentAvatarPreviewUrl ?? studentAvatarCurrentUrl}
+                                                        fallbackName={studentForm.fullName || user.fullName || user.username}
+                                                        userId={user.userID}
+                                                        sizeClass="w-24 h-24"
+                                                        textClass="text-3xl"
+                                                    />
+                                                    <p className="text-sm font-extrabold text-[#1A1A1A]">Nhấn để thao tác avatar</p>
+                                                    <p className="text-[11px] font-bold text-[#1A1A1A]/50">Xem hoặc thay đổi ảnh đại diện</p>
+                                                </div>
+                                            </button>
+                                            {showAvatarActions && (
+                                                <div className="absolute left-1/2 top-full z-10 mt-2 w-52 -translate-x-1/2 rounded-2xl border-2 border-[#1A1A1A]/15 bg-white p-2 shadow-xl">
+                                                    <button
+                                                        type="button"
+                                                        disabled={!(studentAvatarPreviewUrl ?? studentAvatarCurrentUrl)}
+                                                        onClick={() => {
+                                                            const current = studentAvatarPreviewUrl ?? studentAvatarCurrentUrl;
+                                                            if (current) setAvatarZoomUrl(current);
+                                                            setShowAvatarActions(false);
+                                                        }}
+                                                        className="w-full rounded-xl px-3 py-2 text-left text-sm font-extrabold text-[#1A1A1A] hover:bg-[#1A1A1A]/5 disabled:opacity-40 disabled:cursor-not-allowed"
+                                                    >
+                                                        Xem avatar
+                                                    </button>
+                                                    <button
+                                                        type="button"
+                                                        onClick={openEditStudentAvatarPicker}
+                                                        className="w-full rounded-xl px-3 py-2 text-left text-sm font-extrabold text-[#FF6B4A] hover:bg-[#FF6B4A]/10"
+                                                    >
+                                                        {studentAvatarFile ? 'Đổi ảnh khác' : 'Thay đổi avatar'}
+                                                    </button>
+                                                </div>
+                                            )}
+                                        </div>
+                                        {studentAvatarFile && (
+                                            <button
+                                                type="button"
+                                                onClick={() => handleStudentAvatarChange(undefined)}
+                                                className="text-xs font-extrabold text-[#FF6B4A] hover:text-[#ff5535]"
+                                            >
+                                                Bỏ thay đổi ảnh
+                                            </button>
+                                        )}
+                                        {studentAvatarError && <p className="text-xs font-extrabold text-[#c0392b]">{studentAvatarError}</p>}
+                                        <Field label="Họ và tên" required>
+                                            <input className={inputCls} value={studentForm.fullName} onChange={e => updateStudent('fullName', e.target.value)} />
                                         </Field>
-                                        <Field label="Số điện thoại">
-                                            <input className={inputCls} value={studentForm.phone} onChange={e => updateStudent('phone', e.target.value)} />
+                                        <div className="grid grid-cols-2 gap-3">
+                                            <Field label="Ngày sinh">
+                                                <input type="date" className={inputCls} value={studentForm.dateOfBirth} onChange={e => updateStudent('dateOfBirth', e.target.value)} />
+                                            </Field>
+                                            <Field label="Giới tính">
+                                                <select className={inputCls} value={studentForm.gender} onChange={e => updateStudent('gender', e.target.value)}>
+                                                    <option value="">-- Chọn --</option>
+                                                    <option value="MALE">Nam</option>
+                                                    <option value="FEMALE">Nữ</option>
+                                                    <option value="OTHER">Khác</option>
+                                                </select>
+                                            </Field>
+                                        </div>
+                                        <Field label="Địa chỉ">
+                                            <input className={inputCls} value={studentForm.address} onChange={e => updateStudent('address', e.target.value)} />
                                         </Field>
                                     </div>
-                                    <Field label="Trạng thái">
-                                        <select className={inputCls} value={studentForm.status} onChange={e => updateStudent('status', e.target.value)}>
-                                            <option value="ACTIVE">Hoạt động</option>
-                                            <option value="LOCKED">Khóa</option>
-                                        </select>
-                                    </Field>
                                 </div>
-                            </div>
 
-                            {/* Section 2: Thông tin cá nhân */}
-                            <div className="rounded-2xl border-2 border-[#1A1A1A]/10 overflow-hidden">
-                                <div className="flex items-center gap-2 px-4 py-2.5 bg-[#B8B5FF]/20 border-b-2 border-[#1A1A1A]/10">
-                                    <span className="w-5 h-5 rounded-lg bg-[#B8B5FF] flex items-center justify-center text-[#1A1A1A] text-xs font-extrabold">2</span>
-                                    <p className="text-xs font-extrabold text-[#6C63FF] uppercase tracking-wider">Thông tin cá nhân</p>
-                                </div>
-                                <div className="p-4 space-y-3 bg-white">
-                                    <Field label="Họ và tên" required>
-                                        <input className={inputCls} value={studentForm.fullName} onChange={e => updateStudent('fullName', e.target.value)} />
-                                    </Field>
-                                    <div className="grid grid-cols-2 gap-3">
-                                        <Field label="Ngày sinh">
-                                            <input type="date" className={inputCls} value={studentForm.dateOfBirth} onChange={e => updateStudent('dateOfBirth', e.target.value)} />
-                                        </Field>
-                                        <Field label="Giới tính">
-                                            <select className={inputCls} value={studentForm.gender} onChange={e => updateStudent('gender', e.target.value)}>
-                                                <option value="">-- Chọn --</option>
-                                                <option value="MALE">Nam</option>
-                                                <option value="FEMALE">Nữ</option>
-                                                <option value="OTHER">Khác</option>
-                                            </select>
-                                        </Field>
+                                <div className="space-y-4 lg:col-span-2">
+                                    <div className="rounded-2xl border-2 border-[#1A1A1A]/10 overflow-hidden bg-white">
+                                        <div className="flex items-center gap-2 px-4 py-2.5 bg-[#FF6B4A]/8 border-b-2 border-[#1A1A1A]/10">
+                                            <span className="w-5 h-5 rounded-lg bg-[#FF6B4A] flex items-center justify-center text-white text-xs font-extrabold">2</span>
+                                            <p className="text-xs font-extrabold text-[#FF6B4A] uppercase tracking-wider">Thông tin tài khoản</p>
+                                        </div>
+                                        <div className="p-4 space-y-3">
+                                            <div className="grid grid-cols-2 gap-3">
+                                                <Field label="Email" required>
+                                                    <input type="email" className={inputCls} value={studentForm.email} onChange={e => updateStudent('email', e.target.value)} />
+                                                </Field>
+                                                <Field label="Số điện thoại">
+                                                    <input className={inputCls} value={studentForm.phone} onChange={e => updateStudent('phone', e.target.value)} />
+                                                </Field>
+                                            </div>
+                                            <Field label="Trạng thái">
+                                                <select className={inputCls} value={studentForm.status} onChange={e => updateStudent('status', e.target.value)}>
+                                                    <option value="ACTIVE">Hoạt động</option>
+                                                    <option value="LOCKED">Khóa</option>
+                                                </select>
+                                            </Field>
+                                        </div>
                                     </div>
-                                    <Field label="Địa chỉ">
-                                        <input className={inputCls} value={studentForm.address} onChange={e => updateStudent('address', e.target.value)} />
-                                    </Field>
-                                </div>
-                            </div>
 
-                            {/* Section 3: Thông tin phụ huynh */}
-                            <div className="rounded-2xl border-2 border-[#1A1A1A]/10 overflow-hidden">
-                                <div className="flex items-center gap-2 px-4 py-2.5 bg-[#95E1D3]/20 border-b-2 border-[#1A1A1A]/10">
-                                    <span className="w-5 h-5 rounded-lg bg-[#95E1D3] flex items-center justify-center text-[#1A1A1A] text-xs font-extrabold">3</span>
-                                    <p className="text-xs font-extrabold text-[#1A7A6E] uppercase tracking-wider">Thông tin phụ huynh</p>
-                                </div>
-                                <div className="p-4 space-y-3 bg-white">
-                                    <div className="grid grid-cols-2 gap-3">
-                                        <Field label="Họ tên phụ huynh">
-                                            <input className={inputCls} value={studentForm.parentName} onChange={e => updateStudent('parentName', e.target.value)} />
-                                        </Field>
-                                        <Field label="Quan hệ">
-                                            <select className={inputCls} value={studentForm.parentRelationship} onChange={e => updateStudent('parentRelationship', e.target.value)}>
-                                                <option value="">-- Chọn --</option>
-                                                <option value="Father">Cha</option>
-                                                <option value="Mother">Mẹ</option>
-                                                <option value="Grandfather">Ông</option>
-                                                <option value="Grandmother">Bà</option>
-                                                <option value="Sibling">Anh / Chị</option>
-                                                <option value="Guardian">Người giám hộ</option>
-                                            </select>
-                                        </Field>
-                                    </div>
-                                    <div className="grid grid-cols-2 gap-3">
-                                        <Field label="SĐT phụ huynh">
-                                            <input className={inputCls} value={studentForm.parentPhone} onChange={e => updateStudent('parentPhone', e.target.value)} />
-                                        </Field>
-                                        <Field label="Email phụ huynh">
-                                            <input type="email" className={inputCls} value={studentForm.parentEmail} onChange={e => updateStudent('parentEmail', e.target.value)} />
-                                        </Field>
+                                    <div className="rounded-2xl border-2 border-[#1A1A1A]/10 overflow-hidden bg-white">
+                                        <div className="flex items-center gap-2 px-4 py-2.5 bg-[#95E1D3]/20 border-b-2 border-[#1A1A1A]/10">
+                                            <span className="w-5 h-5 rounded-lg bg-[#95E1D3] flex items-center justify-center text-[#1A1A1A] text-xs font-extrabold">3</span>
+                                            <p className="text-xs font-extrabold text-[#1A7A6E] uppercase tracking-wider">Thông tin phụ huynh</p>
+                                        </div>
+                                        <div className="p-4 space-y-3">
+                                            <Field label="Họ tên phụ huynh">
+                                                <input className={inputCls} value={studentForm.parentName} onChange={e => updateStudent('parentName', e.target.value)} />
+                                            </Field>
+                                            <Field label="Quan hệ">
+                                                <select className={inputCls} value={studentForm.parentRelationship} onChange={e => updateStudent('parentRelationship', e.target.value)}>
+                                                    <option value="">-- Chọn --</option>
+                                                    <option value="Father">Cha</option>
+                                                    <option value="Mother">Mẹ</option>
+                                                    <option value="Grandfather">Ông</option>
+                                                    <option value="Grandmother">Bà</option>
+                                                    <option value="Sibling">Anh / Chị</option>
+                                                    <option value="Guardian">Người giám hộ</option>
+                                                </select>
+                                            </Field>
+                                            <div className="grid grid-cols-2 gap-3">
+                                                <Field label="SĐT phụ huynh">
+                                                    <input className={inputCls} value={studentForm.parentPhone} onChange={e => updateStudent('parentPhone', e.target.value)} />
+                                                </Field>
+                                                <Field label="Email phụ huynh">
+                                                    <input type="email" className={inputCls} value={studentForm.parentEmail} onChange={e => updateStudent('parentEmail', e.target.value)} />
+                                                </Field>
+                                            </div>
+                                        </div>
                                     </div>
                                 </div>
                             </div>
@@ -879,6 +1148,14 @@ function EditUserModal({ user, onClose, onSuccess }: { user: UserResponse; onClo
                     </button>
                 </div>
             </div>
+
+            {avatarZoomUrl && (
+                <AvatarZoomModal
+                    avatarUrl={avatarZoomUrl}
+                    title="Avatar học sinh"
+                    onClose={() => setAvatarZoomUrl(null)}
+                />
+            )}
         </div>
     );
 }
@@ -887,6 +1164,7 @@ function UserDetailModal({ user, onClose }: { user: UserResponse; onClose: () =>
     const isTeacher = user.role?.roleName?.toUpperCase().includes('TEACHER');
     const [detail, setDetail] = useState<UserDetailResponse | null>(null);
     const [loading, setLoading] = useState(true);
+    const [avatarZoomUrl, setAvatarZoomUrl] = useState<string | null>(null);
 
     useEffect(() => {
         async function loadDetail() {
@@ -908,6 +1186,7 @@ function UserDetailModal({ user, onClose }: { user: UserResponse; onClose: () =>
     const teacherDetail = isTeacher ? detail as TeacherDetailResponse | null : null;
     const studentDetail = !isTeacher ? detail as StudentDetailResponse | null : null;
     const fullName = detail?.fullName ?? user.fullName ?? user.username;
+    const avatarUrl = detail?.avatarUrl ?? user.avatarUrl ?? null;
     const email = detail?.email ?? user.email ?? '—';
     const phone = detail?.phone ?? user.phone ?? '—';
     const classes = isTeacher
@@ -916,8 +1195,6 @@ function UserDetailModal({ user, onClose }: { user: UserResponse; onClose: () =>
     const statusLabel = user.status === 'ACTIVE' ? 'Hoạt động' : 'Khóa';
     const infoRows = [
         { label: 'Tên đăng nhập', value: user.username ?? '—' },
-        { label: 'Vai trò', value: getRoleLabel(user.role?.roleName ?? '') },
-        { label: 'Trạng thái', value: statusLabel },
         { label: 'Ngày tạo', value: formatDate(detail?.createdAt ?? user.createdAt) },
         { label: 'Email', value: email },
         { label: 'Số điện thoại', value: phone || '—' },
@@ -932,35 +1209,43 @@ function UserDetailModal({ user, onClose }: { user: UserResponse; onClose: () =>
                 style={{ fontFamily: "'Nunito', sans-serif" }}
                 onClick={(e) => e.stopPropagation()}
             >
-                <div className="bg-gradient-to-r from-[#FF6B4A]/10 via-white to-[#B8B5FF]/20 px-6 pt-6 pb-5 border-b-2 border-[#1A1A1A]/10">
-                    <div className="flex items-start justify-between gap-4">
-                        <div className="flex items-center gap-4">
-                            <div
-                                className="w-14 h-14 rounded-2xl border-2 border-[#1A1A1A] flex items-center justify-center text-lg font-extrabold text-[#1A1A1A]"
-                                style={{ backgroundColor: getAvatarColor(user.userID) }}
-                            >
-                                {getInitials(fullName)}
-                            </div>
-                            <div>
-                                <p className="text-xs font-extrabold text-gray-400 uppercase tracking-widest mb-0.5">Chi tiết người dùng</p>
-                                <h2 className="text-2xl font-extrabold text-[#1A1A1A] leading-tight">{fullName}</h2>
-                                <p className="text-sm text-gray-500 font-bold mt-0.5">{getUserCode(user)} — {user.username}</p>
-                                <div className="mt-2 flex flex-wrap gap-2">
-                                    <span
-                                        className="inline-flex px-3 py-1 rounded-full border-2 border-[#1A1A1A]/20 text-xs font-extrabold"
-                                        style={{ backgroundColor: getRoleBg(user.role?.roleName ?? ''), color: '#1A1A1A' }}
-                                    >
-                                        {getRoleLabel(user.role?.roleName ?? '')}
-                                    </span>
-                                    <span className={`inline-flex px-3 py-1 rounded-full border-2 border-[#1A1A1A]/20 text-xs font-extrabold ${user.status === 'ACTIVE' ? 'bg-[#95E1D3]' : 'bg-[#FFB5B5]'}`}>
-                                        {statusLabel}
-                                    </span>
-                                </div>
+                <div className="relative bg-gradient-to-r from-[#FF6B4A]/10 via-white to-[#B8B5FF]/20 px-6 pt-6 pb-5 border-b border-gray-200">
+                    <button onClick={onClose} className="absolute right-6 top-6 w-8 h-8 rounded-xl bg-[#1A1A1A]/10 hover:bg-[#1A1A1A]/20 flex items-center justify-center transition-colors">
+                        <X className="w-4 h-4 text-[#1A1A1A]" />
+                    </button>
+                    <div className="flex flex-col md:flex-row md:items-center gap-5 pt-2 pr-12">
+                        <button
+                            type="button"
+                            disabled={!avatarUrl}
+                            onClick={() => avatarUrl && setAvatarZoomUrl(avatarUrl)}
+                            className="rounded-full self-center md:self-start"
+                        >
+                            <AvatarPreview
+                                avatarUrl={avatarUrl}
+                                fallbackName={fullName}
+                                userId={user.userID}
+                                sizeClass="w-28 h-28"
+                                textClass="text-3xl"
+                            />
+                        </button>
+
+                        <div className="text-center md:text-left">
+                            <p className="text-xs font-extrabold text-gray-400 uppercase tracking-widest">Chi tiết người dùng</p>
+                            <h2 className="text-4xl font-extrabold text-[#1A1A1A] leading-tight mt-1">{fullName}</h2>
+                            <p className="text-base text-gray-500 font-bold mt-1 tracking-wide">{getUserCode(user)}</p>
+                            {avatarUrl && <p className="text-[11px] font-bold text-[#1A1A1A]/50 mt-1">Nhấn vào avatar để phóng to</p>}
+                            <div className="mt-2 flex flex-wrap gap-2 justify-center md:justify-start">
+                                <span
+                                    className="inline-flex px-3 py-1 rounded-full border-2 border-[#1A1A1A]/20 text-xs font-extrabold"
+                                    style={{ backgroundColor: getRoleBg(user.role?.roleName ?? ''), color: '#1A1A1A' }}
+                                >
+                                    {getRoleLabel(user.role?.roleName ?? '')}
+                                </span>
+                                <span className={`inline-flex px-3 py-1 rounded-full border-2 border-[#1A1A1A]/20 text-xs font-extrabold ${user.status === 'ACTIVE' ? 'bg-[#95E1D3]' : 'bg-[#FFB5B5]'}`}>
+                                    {statusLabel}
+                                </span>
                             </div>
                         </div>
-                        <button onClick={onClose} className="w-8 h-8 rounded-xl bg-[#1A1A1A]/10 hover:bg-[#1A1A1A]/20 flex items-center justify-center transition-colors">
-                        <X className="w-4 h-4 text-[#1A1A1A]" />
-                        </button>
                     </div>
                 </div>
 
@@ -973,38 +1258,42 @@ function UserDetailModal({ user, onClose }: { user: UserResponse; onClose: () =>
                         </div>
                     ) : (
                         <>
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-1">
                                 {infoRows.map((item) => (
                                     <DetailItem key={item.label} label={item.label} value={item.value} />
                                 ))}
                                 {isTeacher ? (
                                     <DetailItem label="Chuyên môn" value={teacherDetail?.specialization || '—'} />
-                                ) : (
-                                    <DetailItem label="Địa chỉ" value={studentDetail?.address || '—'} />
-                                )}
+                                ) : null}
                             </div>
 
                             {!isTeacher && (
-                                <div className="rounded-2xl border-2 border-[#1A1A1A]/10 p-4 bg-white">
-                                    <p className="text-xs font-extrabold text-gray-400 uppercase tracking-widest mb-3">Thông tin phụ huynh</p>
-                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                                <div className="pt-2">
+                                    <DetailItem label="Địa chỉ" value={studentDetail?.address || '—'} />
+                                </div>
+                            )}
+
+                            {!isTeacher && (
+                                <div className="pt-4 border-t border-gray-200">
+                                    <p className="text-sm font-extrabold text-[#1A1A1A]/85 uppercase tracking-wider mb-2">Thông tin phụ huynh</p>
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-1">
                                         <DetailItem label="Họ tên phụ huynh" value={studentDetail?.parentName || '—'} />
-                                        <DetailItem label="Quan hệ" value={studentDetail?.parentRelationship || '—'} />
+                                        <DetailItem label="Quan hệ" value={getParentRelationshipLabel(studentDetail?.parentRelationship)} />
                                         <DetailItem label="SĐT phụ huynh" value={studentDetail?.parentPhone || '—'} />
                                         <DetailItem label="Email phụ huynh" value={studentDetail?.parentEmail || '—'} />
                                     </div>
                                 </div>
                             )}
 
-                            <div className="rounded-2xl border-2 border-[#1A1A1A]/10 bg-white p-4">
-                                <p className="text-xs font-extrabold uppercase tracking-wider text-[#1A1A1A]/40 mb-2">Danh sách lớp học</p>
+                            <div className="pt-4 border-t border-gray-200">
+                                <p className="text-sm font-extrabold uppercase tracking-wider text-[#1A1A1A]/85 mb-2">Danh sách lớp học</p>
                                 <p className="text-sm font-bold text-[#1A1A1A]/80 leading-7">{classes.length > 0 ? classes.join(', ') : '—'}</p>
                             </div>
                         </>
                     )}
                 </div>
 
-                <div className="px-6 pb-6 pt-1 border-t-2 border-[#1A1A1A]/10 flex justify-end bg-[#FAF9F6]">
+                <div className="px-6 pb-6 pt-1 border-t border-gray-200 flex justify-end bg-[#FAF9F6]">
                     <button
                         onClick={onClose}
                         className="px-5 py-2.5 rounded-2xl border-2 border-[#1A1A1A]/20 font-extrabold text-sm text-[#1A1A1A]/70 hover:bg-[#1A1A1A]/5 transition-colors"
@@ -1013,6 +1302,14 @@ function UserDetailModal({ user, onClose }: { user: UserResponse; onClose: () =>
                     </button>
                 </div>
             </div>
+
+            {avatarZoomUrl && (
+                <AvatarZoomModal
+                    avatarUrl={avatarZoomUrl}
+                    title={`Avatar - ${fullName}`}
+                    onClose={() => setAvatarZoomUrl(null)}
+                />
+            )}
         </div>
     );
 }
@@ -1276,12 +1573,13 @@ export function UserManage() {
                                 </td>
                                 <td className="px-6 py-4">
                                     <div className="flex items-center gap-3">
-                                        <div
-                                            className="w-10 h-10 rounded-full border-2 border-[#1A1A1A] flex items-center justify-center font-extrabold text-sm text-[#1A1A1A]"
-                                            style={{ backgroundColor: getAvatarColor(user.userID) }}
-                                        >
-                                            {getInitials(user.fullName ?? user.username ?? '')}
-                                        </div>
+                                        <AvatarPreview
+                                            avatarUrl={user.avatarUrl}
+                                            fallbackName={user.fullName ?? user.username ?? ''}
+                                            userId={user.userID}
+                                            sizeClass="w-10 h-10"
+                                            textClass="text-sm"
+                                        />
                                         <div>
                                             <p className="font-extrabold text-[#1A1A1A]">{user.fullName || user.username}</p>
                                             <p className="text-xs text-gray-400 font-semibold">{user.email}</p>

@@ -111,6 +111,28 @@ export const api = {
     return handleResponse<T>(response);
   },
 
+  async authPostForm<T>(endpoint: string, formData: FormData, token: string): Promise<T> {
+    const response = await fetch(`${API_BASE_URL}${endpoint}`, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${token}`,
+      },
+      body: formData,
+    });
+    return handleResponse<T>(response);
+  },
+
+  async authPutForm<T>(endpoint: string, formData: FormData, token: string): Promise<T> {
+    const response = await fetch(`${API_BASE_URL}${endpoint}`, {
+      method: 'PUT',
+      headers: {
+        'Authorization': `Bearer ${token}`,
+      },
+      body: formData,
+    });
+    return handleResponse<T>(response);
+  },
+
   async authDelete<T>(endpoint: string, token: string): Promise<T> {
     const response = await fetch(`${API_BASE_URL}${endpoint}`, {
       method: 'DELETE',
