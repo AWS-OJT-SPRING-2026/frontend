@@ -627,7 +627,7 @@ function renderClassPreview(classes: string[] | null) {
 function DetailItem({ label, value }: { label: string; value: string }) {
     return (
         <div className="py-2">
-            <p className="text-[11px] font-extrabold uppercase tracking-wider text-[#1A1A1A]/35">{label}</p>
+            <p className="text-[11px] font-extrabold uppercase tracking-wider text-[#6B7280]">{label}</p>
             <p className="mt-1 text-[18px] leading-6 font-bold text-[#1A1A1A] break-words">{value || '—'}</p>
         </div>
     );
@@ -1209,32 +1209,32 @@ function UserDetailModal({ user, onClose }: { user: UserResponse; onClose: () =>
                 style={{ fontFamily: "'Nunito', sans-serif" }}
                 onClick={(e) => e.stopPropagation()}
             >
-                <div className="relative bg-gradient-to-r from-[#FF6B4A]/10 via-white to-[#B8B5FF]/20 px-6 pt-6 pb-5 border-b border-gray-200">
-                    <button onClick={onClose} className="absolute right-6 top-6 w-8 h-8 rounded-xl bg-[#1A1A1A]/10 hover:bg-[#1A1A1A]/20 flex items-center justify-center transition-colors">
+                <div className="relative bg-gradient-to-r from-[#FF6B4A]/10 via-white to-[#B8B5FF]/20 px-5 sm:px-6 pt-5 sm:pt-6 pb-4 sm:pb-5 border-b border-gray-200">
+                    <button onClick={onClose} className="absolute right-4 top-4 sm:right-6 sm:top-6 w-8 h-8 rounded-xl bg-[#1A1A1A]/10 hover:bg-[#1A1A1A]/20 flex items-center justify-center transition-colors">
                         <X className="w-4 h-4 text-[#1A1A1A]" />
                     </button>
-                    <div className="flex flex-col md:flex-row md:items-center gap-5 pt-2 pr-12">
+                    <div className="flex flex-col sm:flex-row sm:items-center gap-4 sm:gap-6 pt-1 pr-10 sm:pr-12">
                         <button
                             type="button"
                             disabled={!avatarUrl}
                             onClick={() => avatarUrl && setAvatarZoomUrl(avatarUrl)}
-                            className="rounded-full self-center md:self-start"
+                            className="rounded-full self-center sm:self-auto shrink-0"
                         >
                             <AvatarPreview
                                 avatarUrl={avatarUrl}
                                 fallbackName={fullName}
                                 userId={user.userID}
-                                sizeClass="w-28 h-28"
-                                textClass="text-3xl"
+                                sizeClass="w-24 h-24 sm:w-28 sm:h-28 lg:w-32 lg:h-32"
+                                textClass="text-2xl sm:text-3xl lg:text-4xl"
                             />
                         </button>
 
-                        <div className="text-center md:text-left">
+                        <div className="flex-1 text-center sm:text-left">
                             <p className="text-xs font-extrabold text-gray-400 uppercase tracking-widest">Chi tiết người dùng</p>
-                            <h2 className="text-4xl font-extrabold text-[#1A1A1A] leading-tight mt-1">{fullName}</h2>
-                            <p className="text-base text-gray-500 font-bold mt-1 tracking-wide">{getUserCode(user)}</p>
-                            {avatarUrl && <p className="text-[11px] font-bold text-[#1A1A1A]/50 mt-1">Nhấn vào avatar để phóng to</p>}
-                            <div className="mt-2 flex flex-wrap gap-2 justify-center md:justify-start">
+                            <h2 className="text-3xl sm:text-4xl font-extrabold text-[#1A1A1A] leading-tight mt-1">{fullName}</h2>
+                            <p className="text-sm sm:text-base text-gray-500 font-bold mt-1 tracking-wide">{getUserCode(user)}</p>
+                            {avatarUrl && <p className="text-[10px] sm:text-[11px] font-bold text-[#1A1A1A]/50 mt-1">Nhấn vào avatar để phóng to</p>}
+                            <div className="mt-2 flex flex-wrap gap-2 justify-center sm:justify-start">
                                 <span
                                     className="inline-flex px-3 py-1 rounded-full border-2 border-[#1A1A1A]/20 text-xs font-extrabold"
                                     style={{ backgroundColor: getRoleBg(user.role?.roleName ?? ''), color: '#1A1A1A' }}
@@ -1275,7 +1275,7 @@ function UserDetailModal({ user, onClose }: { user: UserResponse; onClose: () =>
 
                             {!isTeacher && (
                                 <div className="pt-4 border-t border-gray-200">
-                                    <p className="text-sm font-extrabold text-[#1A1A1A]/85 uppercase tracking-wider mb-2">Thông tin phụ huynh</p>
+                                    <p className="text-sm font-extrabold text-[#1A7A6E] uppercase tracking-wider mb-2">Thông tin phụ huynh</p>
                                     <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-1">
                                         <DetailItem label="Họ tên phụ huynh" value={studentDetail?.parentName || '—'} />
                                         <DetailItem label="Quan hệ" value={getParentRelationshipLabel(studentDetail?.parentRelationship)} />
@@ -1286,7 +1286,7 @@ function UserDetailModal({ user, onClose }: { user: UserResponse; onClose: () =>
                             )}
 
                             <div className="pt-4 border-t border-gray-200">
-                                <p className="text-sm font-extrabold uppercase tracking-wider text-[#1A1A1A]/85 mb-2">Danh sách lớp học</p>
+                                <p className="text-sm font-extrabold uppercase tracking-wider text-[#FF6B4A] mb-2">Danh sách lớp học</p>
                                 <p className="text-sm font-bold text-[#1A1A1A]/80 leading-7">{classes.length > 0 ? classes.join(', ') : '—'}</p>
                             </div>
                         </>
