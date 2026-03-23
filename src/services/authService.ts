@@ -21,6 +21,7 @@ type JwtPayload = {
   roles?: string[];
   authorities?: string[];
   role?: string;
+  avatarUrl?: string;
   exp?: number;
   iat?: number;
   [k: string]: unknown;
@@ -80,6 +81,7 @@ function deriveUserFromToken(token: string, fallbackUsername?: string): User {
       payload?.name ?? payload?.fullName ?? payload?.username ?? fallbackUsername ?? "User"
     ),
     role: normalizeRole(roleCandidate),
+    avatarUrl: typeof payload?.avatarUrl === 'string' ? payload.avatarUrl : undefined,
   };
 }
 
@@ -122,6 +124,7 @@ function normalizeAuthResponse(
     email: String(userRaw.email ?? ""),
     name: String(userRaw.name ?? userRaw.fullName ?? ""),
     role,
+    avatarUrl: typeof userRaw.avatarUrl === 'string' ? userRaw.avatarUrl : undefined,
   };
 
   return { token, user };
@@ -147,6 +150,7 @@ function normalizeRegisterResponse(
     name: String(
       data.fullName ?? data.name ?? fallbackFullName ?? fallbackUsername ?? "",
     ),
+    avatarUrl: typeof data.avatarUrl === 'string' ? data.avatarUrl : undefined,
     role:
       roleLower === "admin"
         ? "admin"
