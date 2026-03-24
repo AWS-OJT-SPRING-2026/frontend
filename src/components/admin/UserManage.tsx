@@ -604,20 +604,20 @@ function getParentRelationshipLabel(relationship?: string | null): string {
 
 function renderClassPreview(classes: string[] | null) {
     if (!classes || classes.length === 0) return '—';
-    const visible = classes.slice(0, 3);
-    const hiddenCount = classes.length - visible.length;
+    const visible = classes.slice(0, 2);
+    const hasOverflow = classes.length >= 3;
     const fullList = classes.join(', ');
 
     return (
         <span className="font-bold text-[#1A1A1A]/70">
             {visible.join(', ')}
-            {hiddenCount > 0 && (
+            {hasOverflow && (
                 <span
                     className="ml-1 inline-flex cursor-help rounded-md border border-[#1A1A1A]/15 px-1.5 text-xs font-extrabold text-[#1A1A1A]/60"
                     title={fullList}
                     aria-label={`Xem toàn bộ lớp học: ${fullList}`}
                 >
-                    ....
+                    ...
                 </span>
             )}
         </span>
