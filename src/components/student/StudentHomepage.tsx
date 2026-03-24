@@ -96,6 +96,7 @@ export function StudentHomepage() {
     const [showAllNotifications, setShowAllNotifications] = useState(false);
     const [notifications, setNotifications] = useState(mockNotificationsData);
     const notificationsRef = useRef<HTMLDivElement>(null);
+    const [quote, setQuote] = useState<{ q: string; a: string } | null>(null);
 
     const unreadCount = notifications.filter(n => n.unread).length;
 
@@ -117,6 +118,19 @@ export function StudentHomepage() {
         return () => document.removeEventListener('mousedown', handleClickOutside);
     }, []);
 
+    useEffect(() => {
+        fetch('http://localhost:8080/api/quotes/today')
+            .then(res => res.json())
+            .then(data => {
+                if (Array.isArray(data) && data.length > 0) {
+                    setQuote({ q: data[0].q, a: data[0].a });
+                }
+            })
+            .catch(() => {
+                // silently fail — keep static greeting
+            });
+    }, []);
+
     return (
         <div className="min-h-screen p-8" style={{ fontFamily: "'Nunito', sans-serif" }}>
             {/* Header */}
@@ -126,7 +140,16 @@ export function StudentHomepage() {
                         Chào mừng đến với
                         <span className="text-[#FF6B4A] ml-1">AntiEdu</span>
                     </p>
-                    <h1 className="text-3xl font-extrabold text-[#1A1A1A]">Chào buổi sáng, Văn A!</h1>
+                    {quote ? (
+                        <>
+                            <h1 className="text-2xl font-extrabold text-[#1A1A1A] max-w-xl leading-snug">
+                                &ldquo;{quote.q}&rdquo;
+                            </h1>
+                            <p className="mt-1 text-sm font-bold text-gray-400">— {quote.a}</p>
+                        </>
+                    ) : (
+                        <h1 className="text-3xl font-extrabold text-[#1A1A1A]">Chào buổi sáng, Văn A!</h1>
+                    )}
                 </div>
                 <div className="flex items-center gap-3">
                     {/* Search */}
