@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Brain, CaretDown, Check, ArrowRight, ArrowLeft, Trophy } from '@phosphor-icons/react';
 
-const FAST_API_BASE_URL = import.meta.env.VITE_FAST_API_BASE_URL;
+const FAST_API_URL = import.meta.env.VITE_FAST_API_URL;
 
 const levels = [
     { level: 'Yếu', levelBg: '#FFB5B5' },
@@ -51,7 +51,7 @@ export function StudentReview() {
     }
 
     useEffect(() => {
-        fetch(`${FAST_API_BASE_URL}/subjects`)
+        fetch(`${FAST_API_URL}/subjects`)
             .then(res => res.json())
             .then(data => {
                 setSubjects(data);
@@ -66,7 +66,7 @@ export function StudentReview() {
 
     const fetchHistory = async () => {
         try {
-            const res = await fetch(`${FAST_API_BASE_URL}/subjects/submissions/1`); // Placeholder userid
+            const res = await fetch(`${FAST_API_URL}/subjects/submissions/1`); // Placeholder userid
             if (res.ok) {
                 const data = await res.json();
                 setHistory(data);
@@ -78,7 +78,7 @@ export function StudentReview() {
 
     useEffect(() => {
         if (selectedSubjectId) {
-            fetch(`${FAST_API_BASE_URL}/subjects/${selectedSubjectId}/lessons`)
+            fetch(`${FAST_API_URL}/subjects/${selectedSubjectId}/lessons`)
                 .then(res => res.json())
                 .then(data => {
                     const formattedLessons = data.map((ls: any, i: number) => ({
@@ -124,7 +124,7 @@ export function StudentReview() {
 
         setIsLoading(true);
         try {
-            const response = await fetch(`${FAST_API_BASE_URL}/subjects/fetch-questions`, {
+            const response = await fetch(`${FAST_API_URL}/subjects/fetch-questions`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
@@ -180,7 +180,7 @@ export function StudentReview() {
 
         setIsSubmitting(true);
         try {
-            const response = await fetch(`${FAST_API_BASE_URL}/subjects/submit-quiz`, {
+            const response = await fetch(`${FAST_API_URL}/subjects/submit-quiz`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(submissionData)

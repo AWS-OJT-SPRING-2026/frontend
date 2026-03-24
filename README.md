@@ -1,3 +1,9 @@
+##Chưa link DB
+#Teacher/document
+Gán cho lớp học - link classid
+
+
+
 # Hệ thống học tập - Frontend
 
 Nền tảng giảng dạy trực tuyến với React + TypeScript + Vite
