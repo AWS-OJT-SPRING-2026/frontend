@@ -1,6 +1,7 @@
 import { createContext, useContext, useState, useEffect, useCallback, ReactNode } from 'react';
 import { User } from '../types/auth';
 import { authService } from '../services/authService';
+import { api } from '../services/api';
 
 const PHASE1_DELAY = 1500; // ms – first message duration
 const PHASE2_DELAY = 1200; // ms – second message duration (total = PHASE1 + PHASE2)
@@ -94,12 +95,35 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return () => clearInterval(interval);
   }, [isInitializing, expireSession]);
 
-  // ── Listen for 401 event fired by api.ts ─────────────────────────────────
+  // ── Listen for 401/403 event fired by api.ts ────────────────────────────
   useEffect(() => {
     const handler = () => expireSession();
     window.addEventListener(SESSION_EXPIRED_EVENT, handler);
     return () => window.removeEventListener(SESSION_EXPIRED_EVENT, handler);
   }, [expireSession]);
+
+  // ── Periodic lock check (Heartbeat for Kick) ──────────────────────────────
+  useEffect(() => {
+    if (isInitializing || !user) return;
+    if (authService.isQuickDemoSession()) return;
+
+    const checkLockStatus = async () => {
+      try {
+        const token = authService.getToken();
+        if (!token) return;
+        const res = await api.get<any>('/monitoring/my-status', token);
+        if (res.result && res.result.locked) {
+          console.log("User is locked, expiring session...");
+          expireSession();
+        }
+      } catch (err) {
+        // 403 will be handled by api.ts and trigger SESSION_EXPIRED_EVENT
+      }
+    };
+
+    const interval = setInterval(checkLockStatus, 4000); // Pulse every 4s
+    return () => clearInterval(interval);
+  }, [isInitializing, user, expireSession]);
 
   const login = useCallback((token: string, userData: User) => {
     authService.saveToken(token);

@@ -27,6 +27,8 @@ import { StudentTests } from './components/student/StudentTests';
 import { StudentChat } from './components/student/StudentChat';
 import { StudentSchedule } from './components/student/StudentSchedule';
 import { StudentDocuments } from './components/student/StudentDocuments';
+import { AdminActivityMonitor } from './components/admin/AdminActivityMonitor';
+import { DeviceManager } from './components/shared/DeviceManager';
 import { AccountSettings } from './components/AccountSettings';
 
 /** Returns the correct overlay message based on transition type & phase */
@@ -196,6 +198,7 @@ function AppRoutes() {
         <Route path="classes" element={<ClassManage />} />
         <Route path="schedule" element={<AdminSchedule />} />
         <Route path="questions" element={<QuestionBank />} />
+        <Route path="monitoring" element={<AdminActivityMonitor />} />
         <Route path="*" element={<div className="font-bold text-2xl p-8">Page Under Construction</div>} />
       </Route>
 
@@ -219,6 +222,7 @@ function AppRoutes() {
         <Route path="exercises" element={<StudentTests />} />
         <Route path="documents" element={<StudentDocuments />} />
         <Route path="chat" element={<StudentChat />} />
+        <Route path="devices" element={<DeviceManager />} />
         <Route path="account" element={<AccountSettings />} />
         <Route path="*" element={<div className="font-bold text-2xl p-8">Student Page Under Construction</div>} />
       </Route>

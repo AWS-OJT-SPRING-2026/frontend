@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { MagnifyingGlass, UserPlus, PencilSimple, Trash, X, ChalkboardTeacher, Student, Eye, EyeSlash, Lock, LockOpen } from '@phosphor-icons/react';
+import { MagnifyingGlass, UserPlus, PencilSimple, Trash, X, ChalkboardTeacher, Student, Eye, EyeSlash, Lock, LockOpen, UserMinus } from '@phosphor-icons/react';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
 import { api } from '../../services/api';
 import { authService } from '../../services/authService';
@@ -1336,6 +1336,7 @@ export function UserManage() {
     const [lockLoading, setLockLoading] = useState(false);
     const [deleteConfirmUser, setDeleteConfirmUser] = useState<UserResponse | null>(null);
     const [deleteLoading, setDeleteLoading] = useState(false);
+    const [kickLoading, setKickLoading] = useState<number | null>(null);
     const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
     async function fetchUsers(page: number, role: string, keyword: string) {
@@ -1445,6 +1446,22 @@ export function UserManage() {
             setDeleteConfirmUser(null);
         } finally {
             setDeleteLoading(false);
+        }
+    }
+
+    async function handleKickUser(targetUser: UserResponse) {
+        if (!confirm(`Bạn có chắc muốn kick (khóa tạm thời 5 phút) người dùng ${targetUser.fullName || targetUser.username}?`)) return;
+        const token = authService.getToken();
+        if (!token) return;
+        
+        setKickLoading(targetUser.userID);
+        try {
+            await api.authPost(`/monitoring/kick/${targetUser.userID}`, {}, token);
+            alert("Đã kick người dùng thành công! Họ sẽ bị chặn truy cập trong 5 phút.");
+        } catch (e: any) {
+            setError(e?.message ?? 'Không thể kick người dùng.');
+        } finally {
+            setKickLoading(null);
         }
     }
 
@@ -1624,6 +1641,20 @@ export function UserManage() {
                                         >
                                             <PencilSimple className="w-3.5 h-3.5" /> Sửa
                                         </button>
+                                        {user.role?.roleName !== 'ADMIN' && (
+                                            <button
+                                                onClick={(e) => {
+                                                    e.stopPropagation();
+                                                    handleKickUser(user);
+                                                }}
+                                                disabled={kickLoading === user.userID}
+                                                className="flex items-center gap-1 text-xs font-extrabold text-amber-600 hover:text-amber-700 bg-amber-50 hover:bg-amber-100 px-3 py-1.5 rounded-xl transition-colors disabled:opacity-50"
+                                                title="Kick user (Khóa tạm thời 5 phút)"
+                                            >
+                                                <UserMinus className="w-3.5 h-3.5" /> 
+                                                {kickLoading === user.userID ? '...' : 'Kick'}
+                                            </button>
+                                        )}
                                         <button
                                             onClick={(e) => {
                                                 e.stopPropagation();

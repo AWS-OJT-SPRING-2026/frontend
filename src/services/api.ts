@@ -46,8 +46,8 @@ async function parseErrorMessage(response: Response): Promise<string | undefined
 
 async function handleResponse<T>(response: Response): Promise<T> {
   if (!response.ok) {
-    // Token expired / unauthorised → notify AuthContext immediately
-    if (response.status === 401) {
+    // Token expired / unauthorised OR user kicked (403) → notify AuthContext immediately
+    if (response.status === 401 || response.status === 403) {
       const isQuickDemoSession = localStorage.getItem(QUICK_DEMO_SESSION_KEY) === '1';
       if (!isQuickDemoSession) {
         window.dispatchEvent(new CustomEvent(SESSION_EXPIRED_EVENT));

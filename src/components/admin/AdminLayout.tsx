@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { Outlet, NavLink } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import {
-    SquaresFour, Users, Books, CalendarBlank, Question, ChartBar, SignOut, List,
+    SquaresFour, Users, Books, CalendarBlank, Question, ChartBar, SignOut, List, ShieldCheck,
 } from '@phosphor-icons/react';
 import { cn } from '../../lib/utils';
 
@@ -12,6 +12,7 @@ const navItems = [
     { to: "classes", label: "Lớp học", icon: Books },
     { to: "schedule", label: "Thời khóa biểu", icon: CalendarBlank },
     { to: "questions", label: "Ngân hàng câu hỏi", icon: Question },
+    { to: "monitoring", label: "Giám sát hệ thống", icon: ShieldCheck },
     { to: "statistics", label: "Thống kê", icon: ChartBar },
 ];
 

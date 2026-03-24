@@ -1,7 +1,7 @@
 import { Outlet, NavLink } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import {
-    SquaresFour, CalendarBlank, ClipboardText, Books, MapTrifold, BookOpen, ChatCircle, SignOut,
+    SquaresFour, CalendarBlank, ClipboardText, Books, MapTrifold, BookOpen, ChatCircle, SignOut, Monitor,
 } from '@phosphor-icons/react';
 import { cn } from '../../lib/utils';
 import { UserMenu } from '../UserMenu';
@@ -14,6 +14,7 @@ const navItems = [
     { to: "roadmap", label: "Lộ trình AI", icon: MapTrifold },
     { to: "review", label: "Ôn tập", icon: BookOpen },
     { to: "chat", label: "Hỏi đáp AI", icon: ChatCircle },
+    { to: "devices", label: "Quản lý thiết bị", icon: Monitor },
 ];
 
 export function StudentLayout() {
