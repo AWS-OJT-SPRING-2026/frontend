@@ -7,18 +7,149 @@ import {
 import { useAuth } from '../context/AuthContext';
 import { useNavigate } from 'react-router-dom';
 import { cn } from '../lib/utils';
+import { ApiError } from '../services/api';
+import { authService } from '../services/authService';
+import { profileService } from '../services/profileService';
+import type { MyProfileResponse, UpdateMyStudentProfileRequest } from '../types/profile';
+import {
+    formatDisplayId,
+    toApiGender,
+    toApiRelation,
+    toVietnameseGender,
+    toVietnameseRelation,
+} from '../lib/profileMappings';
+
+const PASSWORD_CHANGE_COOLDOWN_DAYS = 7;
+const PASSWORD_CHANGE_COOLDOWN_MS = PASSWORD_CHANGE_COOLDOWN_DAYS * 24 * 60 * 60 * 1000;
+const PASSWORD_CHANGE_HISTORY_KEY = 'educare_last_password_change_at';
+
+function mapProfileToFormData(profile: MyProfileResponse) {
+    return {
+        name: profile.fullName || '',
+        email: profile.email || '',
+        phone: profile.phone || '',
+        dateOfBirth: profile.dateOfBirth || '',
+        gender: toVietnameseGender(profile.gender),
+        address: profile.address || '',
+        parentName: profile.parentName || '',
+        parentPhone: profile.parentPhone || '',
+        parentEmail: profile.parentEmail || '',
+        parentRelation: toVietnameseRelation(profile.parentRelationship),
+        status: profile.status || 'ACTIVE',
+    };
+}
+
+function resolveProfileId(profile: MyProfileResponse): string {
+    if (typeof profile.studentID === 'number') return String(profile.studentID);
+    if (typeof profile.teacherID === 'number') return String(profile.teacherID);
+    if (typeof profile.userID === 'number') return String(profile.userID);
+    return '';
+}
+
+function buildStudentUpdatePayload(formData: {
+    name: string;
+    email: string;
+    phone: string;
+    dateOfBirth: string;
+    gender: string;
+    address: string;
+    parentName: string;
+    parentPhone: string;
+    parentEmail: string;
+    parentRelation: string;
+    status: string;
+}): UpdateMyStudentProfileRequest {
+    return {
+        fullName: formData.name.trim(),
+        email: formData.email.trim(),
+        phone: formData.phone.trim() || undefined,
+        status: formData.status,
+        dateOfBirth: formData.dateOfBirth || undefined,
+        gender: toApiGender(formData.gender),
+        address: formData.address.trim() || undefined,
+        parentName: formData.parentName.trim() || undefined,
+        parentPhone: formData.parentPhone.trim() || undefined,
+        parentEmail: formData.parentEmail.trim() || undefined,
+        parentRelationship: toApiRelation(formData.parentRelation),
+    };
+}
+
+function isPasswordChangeLimited(message: string): boolean {
+    const normalized = message.toLowerCase();
+    return normalized === 'password_change_limit' || normalized.includes('7 ngày');
+}
+
+function truncateAfter20Chars(value: string): string {
+    if (value.length <= 20) return value;
+    return `${value.slice(0, 20)}...`;
+}
+
+async function deriveAvatarThemeColor(imageUrl: string): Promise<string> {
+    return new Promise((resolve) => {
+        const img = new Image();
+        img.crossOrigin = 'anonymous';
+        img.onload = () => {
+            try {
+                const canvas = document.createElement('canvas');
+                canvas.width = 24;
+                canvas.height = 24;
+                const ctx = canvas.getContext('2d');
+                if (!ctx) {
+                    resolve('#FF6B4A');
+                    return;
+                }
+
+                ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+                const { data } = ctx.getImageData(0, 0, canvas.width, canvas.height);
+
+                let r = 0;
+                let g = 0;
+                let b = 0;
+                let count = 0;
+
+                for (let i = 0; i < data.length; i += 4) {
+                    const alpha = data[i + 3];
+                    if (alpha < 32) continue;
+                    r += data[i];
+                    g += data[i + 1];
+                    b += data[i + 2];
+                    count += 1;
+                }
+
+                if (!count) {
+                    resolve('#FF6B4A');
+                    return;
+                }
+
+                resolve(`rgb(${Math.round(r / count)}, ${Math.round(g / count)}, ${Math.round(b / count)})`);
+            } catch {
+                resolve('#FF6B4A');
+            }
+        };
+        img.onerror = () => resolve('#FF6B4A');
+        img.src = imageUrl;
+    });
+}
 
 export function AccountSettings() {
-    const { user } = useAuth();
+    const { user, updateUser } = useAuth();
     const navigate = useNavigate();
 
     // Core states
-    const [isEditing, setIsEditing] = useState(false);
+    const [isProfileEditing, setIsProfileEditing] = useState(false);
+    const [isPasswordEditing, setIsPasswordEditing] = useState(false);
     const [isSaving, setIsSaving] = useState(false);
+    const [isLoadingProfile, setIsLoadingProfile] = useState(true);
     const [showSuccess, setShowSuccess] = useState(false);
+    const [showPasswordSuccess, setShowPasswordSuccess] = useState(false);
+    const [errorMessage, setErrorMessage] = useState('');
+    const [profileId, setProfileId] = useState('');
+    const [showAvatarPreview, setShowAvatarPreview] = useState(false);
+    const [avatarThemeColor, setAvatarThemeColor] = useState('#FF6B4A');
 
     // Avatar
     const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
+    const [avatarFile, setAvatarFile] = useState<File | null>(null);
 
     // General Profile Data
     const [formData, setFormData] = useState({
@@ -32,6 +163,7 @@ export function AccountSettings() {
         parentPhone: '0987 654 321',
         parentEmail: 'phuhuynh@example.com',
         parentRelation: 'Bố',
+        status: 'ACTIVE',
     });
 
     const parentRelationOptions = ['Bố', 'Mẹ', 'Ông/Bà', 'Anh/Chị', 'Người giám hộ', 'Khác'];
@@ -49,10 +181,79 @@ export function AccountSettings() {
     // Last password change date (null means no recent change)
     const [lastPasswordChangeDate, setLastPasswordChangeDate] = useState<Date | null>(null);
 
-    const DAYS_60_MS = 60 * 24 * 60 * 60 * 1000;
     const timeSinceLastChange = lastPasswordChangeDate ? new Date().getTime() - lastPasswordChangeDate.getTime() : Infinity;
-    const canChangePassword = timeSinceLastChange >= DAYS_60_MS;
-    const daysRemaining = canChangePassword ? 0 : Math.ceil((DAYS_60_MS - timeSinceLastChange) / (1000 * 60 * 60 * 24));
+    const canChangePassword = timeSinceLastChange >= PASSWORD_CHANGE_COOLDOWN_MS;
+    const daysRemaining = canChangePassword ? 0 : Math.ceil((PASSWORD_CHANGE_COOLDOWN_MS - timeSinceLastChange) / (1000 * 60 * 60 * 24));
+
+    useEffect(() => {
+        const userId = user?.id;
+        if (!userId) {
+            setIsLoadingProfile(false);
+            return;
+        }
+
+        const token = authService.getToken();
+        if (!token) {
+            setErrorMessage('Phiên đăng nhập không hợp lệ. Vui lòng đăng nhập lại.');
+            setIsLoadingProfile(false);
+            return;
+        }
+
+        const savedCooldownRaw = localStorage.getItem(`${PASSWORD_CHANGE_HISTORY_KEY}:${userId}`);
+        if (savedCooldownRaw) {
+            const parsedDate = new Date(savedCooldownRaw);
+            if (!Number.isNaN(parsedDate.getTime())) {
+                setLastPasswordChangeDate(parsedDate);
+            }
+        }
+
+        const loadProfile = async () => {
+            setIsLoadingProfile(true);
+            try {
+                const profile = await profileService.getMyProfile(token);
+                setFormData(mapProfileToFormData(profile));
+                setAvatarUrl(profile.avatarUrl || null);
+                setProfileId(resolveProfileId(profile));
+                if (user) {
+                    updateUser({
+                        ...user,
+                        name: profile.fullName || user.name,
+                        email: profile.email || user.email,
+                        avatarUrl: profile.avatarUrl || user.avatarUrl,
+                    });
+                }
+                setErrorMessage('');
+            } catch (error) {
+                const fallback = 'Không thể tải hồ sơ. Vui lòng thử lại.';
+                setErrorMessage(error instanceof ApiError ? error.message || fallback : fallback);
+            } finally {
+                setIsLoadingProfile(false);
+            }
+        };
+
+        void loadProfile();
+    }, [user?.id]);
+
+    useEffect(() => {
+        if (!avatarUrl) {
+            setAvatarThemeColor('#FF6B4A');
+            return;
+        }
+
+        let isCancelled = false;
+        const loadThemeColor = async () => {
+            const nextColor = await deriveAvatarThemeColor(avatarUrl);
+            if (!isCancelled) {
+                setAvatarThemeColor(nextColor);
+            }
+        };
+
+        void loadThemeColor();
+
+        return () => {
+            isCancelled = true;
+        };
+    }, [avatarUrl]);
 
     useEffect(() => {
         let timer: NodeJS.Timeout;
@@ -92,42 +293,102 @@ export function AccountSettings() {
         /[0-9]/.test(pwState.new) &&
         /[!@#$%^&*(),.?":{}|<>]/.test(pwState.new);
 
-    const handleSaveProfile = () => {
+    const handleSaveProfile = async () => {
+        if (!user) return;
+
+        const token = authService.getToken();
+        if (!token) {
+            setErrorMessage('Phiên đăng nhập không hợp lệ. Vui lòng đăng nhập lại.');
+            return;
+        }
+
+        if (user.role !== 'student') {
+            setErrorMessage('Hiện tại chỉ hỗ trợ cập nhật hồ sơ học sinh.');
+            return;
+        }
+
         setIsSaving(true);
-        setTimeout(() => {
-            setIsSaving(false);
-            setIsEditing(false);
+        setErrorMessage('');
+
+        try {
+            const payload = buildStudentUpdatePayload(formData);
+            const updated = await profileService.updateMyStudentProfile(payload, avatarFile, token);
+
+            setFormData(mapProfileToFormData(updated));
+            setAvatarUrl(updated.avatarUrl || avatarUrl);
+            setProfileId(resolveProfileId(updated));
+            setAvatarFile(null);
+
+            updateUser({
+                ...user,
+                name: updated.fullName || user.name,
+                email: updated.email || user.email,
+                avatarUrl: updated.avatarUrl || user.avatarUrl,
+            });
+
+            setIsProfileEditing(false);
             setShowSuccess(true);
             setTimeout(() => setShowSuccess(false), 3000);
-
-            // Reset pending password changes if not completed
-            if (pwFlow !== 'success') {
-                setPwState({ current: '', new: '', confirm: '' });
-                setPwFlow('idle');
-                setOtpInputs(['', '', '', '', '', '']);
-            }
-        }, 1200);
+        } catch (error) {
+            const fallback = 'Cập nhật hồ sơ thất bại. Vui lòng thử lại.';
+            setErrorMessage(error instanceof ApiError ? error.message || fallback : fallback);
+        } finally {
+            setIsSaving(false);
+        }
     };
 
-    const handleCancelEdit = () => {
-        setIsEditing(false);
-        setPwState({ current: '', new: '', confirm: '' });
+    const handleCancelProfileEdit = () => {
+        setIsProfileEditing(false);
+        setAvatarFile(null);
+        setErrorMessage('');
+    };
+
+    const handleStartPasswordChange = () => {
+        setIsPasswordEditing(true);
         setPwFlow('idle');
+        setPwState({ current: '', new: '', confirm: '' });
+        setOtpInputs(['', '', '', '', '', '']);
+        setErrorMessage('');
+    };
+
+    const handleCancelPasswordChange = () => {
+        setIsPasswordEditing(false);
+        setPwFlow('idle');
+        setPwState({ current: '', new: '', confirm: '' });
         setOtpInputs(['', '', '', '', '', '']);
     };
 
-    const handleSendOtp = () => {
+    const handleSendOtp = async () => {
+        const token = authService.getToken();
+        if (!token) {
+            setErrorMessage('Phiên đăng nhập không hợp lệ. Vui lòng đăng nhập lại.');
+            return;
+        }
+
         setPwFlow('sending');
-        setTimeout(() => {
+        setErrorMessage('');
+
+        try {
+            await profileService.initChangePassword({ currentPassword: pwState.current }, token);
             setPwFlow('otp');
-            setCountdown(90); // Khởi tạo đếm ngược 1p30s
-        }, 1200); // Simulate API call to send OTP
+            setCountdown(90);
+        } catch (error) {
+            setPwFlow('idle');
+            const fallback = 'Không thể gửi mã OTP. Vui lòng thử lại.';
+            const apiMessage = error instanceof ApiError ? error.message || fallback : fallback;
+            setErrorMessage(apiMessage);
+
+            if (user?.id && isPasswordChangeLimited(apiMessage)) {
+                const now = new Date();
+                localStorage.setItem(`${PASSWORD_CHANGE_HISTORY_KEY}:${user.id}`, now.toISOString());
+                setLastPasswordChangeDate(now);
+            }
+        }
     };
 
-    const handleResendOtp = () => {
-        setCountdown(90);
+    const handleResendOtp = async () => {
+        await handleSendOtp();
         setOtpInputs(['', '', '', '', '', '']);
-        // Gọi lại API gửi OTP trong thực tế
     };
 
     const handleOtpChange = (index: number, value: string) => {
@@ -164,12 +425,42 @@ export function AccountSettings() {
         }
     };
 
-    const handleConfirmPasswordChange = () => {
+    const handleConfirmPasswordChange = async () => {
         const otpString = otpInputs.join('');
-        if (otpString.length === 6) {
+        if (otpString.length !== 6) return;
+
+        const token = authService.getToken();
+        if (!token) {
+            setErrorMessage('Phiên đăng nhập không hợp lệ. Vui lòng đăng nhập lại.');
+            return;
+        }
+
+        try {
+            await profileService.confirmChangePassword({
+                otpCode: otpString,
+                newPassword: pwState.new,
+                confirmPassword: pwState.confirm,
+            }, token);
+
+            const now = new Date();
             setPwFlow('success');
-            setLastPasswordChangeDate(new Date()); // Update the last change date
-            // Cuộc gọi API cập nhật mật khẩu sẽ thực hiện ở đây trong thực tế
+            setLastPasswordChangeDate(now);
+            setErrorMessage('');
+            if (user?.id) {
+                localStorage.setItem(`${PASSWORD_CHANGE_HISTORY_KEY}:${user.id}`, now.toISOString());
+            }
+            setShowPasswordSuccess(true);
+            setTimeout(() => setShowPasswordSuccess(false), 3000);
+            handleCancelPasswordChange();
+        } catch (error) {
+            const apiMessage = error instanceof ApiError ? error.message : '';
+            const fallback = 'Đổi mật khẩu thất bại. Vui lòng kiểm tra lại OTP.';
+            setErrorMessage(apiMessage || fallback);
+            if (user?.id && isPasswordChangeLimited(apiMessage)) {
+                const now = new Date();
+                localStorage.setItem(`${PASSWORD_CHANGE_HISTORY_KEY}:${user.id}`, now.toISOString());
+                setLastPasswordChangeDate(now);
+            }
         }
     };
 
@@ -179,10 +470,11 @@ export function AccountSettings() {
     };
 
     const renderActionButtons = () => {
-        if (!isEditing) {
+        if (!isProfileEditing) {
             return (
                 <button
-                    onClick={() => setIsEditing(true)}
+                    onClick={() => setIsProfileEditing(true)}
+                    disabled={isPasswordEditing}
                     className="px-6 py-2.5 bg-white border-2 border-[#1A1A1A] hover:bg-[#F7F7F2] transition-colors rounded-xl font-extrabold text-[#1A1A1A] text-sm flex items-center gap-2"
                 >
                     <PencilSimple size={18} weight="bold" />
@@ -194,14 +486,14 @@ export function AccountSettings() {
         return (
             <div className="flex items-center gap-3">
                 <button
-                    onClick={handleCancelEdit}
+                    onClick={handleCancelProfileEdit}
                     className="px-6 py-2.5 bg-gray-100 hover:bg-gray-200 text-gray-600 rounded-xl font-extrabold text-sm transition-colors"
                 >
                     Hủy
                 </button>
                 <button
                     onClick={handleSaveProfile}
-                    disabled={isSaving || pwFlow === 'sending' || pwFlow === 'otp'}
+                    disabled={isSaving}
                     className="px-6 py-2.5 bg-[#FF6B4A] hover:bg-[#e5593c] text-white rounded-xl font-extrabold text-sm flex items-center gap-2 shadow-lg hover:shadow-xl transition-all disabled:opacity-50 disabled:active:scale-100 disabled:hover:shadow-lg disabled:cursor-not-allowed"
                 >
                     {isSaving && <div className="w-4 h-4 border-2 border-white/20 border-t-white rounded-full animate-spin" />}
@@ -219,17 +511,19 @@ export function AccountSettings() {
         type: 'text' | 'email' | 'tel' | 'date' | 'select' = 'text',
         selectOptions?: string[]
     ) => {
-        const displayValue = fieldKey === 'dateOfBirth' && value
+        const shouldTruncate = fieldKey === 'email' || fieldKey === 'address' || fieldKey === 'parentEmail';
+        const baseDisplayValue = fieldKey === 'dateOfBirth' && value
             ? new Date(value).toLocaleDateString('vi-VN')
             : value;
+        const displayValue = shouldTruncate ? truncateAfter20Chars(baseDisplayValue) : baseDisplayValue;
 
-        if (!isEditing) {
+        if (!isProfileEditing) {
             return (
                 <div className="flex flex-col gap-1.5 p-4 rounded-2xl border border-gray-100 bg-gray-50/50">
                     <span className="text-[11px] font-extrabold text-gray-400 uppercase tracking-widest">{label}</span>
                     <div className="flex items-center gap-3">
                         <Icon size={20} className="text-gray-400" />
-                        <span className="font-extrabold text-[#1A1A1A] text-base">{displayValue}</span>
+                        <span className="font-extrabold text-[#1A1A1A] text-base" title={baseDisplayValue}>{displayValue}</span>
                     </div>
                 </div>
             );
@@ -272,6 +566,26 @@ export function AccountSettings() {
                 <div className="fixed top-8 left-1/2 -translate-x-1/2 z-50 bg-[#10B981] text-white px-6 py-3 rounded-2xl shadow-2xl font-extrabold flex items-center gap-2 animate-in slide-in-from-top-4 duration-300">
                     <Check size={20} weight="bold" />
                     Hồ sơ đã được lưu thành công!
+                </div>
+            )}
+
+            {showPasswordSuccess && (
+                <div className="fixed top-8 left-1/2 -translate-x-1/2 z-50 bg-emerald-600 text-white px-6 py-3 rounded-2xl shadow-2xl font-extrabold flex items-center gap-2 animate-in slide-in-from-top-4 duration-300">
+                    <ShieldCheck size={20} weight="bold" />
+                    Đổi mật khẩu thành công!
+                </div>
+            )}
+
+            {errorMessage && (
+                <div className="fixed top-8 left-1/2 -translate-x-1/2 z-50 bg-red-500 text-white px-6 py-3 rounded-2xl shadow-2xl font-extrabold text-sm animate-in slide-in-from-top-4 duration-300">
+                    {errorMessage}
+                </div>
+            )}
+
+            {isLoadingProfile && (
+                <div className="bg-white border-2 border-[#1A1A1A] rounded-2xl px-4 py-3 text-sm font-bold text-gray-500 inline-flex items-center gap-2">
+                    <div className="w-4 h-4 border-2 border-gray-300 border-t-[#1A1A1A] rounded-full animate-spin" />
+                    Đang tải hồ sơ...
                 </div>
             )}
 
@@ -360,8 +674,21 @@ export function AccountSettings() {
                 <div className="px-6 md:px-10 pb-8 pt-6 relative">
                     {/* Avatar Overlapping Banner */}
                     <div className="absolute -top-[52px] left-6 md:left-10">
-                        <div className="w-[104px] h-[104px] rounded-[32px] bg-white border-[4px] border-white shadow-xl flex items-center justify-center relative overflow-hidden group">
-                            <div className="w-full h-full bg-[#FF6B4A] flex items-center justify-center text-white text-4xl font-extrabold">
+                        <div
+                            className={cn(
+                                'w-[104px] h-[104px] rounded-[32px] bg-white border-[4px] border-white shadow-xl flex items-center justify-center relative overflow-hidden group',
+                                !isProfileEditing && avatarUrl ? 'cursor-zoom-in' : '',
+                            )}
+                            onClick={() => {
+                                if (!isProfileEditing && avatarUrl) {
+                                    setShowAvatarPreview(true);
+                                }
+                            }}
+                        >
+                            <div
+                                className="w-full h-full flex items-center justify-center text-white text-4xl font-extrabold"
+                                style={{ backgroundColor: avatarThemeColor }}
+                            >
                                 {avatarUrl ? (
                                     <img src={avatarUrl} alt="Avatar" className="w-full h-full object-cover" />
                                 ) : (
@@ -370,7 +697,7 @@ export function AccountSettings() {
                             </div>
 
                             {/* Overlay Upload (Chỉ hiện khi Edit Mode) */}
-                            {isEditing && (
+                            {isProfileEditing && (
                                 <label className="absolute inset-0 bg-black/50 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer backdrop-blur-[2px]">
                                     <Camera size={28} weight="fill" className="text-white" />
                                     <input
@@ -379,8 +706,10 @@ export function AccountSettings() {
                                         className="hidden"
                                         onChange={(e) => {
                                             if (e.target.files?.[0]) {
-                                                setAvatarUrl(URL.createObjectURL(e.target.files[0]));
-                                                setIsEditing(true);
+                                                const file = e.target.files[0];
+                                                setAvatarFile(file);
+                                                setAvatarUrl(URL.createObjectURL(file));
+                                                setIsProfileEditing(true);
                                             }
                                         }}
                                     />
@@ -402,12 +731,32 @@ export function AccountSettings() {
                                 {user?.role === 'teacher' ? 'Giáo viên' : 'Học sinh'}
                             </span>
                             <span className="text-sm font-bold text-gray-400">
-                                ID: EDU-2024-{user?.id || 'STUDENT1'}
+                                ID: {formatDisplayId(user?.role || 'student', profileId || user?.id)}
                             </span>
                         </div>
                     </div>
                 </div>
             </div>
+
+            {showAvatarPreview && avatarUrl && (
+                <div
+                    className="fixed inset-0 z-[120] bg-black/70 backdrop-blur-sm flex items-center justify-center p-4"
+                    onClick={() => setShowAvatarPreview(false)}
+                >
+                    <div
+                        className="relative max-w-3xl max-h-[90vh] rounded-3xl overflow-hidden border-2 border-white shadow-2xl"
+                        onClick={(e) => e.stopPropagation()}
+                    >
+                        <img src={avatarUrl} alt="Avatar phóng to" className="w-full h-full object-contain bg-black" />
+                        <button
+                            onClick={() => setShowAvatarPreview(false)}
+                            className="absolute top-3 right-3 w-9 h-9 rounded-full bg-white/90 hover:bg-white text-[#1A1A1A] font-extrabold"
+                        >
+                            x
+                        </button>
+                    </div>
+                </div>
+            )}
 
             {/* Personal Info Forms */}
             <div className="bg-white p-8 md:p-10 rounded-[40px] border-2 border-[#1A1A1A] shadow-sm space-y-8">
@@ -457,26 +806,42 @@ export function AccountSettings() {
                     </div>
                 </div>
 
-                {!isEditing ? (
-                    <div className="flex flex-col gap-1.5 p-4 rounded-2xl border border-gray-100 bg-gray-50/50 max-w-md">
-                        <span className="text-[11px] font-extrabold text-gray-400 uppercase tracking-widest">Mật khẩu hiện tại</span>
-                        <div className="flex items-center justify-between">
-                            <div className="flex items-center gap-3">
-                                <Lock size={20} className="text-gray-400" />
-                                <span className="font-extrabold text-[#1A1A1A] text-xl tracking-[0.2em] mt-1">
-                                    ••••••••
+                {!isPasswordEditing ? (
+                    <div className="flex flex-col md:flex-row gap-4 md:items-center md:justify-between">
+                        <div className="flex flex-col gap-1.5 p-4 rounded-2xl border border-gray-100 bg-gray-50/50 max-w-md w-full">
+                            <span className="text-[11px] font-extrabold text-gray-400 uppercase tracking-widest">Mật khẩu hiện tại</span>
+                            <div className="flex items-center justify-between">
+                                <div className="flex items-center gap-3">
+                                    <Lock size={20} className="text-gray-400" />
+                                    <span className="font-extrabold text-[#1A1A1A] text-xl tracking-[0.2em] mt-1">
+                                        ••••••••
+                                    </span>
+                                </div>
+                                <span className="text-[10px] font-extrabold text-emerald-600 px-3 py-1.5 bg-emerald-100 rounded-full border border-emerald-200 flex items-center gap-1 uppercase tracking-widest">
+                                    <ShieldCheck size={14} weight="bold" />
+                                    Bảo mật tốt
                                 </span>
                             </div>
-                            <span className="text-[10px] font-extrabold text-emerald-600 px-3 py-1.5 bg-emerald-100 rounded-full border border-emerald-200 flex items-center gap-1 uppercase tracking-widest">
-                                <ShieldCheck size={14} weight="bold" />
-                                Bảo mật tốt
-                            </span>
                         </div>
+
+                        <button
+                            onClick={handleStartPasswordChange}
+                            disabled={isProfileEditing}
+                            className="px-6 py-3 bg-[#1A1A1A] text-white rounded-2xl font-extrabold text-sm hover:scale-[1.02] active:scale-95 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                        >
+                            Đổi mật khẩu
+                        </button>
                     </div>
                 ) : (
                     <div className="p-6 rounded-3xl bg-gray-50 border-2 border-[#1A1A1A]/5 space-y-6">
-                        <div className="flex items-center gap-2 mb-2">
+                        <div className="flex items-center justify-between mb-2">
                             <h4 className="text-sm font-extrabold uppercase tracking-widest text-[#1A1A1A]">Đổi mật khẩu mới (Tùy chọn)</h4>
+                            <button
+                                onClick={handleCancelPasswordChange}
+                                className="px-4 py-2 bg-white border border-gray-200 rounded-xl text-xs font-extrabold text-gray-600 hover:bg-gray-100"
+                            >
+                                Hủy
+                            </button>
                         </div>
 
                         {!canChangePassword ? (
@@ -486,20 +851,11 @@ export function AccountSettings() {
                                 </div>
                                 <h4 className="font-extrabold text-[#1A1A1A]">Chưa thể thay đổi mật khẩu</h4>
                                 <p className="text-xs font-bold text-gray-500 leading-relaxed max-w-xs">
-                                    Hệ thống chỉ cho phép đổi mật khẩu <strong className="text-[#1A1A1A]">60 ngày</strong> một lần để đảm bảo an toàn.
+                                    Hệ thống chỉ cho phép đổi mật khẩu <strong className="text-[#1A1A1A]">7 ngày</strong> một lần để đảm bảo an toàn.
                                 </p>
                                 <div className="mt-2 text-[11px] font-extrabold text-[#FF6B4A] bg-[#FF6B4A]/10 px-4 py-2 rounded-xl border border-[#FF6B4A]/20">
                                     Thử lại sau {daysRemaining} ngày
                                 </div>
-                            </div>
-                        ) : pwFlow === 'success' ? (
-                            <div className="bg-emerald-50 text-emerald-600 p-5 rounded-2xl border-2 border-emerald-200 flex flex-col items-center justify-center gap-2 animate-in zoom-in-95 duration-300 shadow-sm relative overflow-hidden">
-                                <div className="absolute top-0 right-0 w-24 h-24 bg-white/20 rounded-full blur-2xl -translate-y-1/2 translate-x-1/2" />
-                                <ShieldCheck size={48} weight="fill" />
-                                <span className="font-extrabold text-lg mt-1 relative z-10">Đổi mật khẩu thành công!</span>
-                                <p className="text-[11px] font-bold text-emerald-600/70 border border-emerald-200 bg-white px-3 py-1 rounded-full uppercase tracking-wider relative z-10">
-                                    Bảo mật đã được cập nhật an toàn
-                                </p>
                             </div>
                         ) : (
                             <div className="space-y-5">

@@ -42,6 +42,7 @@ async function parseErrorMessage(response: Response): Promise<string | undefined
     if (code === 1002) return 'Tên đăng nhập đã tồn tại, hãy dùng tên khác.'; // USER_EXISTED
     if (code === 1003) return 'Email đã tồn tại, hãy dùng email khác.'; // EMAIL_EXISTED
     if (code === 1021) return 'ACCOUNT_LOCKED'; // USER_INACTIVE – special sentinel for Login.tsx
+    if (code === 1071) return 'PASSWORD_CHANGE_LIMIT';
 
     return msg;
   } catch {

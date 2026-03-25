@@ -1,6 +1,7 @@
 import { createContext, useContext, useState, useEffect, useCallback, ReactNode } from 'react';
 import { User } from '../types/auth';
 import { authService } from '../services/authService';
+import { profileService } from '../services/profileService';
 
 const PHASE1_DELAY = 1500; // ms – first message duration
 const PHASE2_DELAY = 1200; // ms – second message duration (total = PHASE1 + PHASE2)
@@ -21,6 +22,7 @@ interface AuthContextType {
   transitionPhase: TransitionPhase;
   sessionExpired: boolean;
   login: (token: string, user: User) => void;
+  updateUser: (nextUser: User) => void;
   logout: () => Promise<void>;
 }
 
@@ -63,6 +65,49 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     setIsInitializing(false);
   }, []);
+
+  // Keep auth user profile in sync for sidebar/header UI.
+  useEffect(() => {
+    if (!user) return;
+    if (authService.isQuickDemoSession()) return;
+
+    const token = authService.getToken();
+    if (!token) return;
+
+    let isCancelled = false;
+
+    const hydrateUser = async () => {
+      try {
+        const profile = await profileService.getMyProfile(token);
+        if (isCancelled) return;
+
+        const nextUser: User = {
+          ...user,
+          name: profile.fullName || user.name,
+          email: profile.email || user.email,
+          avatarUrl: profile.avatarUrl || user.avatarUrl,
+        };
+
+        const changed =
+          nextUser.name !== user.name ||
+          nextUser.email !== user.email ||
+          nextUser.avatarUrl !== user.avatarUrl;
+
+        if (changed) {
+          authService.saveUser(nextUser);
+          setUser(nextUser);
+        }
+      } catch {
+        // Ignore hydration errors; account page can still fetch profile independently.
+      }
+    };
+
+    void hydrateUser();
+
+    return () => {
+      isCancelled = true;
+    };
+  }, [user]);
 
   // ── Expire session helper ─────────────────────────────────────────────────
   const expireSession = useCallback(() => {
@@ -144,6 +189,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }, PHASE1_DELAY);
   }, []);
 
+  const updateUser = useCallback((nextUser: User) => {
+    authService.saveUser(nextUser);
+    setUser(nextUser);
+  }, []);
+
   return (
     <AuthContext.Provider
       value={{
@@ -155,6 +205,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         transitionPhase,
         sessionExpired,
         login,
+        updateUser,
         logout,
       }}
     >

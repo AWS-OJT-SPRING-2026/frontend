@@ -3,6 +3,9 @@ import { UserCircle, Headset, X, PaperPlaneTilt, Phone } from '@phosphor-icons/r
 import { useAuth } from '../context/AuthContext';
 import { useNavigate } from 'react-router-dom';
 import { cn } from '../lib/utils';
+import { authService } from '../services/authService';
+import { profileService } from '../services/profileService';
+import { formatDisplayId } from '../lib/profileMappings';
 
 interface UserMenuProps {
     role: 'student' | 'teacher';
@@ -13,6 +16,7 @@ export function UserMenu({ role }: UserMenuProps) {
     const navigate = useNavigate();
     const [isOpen, setIsOpen] = useState(false);
     const [activeModal, setActiveModal] = useState<'support' | null>(null);
+    const [displayId, setDisplayId] = useState(() => formatDisplayId(role, user?.id));
     const menuRef = useRef<HTMLDivElement | null>(null);
 
     // Support States
@@ -29,6 +33,41 @@ export function UserMenu({ role }: UserMenuProps) {
             setChat(prev => [...prev, { type: 'admin', text: 'Cảm ơn bạn. Yêu cầu của bạn đang được xử lý.' }]);
         }, 1000);
     };
+
+    useEffect(() => {
+        let isCancelled = false;
+
+        const loadProfileId = async () => {
+            if (!user) {
+                setDisplayId(formatDisplayId(role, undefined));
+                return;
+            }
+
+            const token = authService.getToken();
+            if (!token || authService.isQuickDemoSession()) {
+                setDisplayId(formatDisplayId(role, user.id));
+                return;
+            }
+
+            try {
+                const profile = await profileService.getMyProfile(token);
+                const sourceId = profile.studentID ?? profile.teacherID ?? profile.userID ?? user.id;
+                if (!isCancelled) {
+                    setDisplayId(formatDisplayId(role, sourceId));
+                }
+            } catch {
+                if (!isCancelled) {
+                    setDisplayId(formatDisplayId(role, user.id));
+                }
+            }
+        };
+
+        void loadProfileId();
+
+        return () => {
+            isCancelled = true;
+        };
+    }, [role, user]);
 
     useEffect(() => {
         const handleClickOutside = (event: MouseEvent) => {
@@ -75,7 +114,7 @@ export function UserMenu({ role }: UserMenuProps) {
                 )}
                 <div className="opacity-0 group-hover/sidebar:opacity-100 transition-opacity duration-200 delay-100 overflow-hidden text-left">
                     <p className="text-white text-xs font-extrabold whitespace-nowrap">{user?.name || 'User'}</p>
-                    <p className="text-gray-500 text-[10px] whitespace-nowrap">{role === 'teacher' ? 'Giáo viên' : 'Lớp 12A1'}</p>
+                    <p className="text-gray-500 text-[10px] whitespace-nowrap">{displayId}</p>
                 </div>
             </div>
 
