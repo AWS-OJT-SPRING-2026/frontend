@@ -770,7 +770,7 @@ export function StudentTests() {
     if (selectedTest) {
         if (selectedTest.status === 'completed' && exerciseViewMode === 'detailedReview') {
             return (
-                <div className="min-h-screen bg-[#F7F7F2] p-6 lg:p-8" style={{ fontFamily: "'Nunito', sans-serif" }}>
+                <div className="min-h-screen p-6 lg:p-8" style={{ fontFamily: "'Nunito', sans-serif" }}>
                     <DetailedReviewView test={selectedTest} onBack={() => setExerciseViewMode('detail')} />
                 </div>
             );
@@ -778,7 +778,7 @@ export function StudentTests() {
 
         if (exerciseViewMode === 'detail') {
             return (
-                <div className="min-h-screen bg-[#F7F7F2] p-6 lg:p-8" style={{ fontFamily: "'Nunito', sans-serif" }}>
+                <div className="min-h-screen p-6 lg:p-8" style={{ fontFamily: "'Nunito', sans-serif" }}>
                     <TestDetailView
                         test={selectedTest}
                         scheduleDate={scheduleFilter?.date}
@@ -791,7 +791,7 @@ export function StudentTests() {
         }
 
         return (
-            <div className="min-h-screen bg-[#F7F7F2] p-6 lg:p-8" style={{ fontFamily: "'Nunito', sans-serif" }}>
+            <div className="min-h-screen p-6 lg:p-8" style={{ fontFamily: "'Nunito', sans-serif" }}>
                 <TestTakingView
                     test={selectedTest}
                     onBack={() => setExerciseViewMode('detail')}

@@ -5,7 +5,7 @@ import remarkGfm from 'remark-gfm';
 import remarkMath from 'remark-math';
 import rehypeKatex from 'rehype-katex';
 import 'katex/dist/katex.min.css';
-import { getChatSessions, sendChatMessage, upsertChatSession, type ChatSessionDto } from '../../services/chatService';
+import { getChatSessions, streamChatMessage, upsertChatSession, type ChatSessionDto } from '../../services/chatService';
 
 interface Message {
     role: 'user' | 'assistant';
@@ -119,6 +119,12 @@ export function StudentChat() {
         setInput('');
         setIsLoading(true);
 
+        const assistantMessage: Message = {
+            role: 'assistant',
+            content: '',
+            timestamp: new Date(),
+        };
+
         // Update sessions immediately with user message
         const sessionTitle = formatSessionTitle(trimmed);
 
@@ -131,18 +137,35 @@ export function StudentChat() {
             }
         });
 
-        try {
-            const response = await sendChatMessage(trimmed, activeSessionId);
+        // Initialize messages state with user message ONLY
+        setMessages(newMessages);
 
-            const assistantMessage: Message = {
-                role: 'assistant',
-                content: response,
-                timestamp: new Date(),
-            };
-            const finalMessages = [...newMessages, assistantMessage];
-            setMessages(finalMessages);
-            
-            // Update sessions with AI response
+        let currentAssistantContent = '';
+        let isFirstChunk = true;
+
+        try {
+            await streamChatMessage(trimmed, activeSessionId, (token) => {
+                if (isFirstChunk) {
+                    setIsLoading(false);
+                    isFirstChunk = false;
+                }
+                currentAssistantContent += token;
+                
+                // Update the messages state with the new token
+                setMessages(prev => {
+                    const lastIdx = prev.length - 1;
+                    if (lastIdx >= 0 && prev[lastIdx].role === 'assistant') {
+                        const updated = [...prev];
+                        updated[lastIdx] = { ...updated[lastIdx], content: currentAssistantContent };
+                        return updated;
+                    } else {
+                        return [...prev, { ...assistantMessage, content: currentAssistantContent }];
+                    }
+                });
+            });
+
+            // Once streaming is done, sync with sessions and persist
+            const finalMessages = [...newMessages, { ...assistantMessage, content: currentAssistantContent }];
             setSessions(prev => prev.map(s => s.id === activeSessionId ? { ...s, messages: finalMessages, updatedAt: Date.now() } : s));
             await persistSession(activeSessionId, sessionTitle, finalMessages);
         } catch {
@@ -204,7 +227,7 @@ export function StudentChat() {
     };
 
     return (
-        <div className="absolute inset-0 flex bg-[#F7F7F2] rounded-3xl overflow-hidden" style={{ fontFamily: "'Nunito', sans-serif" }}>
+        <div className="absolute inset-0 flex rounded-3xl overflow-hidden" style={{ fontFamily: "'Nunito', sans-serif" }}>
             <style>{`
                 .katex-display {
                     background-color: #FCE38A !important;
@@ -317,9 +340,9 @@ export function StudentChat() {
             </div>
 
             {/* Main Chat Area */}
-            <div className="flex-1 flex flex-col bg-[#F7F7F2] relative min-h-0">
+            <div className="flex-1 flex flex-col relative min-h-0">
                 {/* Chat Header */}
-                <div className="h-16 border-b-2 border-[#1A1A1A]/10 flex items-center justify-between px-6 shrink-0 bg-white shadow-sm z-10 w-full xl:rounded-tl-2xl border-l-2">
+                <div className="h-16 border-b-2 border-[#1A1A1A]/10 flex items-center justify-between px-6 shrink-0 bg-white shadow-sm z-10 w-full border-l-2">
                     <h2 className="font-extrabold text-[17px] text-[#1A1A1A]">
                         {sessions.find(s => s.id === sessionId)?.title || 'Bài tập mới hiện tại'}
                     </h2>
@@ -429,7 +452,7 @@ export function StudentChat() {
                 </div>
 
                 {/* Input Area (Matched reference layout style) */}
-                <div className="bg-white border-t-2 border-[#1A1A1A]/10 p-5 xl:rounded-bl-2xl border-l-2 w-full shrink-0">
+                <div className="bg-white border-t-2 border-[#1A1A1A]/10 p-5 border-l-2 w-full shrink-0">
                     <div className="max-w-4xl mx-auto flex flex-col md:flex-row items-center gap-3">
                         <button className="w-full md:w-auto flex items-center justify-center gap-2 bg-[#1A1A1A] hover:bg-[#333333] text-white font-extrabold px-6 py-3.5 rounded-2xl border-2 border-[#1A1A1A] transition-colors shrink-0 shadow-sm group">
                             <Microphone className="w-5 h-5 text-[#FF6B4A] group-hover:scale-110 transition-transform" weight="fill" />

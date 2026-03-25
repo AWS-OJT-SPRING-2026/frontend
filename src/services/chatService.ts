@@ -27,11 +27,16 @@ export interface ChatResponse {
 }
 
 /**
- * Send a message to the Slozy Agent and get a response.
+ * Send a message to the Slozy Agent and stream the response.
  * @param prompt - The user's message
  * @param sessionId - Session ID for memory persistence across turns
+ * @param onChunk - Callback for each token received
  */
-export async function sendChatMessage(prompt: string, sessionId: string): Promise<string> {
+export async function streamChatMessage(
+  prompt: string, 
+  sessionId: string, 
+  onChunk: (chunk: string) => void
+): Promise<void> {
   const response = await fetch(`${AGENT_BASE_URL}/invocations`, {
     method: 'POST',
     headers: {
@@ -44,8 +49,53 @@ export async function sendChatMessage(prompt: string, sessionId: string): Promis
     throw new Error(`Agent error: ${response.status}`);
   }
 
-  const data: ChatResponse = await response.json();
-  return data.result;
+  if (!response.body) {
+    throw new Error('No response body');
+  }
+
+  const reader = response.body.getReader();
+  const decoder = new TextDecoder();
+  let buffer = '';
+
+  while (true) {
+    const { done, value } = await reader.read();
+    if (done) break;
+
+    buffer += decoder.decode(value, { stream: true });
+    
+    // Process lines (SSE format: "data: { ... }\n\n")
+    const lines = buffer.split('\n');
+    buffer = lines.pop() || ''; // Keep the last incomplete line in buffer
+
+    for (const line of lines) {
+      const trimmed = line.trim();
+      if (!trimmed || !trimmed.startsWith('data: ')) continue;
+      
+      try {
+        const jsonStr = trimmed.slice(6); // Remove "data: "
+        const data = JSON.parse(jsonStr);
+        if (data.token) {
+          onChunk(data.token);
+        }
+      } catch (e) {
+        console.error('Error parsing SSE chunk:', e, trimmed);
+      }
+    }
+  }
+}
+
+/**
+ * Send a message to the Slozy Agent and get a response.
+ * @param prompt - The user's message
+ * @param sessionId - Session ID for memory persistence across turns
+ * @deprecated Use streamChatMessage for better user experience
+ */
+export async function sendChatMessage(prompt: string, sessionId: string): Promise<string> {
+  let fullText = '';
+  await streamChatMessage(prompt, sessionId, (chunk) => {
+    fullText += chunk;
+  });
+  return fullText;
 }
 
 export async function getChatSessions(): Promise<ChatSessionDto[]> {
