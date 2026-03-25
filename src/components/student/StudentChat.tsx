@@ -5,7 +5,7 @@ import remarkGfm from 'remark-gfm';
 import remarkMath from 'remark-math';
 import rehypeKatex from 'rehype-katex';
 import 'katex/dist/katex.min.css';
-import { sendChatMessage } from '../../services/chatService';
+import { getChatSessions, sendChatMessage, upsertChatSession, type ChatSessionDto } from '../../services/chatService';
 
 interface Message {
     role: 'user' | 'assistant';
@@ -24,44 +24,72 @@ function generateSessionId(): string {
     return 'session_' + Math.random().toString(36).substring(2, 15);
 }
 
+function formatSessionTitle(input: string): string {
+    const trimmed = input.trim();
+    if (!trimmed) return 'Cuoc hoi thoai moi';
+    return trimmed.length > 25 ? `${trimmed.substring(0, 25)}...` : trimmed;
+}
+
+function fromDto(dto: ChatSessionDto): ChatSession {
+    return {
+        id: dto.sessionId,
+        title: dto.title,
+        messages: (dto.messages ?? []).map((message) => ({
+            role: message.role,
+            content: message.content,
+            timestamp: new Date(message.timestamp),
+        })),
+        updatedAt: dto.updatedAt ? new Date(dto.updatedAt).getTime() : Date.now(),
+    };
+}
+
 export function StudentChat() {
     const [sessions, setSessions] = useState<ChatSession[]>([]);
     const [messages, setMessages] = useState<Message[]>([]);
     const [input, setInput] = useState('');
     const [isLoading, setIsLoading] = useState(false);
     const [sessionId, setSessionId] = useState<string>('');
+    const [isHydrating, setIsHydrating] = useState(true);
     const messagesEndRef = useRef<HTMLDivElement>(null);
     const inputRef = useRef<HTMLInputElement>(null);
 
-    // Initialize or load sessions
-    useEffect(() => {
-        const stored = localStorage.getItem('educare_chat_sessions');
-        if (stored) {
-            try {
-                const parsed = JSON.parse(stored) as ChatSession[];
-                // Map string dates back to Date objects
-                parsed.forEach(s => s.messages.forEach(m => m.timestamp = new Date(m.timestamp)));
-                setSessions(parsed);
-                if (parsed.length > 0) {
-                    setSessionId(parsed[0].id);
-                    setMessages(parsed[0].messages);
-                } else {
-                    setSessionId(generateSessionId());
-                }
-            } catch (e) {
-                setSessionId(generateSessionId());
-            }
-        } else {
-            setSessionId(generateSessionId());
-        }
+    const persistSession = useCallback(async (id: string, title: string, sessionMessages: Message[]) => {
+        await upsertChatSession({
+            sessionId: id,
+            title,
+            messages: sessionMessages.map((m) => ({
+                role: m.role,
+                content: m.content,
+                timestamp: m.timestamp.toISOString(),
+            })),
+        });
     }, []);
 
-    // Save sessions to localStorage whenever they change meaningfully
+    // Initialize chat sessions from backend storage
     useEffect(() => {
-        if (sessions.length > 0) {
-            localStorage.setItem('educare_chat_sessions', JSON.stringify(sessions));
-        }
-    }, [sessions]);
+        const hydrate = async () => {
+            try {
+                const remoteSessions = await getChatSessions();
+                const mapped = remoteSessions.map(fromDto);
+                setSessions(mapped);
+
+                if (mapped.length > 0) {
+                    setSessionId(mapped[0].id);
+                    setMessages(mapped[0].messages);
+                } else {
+                    setSessionId(generateSessionId());
+                    setMessages([]);
+                }
+            } catch {
+                setSessionId(generateSessionId());
+                setMessages([]);
+            } finally {
+                setIsHydrating(false);
+            }
+        };
+
+        hydrate();
+    }, []);
 
     const scrollToBottom = useCallback(() => {
         messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -73,7 +101,12 @@ export function StudentChat() {
 
     const handleSend = async () => {
         const trimmed = input.trim();
-        if (!trimmed || isLoading) return;
+        if (!trimmed || isLoading || isHydrating) return;
+
+        const activeSessionId = sessionId || generateSessionId();
+        if (!sessionId) {
+            setSessionId(activeSessionId);
+        }
 
         const userMessage: Message = {
             role: 'user',
@@ -87,17 +120,19 @@ export function StudentChat() {
         setIsLoading(true);
 
         // Update sessions immediately with user message
+        const sessionTitle = formatSessionTitle(trimmed);
+
         setSessions(prev => {
-            const existingSession = prev.find(s => s.id === sessionId);
+            const existingSession = prev.find(s => s.id === activeSessionId);
             if (existingSession) {
-                return prev.map(s => s.id === sessionId ? { ...s, messages: newMessages, updatedAt: Date.now() } : s);
+                return prev.map(s => s.id === activeSessionId ? { ...s, messages: newMessages, updatedAt: Date.now() } : s);
             } else {
-                return [{ id: sessionId, title: trimmed.length > 25 ? trimmed.substring(0, 25) + '...' : trimmed, messages: newMessages, updatedAt: Date.now() }, ...prev];
+                return [{ id: activeSessionId, title: sessionTitle, messages: newMessages, updatedAt: Date.now() }, ...prev];
             }
         });
 
         try {
-            const response = await sendChatMessage(trimmed, sessionId);
+            const response = await sendChatMessage(trimmed, activeSessionId);
 
             const assistantMessage: Message = {
                 role: 'assistant',
@@ -108,7 +143,8 @@ export function StudentChat() {
             setMessages(finalMessages);
             
             // Update sessions with AI response
-            setSessions(prev => prev.map(s => s.id === sessionId ? { ...s, messages: finalMessages, updatedAt: Date.now() } : s));
+            setSessions(prev => prev.map(s => s.id === activeSessionId ? { ...s, messages: finalMessages, updatedAt: Date.now() } : s));
+            await persistSession(activeSessionId, sessionTitle, finalMessages);
         } catch {
             const errorMessage: Message = {
                 role: 'assistant',
@@ -117,16 +153,33 @@ export function StudentChat() {
             };
             const finalMessages = [...newMessages, errorMessage];
             setMessages(finalMessages);
-            setSessions(prev => prev.map(s => s.id === sessionId ? { ...s, messages: finalMessages, updatedAt: Date.now() } : s));
+            setSessions(prev => prev.map(s => s.id === activeSessionId ? { ...s, messages: finalMessages, updatedAt: Date.now() } : s));
+            await persistSession(activeSessionId, sessionTitle, finalMessages);
         } finally {
             setIsLoading(false);
             inputRef.current?.focus();
         }
     };
 
-    const createNewSession = () => {
-        setSessionId(generateSessionId());
+    const createNewSession = async () => {
+        const newSessionId = generateSessionId();
+        const newSession: ChatSession = {
+            id: newSessionId,
+            title: 'Cuoc hoi thoai moi',
+            messages: [],
+            updatedAt: Date.now(),
+        };
+
+        setSessions(prev => [newSession, ...prev.filter(s => s.id !== newSessionId)]);
+        setSessionId(newSessionId);
         setMessages([]);
+
+        try {
+            await persistSession(newSessionId, newSession.title, []);
+        } catch {
+            // Keep optimistic UI for draft session even if persistence fails.
+        }
+
         inputRef.current?.focus();
     };
 
@@ -203,7 +256,7 @@ export function StudentChat() {
                             {sessions.length === 0 ? (
                                 <p className="text-xs px-2 text-gray-400 font-bold italic">Chưa có lịch sử chat.</p>
                             ) : (
-                                sessions.sort((a,b) => b.updatedAt - a.updatedAt).map(session => (
+                                [...sessions].sort((a,b) => b.updatedAt - a.updatedAt).map(session => (
                                     <button
                                         key={session.id}
                                         onClick={() => switchSession(session.id)}

@@ -11,6 +11,23 @@ export class ApiError extends Error {
   }
 }
 
+function isLogoutEndpoint(endpoint: string): boolean {
+  const normalized = endpoint.split('?')[0].replace(/\/+$/, '');
+  return normalized === '/auth/logout';
+}
+
+function buildAuthHeaders(token: string, endpoint: string, includeContentType = true): HeadersInit {
+  const headers: HeadersInit = {};
+  if (includeContentType) {
+    headers['Content-Type'] = 'application/json';
+  }
+  // Logout endpoint must send token in body only; skip Authorization header entirely.
+  if (!isLogoutEndpoint(endpoint)) {
+    headers['Authorization'] = `Bearer ${token}`;
+  }
+  return headers;
+}
+
 async function parseErrorMessage(response: Response): Promise<string | undefined> {
   // Try JSON first
   try {
@@ -90,10 +107,7 @@ export const api = {
   async authPost<T>(endpoint: string, data: unknown, token: string): Promise<T> {
     const response = await fetch(`${API_BASE_URL}${endpoint}`, {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${token}`,
-      },
+      headers: buildAuthHeaders(token, endpoint),
       body: JSON.stringify(data),
     });
     return handleResponse<T>(response);
@@ -102,10 +116,7 @@ export const api = {
   async authPut<T>(endpoint: string, data: unknown, token: string): Promise<T> {
     const response = await fetch(`${API_BASE_URL}${endpoint}`, {
       method: 'PUT',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${token}`,
-      },
+      headers: buildAuthHeaders(token, endpoint),
       body: JSON.stringify(data),
     });
     return handleResponse<T>(response);
@@ -114,9 +125,7 @@ export const api = {
   async authPostForm<T>(endpoint: string, formData: FormData, token: string): Promise<T> {
     const response = await fetch(`${API_BASE_URL}${endpoint}`, {
       method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${token}`,
-      },
+      headers: buildAuthHeaders(token, endpoint, false),
       body: formData,
     });
     return handleResponse<T>(response);
@@ -125,9 +134,7 @@ export const api = {
   async authPutForm<T>(endpoint: string, formData: FormData, token: string): Promise<T> {
     const response = await fetch(`${API_BASE_URL}${endpoint}`, {
       method: 'PUT',
-      headers: {
-        'Authorization': `Bearer ${token}`,
-      },
+      headers: buildAuthHeaders(token, endpoint, false),
       body: formData,
     });
     return handleResponse<T>(response);
@@ -136,10 +143,7 @@ export const api = {
   async authDelete<T>(endpoint: string, token: string): Promise<T> {
     const response = await fetch(`${API_BASE_URL}${endpoint}`, {
       method: 'DELETE',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${token}`,
-      },
+      headers: buildAuthHeaders(token, endpoint),
     });
     return handleResponse<T>(response);
   },
@@ -147,10 +151,7 @@ export const api = {
   async authPatch<T>(endpoint: string, data: unknown, token: string): Promise<T> {
     const response = await fetch(`${API_BASE_URL}${endpoint}`, {
       method: 'PATCH',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${token}`,
-      },
+      headers: buildAuthHeaders(token, endpoint),
       body: JSON.stringify(data),
     });
     return handleResponse<T>(response);

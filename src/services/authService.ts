@@ -219,7 +219,7 @@ export const authService = {
   async logoutRemote(): Promise<void> {
     if (this.isQuickDemoSession()) return;
 
-    const token = this.getToken();
+    const token = localStorage.getItem("token") ?? this.getToken();
     if (!token) return;
 
     // Backend: POST /api/auth/logout expects { token }
@@ -228,14 +228,17 @@ export const authService = {
 
   saveToken(token: string): void {
     localStorage.setItem("auth_token", token);
+    // Backward compatibility for flows that still read `token` directly.
+    localStorage.setItem("token", token);
   },
 
   getToken(): string | null {
-    return localStorage.getItem("auth_token");
+    return localStorage.getItem("auth_token") ?? localStorage.getItem("token");
   },
 
   removeToken(): void {
     localStorage.removeItem("auth_token");
+    localStorage.removeItem("token");
   },
 
   saveUser(user: unknown): void {
