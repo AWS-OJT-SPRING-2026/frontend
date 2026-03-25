@@ -72,7 +72,15 @@ export function StudentLayout() {
 
             {/* Dark canvas with floating content panel */}
             <main className="flex-1 h-screen overflow-hidden p-3 relative">
-                <div className="h-full bg-[#F7F7F2] rounded-3xl overflow-auto shadow-2xl relative flex flex-col">
+                <div
+                    className="h-full rounded-3xl overflow-auto shadow-2xl relative flex flex-col"
+                    style={{
+                        backgroundColor: '#F7F7F2',
+                        backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24' height='24'%3E%3Ctext x='50%25' y='55%25' dominant-baseline='middle' text-anchor='middle' font-size='10' fill='%231A1A1A' fill-opacity='0.12' font-family='sans-serif'%3E%C3%97%3C/text%3E%3C/svg%3E"),
+                                         radial-gradient(ellipse at center, transparent 20%, #F7F7F2 80%)`,
+                        backgroundBlendMode: 'normal',
+                    }}
+                >
                     <Outlet />
                 </div>
             </main>

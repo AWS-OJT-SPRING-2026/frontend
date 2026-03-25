@@ -28,78 +28,68 @@ interface Subject {
 const SubjectIcons: Record<string, (color: string) => React.ReactNode> = {
     NguVan: (c) => (
         <svg viewBox="0 0 40 40" fill="none" xmlns="http://www.w3.org/2000/svg" width="100%" height="100%">
-            {/* Book body */}
-            <rect x="5" y="3" width="23" height="31" rx="3" fill={c} opacity="0.25" stroke={c} strokeWidth="2.5"/>
+            {/* Book body - solid stroke for clarity */}
+            <rect x="6" y="4" width="22" height="30" rx="3" fill={c} fillOpacity="0.15" stroke="#1A1A1A" strokeWidth="2.5" />
             {/* Lines of text */}
-            <rect x="9" y="9" width="15" height="3" rx="1.5" fill={c}/>
-            <rect x="9" y="15" width="15" height="3" rx="1.5" fill={c}/>
-            <rect x="9" y="21" width="10" height="3" rx="1.5" fill={c}/>
-            {/* Pen circle */}
-            <circle cx="31" cy="31" r="7" fill={c}/>
-            <rect x="29.5" y="25.5" width="3" height="6" rx="1.5" fill="white"/>
-            <rect x="27.5" y="30" width="7" height="3" rx="1.5" fill="white"/>
+            <rect x="10" y="10" width="14" height="2.5" rx="1" fill="#1A1A1A" />
+            <rect x="10" y="15" width="14" height="2.5" rx="1" fill="#1A1A1A" />
+            <rect x="10" y="20" width="10" height="2.5" rx="1" fill="#1A1A1A" />
+            {/* Ink drop or accent */}
+            <circle cx="28" cy="28" r="5" fill={c} />
+            <circle cx="28" cy="28" r="2.5" fill="white" fillOpacity="0.5" />
         </svg>
     ),
     Toan: (c) => (
         <svg viewBox="0 0 40 40" fill="none" xmlns="http://www.w3.org/2000/svg" width="100%" height="100%">
-            {/* Bounding square */}
-            <rect x="3" y="3" width="34" height="34" rx="6" fill={c} opacity="0.2" stroke={c} strokeWidth="3"/>
-            {/* Plus cross */}
-            <rect x="17.5" y="8" width="5" height="24" rx="2.5" fill={c}/>
-            <rect x="8" y="17.5" width="24" height="5" rx="2.5" fill={c}/>
-            {/* Minus to the upper-left (−) */}
-            <rect x="9" y="10" width="8" height="3" rx="1.5" fill={c} opacity="0.5"/>
-            {/* Circle top-right */}
-            <circle cx="30" cy="13" r="4" fill={c}/>
+            {/* Plus cross - made bold and dark center */}
+            <rect x="17" y="6" width="6" height="28" rx="3" fill="#1A1A1A" />
+            <rect x="6" y="17" width="28" height="6" rx="3" fill="#1A1A1A" />
+            {/* Accent dots in subject color */}
+            <circle cx="10" cy="10" r="3.5" fill={c} />
+            <circle cx="30" cy="30" r="3.5" fill={c} />
+            <circle cx="30" cy="10" r="3.5" fill={c} opacity="0.5" />
+            <circle cx="10" cy="30" r="3.5" fill={c} opacity="0.5" />
         </svg>
     ),
     VatLy: (c) => (
         <svg viewBox="0 0 40 40" fill="none" xmlns="http://www.w3.org/2000/svg" width="100%" height="100%">
-            {/* Three ellipses simulating atom orbits */}
-            <ellipse cx="20" cy="20" rx="17" ry="7" stroke={c} strokeWidth="3" fill={c} fillOpacity="0.1"/>
-            <ellipse cx="20" cy="20" rx="17" ry="7" stroke={c} strokeWidth="3" fill="none" transform="rotate(60 20 20)"/>
-            <ellipse cx="20" cy="20" rx="17" ry="7" stroke={c} strokeWidth="3" fill="none" transform="rotate(120 20 20)"/>
+            {/* Orbits */}
+            <ellipse cx="20" cy="20" rx="17" ry="6" stroke="#1A1A1A" strokeWidth="2.5" fill="none" opacity="0.3" />
+            <ellipse cx="20" cy="20" rx="17" ry="6" stroke="#1A1A1A" strokeWidth="2.5" fill="none" transform="rotate(60 20 20)" opacity="0.6" />
+            <ellipse cx="20" cy="20" rx="17" ry="6" stroke="#1A1A1A" strokeWidth="2.5" fill="none" transform="rotate(120 20 20)" />
             {/* Nucleus */}
-            <circle cx="20" cy="20" r="5" fill={c}/>
+            <circle cx="20" cy="20" r="5" fill={c} />
+            <circle cx="20" cy="20" r="2.5" fill="white" opacity="0.4" />
         </svg>
     ),
     HoaHoc: (c) => (
         <svg viewBox="0 0 40 40" fill="none" xmlns="http://www.w3.org/2000/svg" width="100%" height="100%">
-            {/* Flask neck */}
-            <rect x="15" y="3" width="10" height="10" rx="2" fill={c} opacity="0.3" stroke={c} strokeWidth="2.5"/>
             {/* Flask body */}
-            <path d="M11 13 C5 18 3 27 8 33 C12 37 28 37 32 33 C37 27 35 18 29 13Z"
-                fill={c} opacity="0.22" stroke={c} strokeWidth="2.5" strokeLinecap="round"/>
-            {/* Bubbles inside */}
-            <circle cx="15" cy="26" r="3.5" fill={c}/>
-            <circle cx="25" cy="22" r="3" fill={c} opacity="0.7"/>
-            <circle cx="22" cy="30" r="2" fill={c} opacity="0.5"/>
+            <path d="M12 10 L28 10 L34 32 C35 36 32 37 20 37 C8 37 5 36 6 32 Z"
+                fill={c} opacity="0.15" stroke="#1A1A1A" strokeWidth="2.5" />
+            {/* Liquid line */}
+            <path d="M8 26 C12 24 28 28 32 26 V32 C32 35 28 35 20 35 C12 35 8 35 8 32 Z" fill={c} />
+            {/* Bubbles */}
+            <circle cx="15" cy="18" r="2.5" fill="#1A1A1A" opacity="0.6" />
+            <circle cx="24" cy="15" r="2" fill="#1A1A1A" opacity="0.4" />
+            <circle cx="20" cy="22" r="1.5" fill="#1A1A1A" opacity="0.2" />
         </svg>
     ),
     TiengAnh: (c) => (
         <svg viewBox="0 0 40 40" fill="none" xmlns="http://www.w3.org/2000/svg" width="100%" height="100%">
-            {/* Globe outer circle */}
-            <circle cx="20" cy="20" r="17" stroke={c} strokeWidth="3" fill={c} fillOpacity="0.15"/>
-            {/* Longitude ellipse */}
-            <ellipse cx="20" cy="20" rx="8" ry="17" stroke={c} strokeWidth="2.5" fill="none"/>
-            {/* Equator */}
-            <line x1="3" y1="20" x2="37" y2="20" stroke={c} strokeWidth="2.5" strokeLinecap="round"/>
-            {/* Upper latitude arc */}
-            <path d="M5 13 Q20 9 35 13" stroke={c} strokeWidth="2.5" fill="none" strokeLinecap="round"/>
-            {/* Lower latitude arc */}
-            <path d="M5 27 Q20 31 35 27" stroke={c} strokeWidth="2.5" fill="none" strokeLinecap="round"/>
+            <circle cx="20" cy="20" r="16" stroke="#1A1A1A" strokeWidth="2.5" fill={c} fillOpacity="0.1" />
+            <ellipse cx="20" cy="20" rx="6" ry="16" stroke="#1A1A1A" strokeWidth="2" fill="none" />
+            <line x1="4" y1="20" x2="36" y2="20" stroke="#1A1A1A" strokeWidth="2" strokeLinecap="round" />
+            <path d="M7 12 Q20 8 33 12" stroke={c} strokeWidth="2.5" fill="none" strokeLinecap="round" />
+            <path d="M7 28 Q20 32 33 28" stroke={c} strokeWidth="2.5" fill="none" strokeLinecap="round" />
         </svg>
     ),
     LichSu: (c) => (
         <svg viewBox="0 0 40 40" fill="none" xmlns="http://www.w3.org/2000/svg" width="100%" height="100%">
-            {/* Pyramid triangle */}
-            <path d="M20 3 L36 35 H4 Z" fill={c} opacity="0.2" stroke={c} strokeWidth="3" strokeLinejoin="round"/>
-            {/* Door opening */}
-            <rect x="15.5" y="22" width="9" height="13" rx="1.5" fill={c} opacity="0.9"/>
-            {/* Base line */}
-            <rect x="8" y="30" width="24" height="4" rx="2" fill={c}/>
-            {/* Capstone */}
-            <circle cx="20" cy="13" r="3.5" fill={c}/>
+            <path d="M20 5 L35 33 H5 Z" fill={c} opacity="0.1" stroke="#1A1A1A" strokeWidth="2.5" />
+            <rect x="16" y="24" width="8" height="9" rx="1" fill="#1A1A1A" />
+            <path d="M5 33 H35" stroke="#1A1A1A" strokeWidth="3" strokeLinecap="round" />
+            <circle cx="20" cy="15" r="3" fill={c} />
         </svg>
     ),
 };
@@ -108,8 +98,8 @@ const SubjectIcons: Record<string, (color: string) => React.ReactNode> = {
 // ─── Mock Data ────────────────────────────────────────────────────────────────
 const subjects: Subject[] = [
     {
-        id: 1, name: 'Ngữ Văn', color: '#6C63FF', bg: '#B8B5FF',
-        icon: SubjectIcons.NguVan('#6C63FF'),
+        id: 1, name: 'Ngữ Văn', color: '#905de9ff', bg: '#bbaefaff',
+        icon: SubjectIcons.NguVan('#905de9ff'),
         chapters: [
             {
                 id: 11, title: 'Chương 1: Văn học dân gian Việt Nam',
@@ -312,7 +302,7 @@ export function StudentDocuments() {
                     {/* Subject header */}
                     <div className="rounded-3xl border-2 border-[#1A1A1A] overflow-hidden" style={{ backgroundColor: selectedSubject.bg }}>
                         <div className="p-6 flex items-center gap-5">
-                            <div className="w-14 h-14 shrink-0 rounded-2xl border-2 border-[#1A1A1A]/20 flex items-center justify-center p-2.5" style={{ backgroundColor: 'white' }}>{selectedSubject.icon}</div>
+                            <div className="w-14 h-14 shrink-0 rounded-2xl border-2 border-[#1A1A1A] flex items-center justify-center p-3 bg-white shadow-[3px_3px_0_0_#1A1A1A]">{selectedSubject.icon}</div>
                             <div>
                                 <h1 className="text-2xl font-extrabold text-[#1A1A1A]">{selectedSubject.name}</h1>
                                 <p className="text-sm font-bold text-[#1A1A1A]/60 mt-1">{selectedSubject.chapters.length} chương · {totalLessons} bài học</p>
@@ -396,7 +386,7 @@ export function StudentDocuments() {
                                 <div className="rounded-3xl border-2 border-[#1A1A1A] overflow-hidden hover:shadow-lg transition-all duration-200 group-hover:-translate-y-0.5 bg-white">
                                     <div className="h-2 w-full" style={{ backgroundColor: subject.bg }} />
                                     <div className="p-6">
-                                        <div className="w-14 h-14 rounded-2xl border-2 border-[#1A1A1A]/20 flex items-center justify-center mb-4 p-3 group-hover:scale-105 transition-transform" style={{ backgroundColor: subject.bg }}>
+                                        <div className="w-14 h-14 rounded-2xl border-2 border-[#1A1A1A] flex items-center justify-center mb-4 p-3 group-hover:scale-105 transition-transform bg-white shadow-[3px_3px_0_0_#1A1A1A]">
                                             {subject.icon}
                                         </div>
                                         <h3 className="font-extrabold text-[#1A1A1A] text-lg">{subject.name}</h3>

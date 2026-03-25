@@ -125,10 +125,10 @@ function TestCard({ test, onStart }: { test: Test; onStart: (t: Test) => void })
     const urgent = !isCompleted && isUrgent(test.dueDate);
 
     return (
-        <div className={`bg-white rounded-3xl border-2 overflow-hidden hover:shadow-lg transition-all ${urgent ? 'border-[#FF6B4A]/50 shadow-[#FF6B4A]/10' : 'border-[#1A1A1A]'}`}>
+        <div className={`bg-white rounded-3xl border-2 border-[#1A1A1A] overflow-hidden hover:shadow-lg transition-all ${urgent ? 'shadow-[6px_6px_0_0_rgba(255,107,74,0.2)]' : ''}`}>
             <div className="p-5 flex flex-col sm:flex-row sm:items-center gap-4">
                 {/* Subject icon */}
-                <div className="w-14 h-14 rounded-2xl border-2 border-[#1A1A1A] flex items-center justify-center shrink-0 relative" style={{ backgroundColor: bg }}>
+                <div className="w-14 h-14 rounded-2xl border-2 border-[#1A1A1A] flex items-center justify-center shrink-0 relative shadow-[2px_2px_0_0_#1A1A1A]" style={{ backgroundColor: bg }}>
                     {isCompleted 
                         ? <CheckCircle className="w-7 h-7 text-[#1A1A1A]" weight="fill" />
                         : <ClipboardText className="w-7 h-7 text-[#1A1A1A]" weight="fill" />
@@ -138,14 +138,14 @@ function TestCard({ test, onStart }: { test: Test; onStart: (t: Test) => void })
                 {/* Info */}
                 <div className="flex-1 min-w-0">
                     <div className="flex flex-wrap items-center gap-2 mb-1.5">
-                        <span className="text-[10px] font-extrabold px-3 py-1 rounded-full border-2 border-[#1A1A1A]/20 text-[#1A1A1A] flex items-center gap-1 bg-[#f7f7f2]">
+                        <span className="text-[10px] font-extrabold px-3 py-1 rounded-full border-2 border-[#1A1A1A] text-[#1A1A1A] flex items-center gap-1 bg-white shadow-[2px_2px_0_0_#1A1A1A]">
                             {test.category === 'homework' ? 'Bài tập' : 'Kiểm tra'}
                         </span>
-                        <span className="text-[10px] font-extrabold px-3 py-1 rounded-full border-2 border-[#1A1A1A]/20 text-[#1A1A1A]" style={{ backgroundColor: bg }}>
+                        <span className="text-[10px] font-extrabold px-3 py-1 rounded-full border-2 border-[#1A1A1A] text-[#1A1A1A] shadow-[2px_2px_0_0_#1A1A1A]" style={{ backgroundColor: bg }}>
                             {test.subject}
                         </span>
                         {test.status === 'in_progress' && (
-                            <span className="text-[10px] font-extrabold bg-[#FF6B4A] text-white px-3 py-1 rounded-full animate-pulse">
+                            <span className="text-[10px] font-extrabold bg-[#FF6B4A] text-white px-3 py-1 rounded-full border-2 border-[#1A1A1A] shadow-[2px_2px_0_0_#1A1A1A] animate-pulse">
                                 Đang làm
                             </span>
                         )}
@@ -161,10 +161,10 @@ function TestCard({ test, onStart }: { test: Test; onStart: (t: Test) => void })
                                 {test.correctCount}/{test.questionCount} câu đúng
                             </span>
                         ) : (
-                            <span className={`flex items-center gap-1 px-2 py-0.5 rounded-md ${urgent ? 'text-[#FF6B4A] bg-[#FF6B4A]/10' : 'text-[#1A1A1A]/70'}`}>
+                            <span className={`flex items-center gap-1 px-2 py-0.5 rounded-md ${urgent ? 'text-[#FF6B4A] font-black' : 'text-[#1A1A1A]/70'}`}>
                                 {urgent ? <Hourglass className="w-4 h-4 animate-spin-slow" weight="fill"/> : null}
                                 Hạn: {test.dueDate}
-                                {urgent && <span className="ml-1 text-[10px] uppercase font-extrabold shadow-sm bg-[#FF6B4A] text-white px-1.5 py-0.5 rounded">Sắp hết</span>}
+                                {urgent && <span className="ml-1 text-[10px] uppercase font-extrabold shadow-[2px_2px_0_0_#1A1A1A] bg-[#FF6B4A] text-white px-1.5 py-0.5 rounded border-2 border-[#1A1A1A]">Sắp hết</span>}
                             </span>
                         )}
                     </div>
@@ -181,8 +181,8 @@ function TestCard({ test, onStart }: { test: Test; onStart: (t: Test) => void })
                     <button 
                         onClick={() => onStart(test)}
                         className={`h-10 px-5 rounded-2xl font-extrabold text-sm flex items-center gap-1.5 border-2 border-[#1A1A1A] transition-all hover:-translate-y-0.5 ${isCompleted 
-                            ? 'bg-[#1A1A1A]/5 text-[#1A1A1A] hover:bg-[#1A1A1A]/10' 
-                            : 'bg-[#FF6B4A] text-white border-[#FF6B4A] hover:bg-[#ff5535] shadow-[0_4px_0_0_#A83F2A] hover:translate-y-0.5 hover:shadow-[0_2px_0_0_#A83F2A]'}`}
+                            ? 'bg-[#1A1A1A]/5 text-[#1A1A1A] hover:bg-[#1A1A1A]/10 shadow-[2px_2px_0_0_#1A1A1A]' 
+                            : 'bg-[#FF6B4A] text-white hover:bg-[#ff5535] shadow-[3px_3px_0_0_#1A1A1A] hover:shadow-[1px_1px_0_0_#1A1A1A]'}`}
                     >
                         {isCompleted 
                             ? <><ArrowCounterClockwise className="w-4 h-4" /> Xem lại</>
@@ -219,15 +219,15 @@ function TestDetailView({
                 {'<-'} Quay lại danh sách
             </button>
 
-            <div className="bg-white rounded-3xl border-2 border-[#1A1A1A] p-6 md:p-8 space-y-6 shadow-[4px_4px_0_0_rgba(26,26,26,1)]">
+            <div className="bg-white rounded-3xl border-2 border-[#1A1A1A] p-6 md:p-8 space-y-6 shadow-[8px_8px_0_0_rgba(26,26,26,1)]">
                 <div className="flex flex-wrap items-center gap-2">
-                    <span className="text-[10px] font-extrabold px-3 py-1 rounded-full border-2 border-[#1A1A1A]/20 bg-[#F7F7F2] text-[#1A1A1A]">
+                    <span className="text-[10px] font-extrabold px-3 py-1 rounded-full border-2 border-[#1A1A1A] bg-white text-[#1A1A1A] shadow-[2px_2px_0_0_#1A1A1A]">
                         {test.category === 'homework' ? 'Bài tập' : 'Kiểm tra'}
                     </span>
-                    <span className="text-[10px] font-extrabold px-3 py-1 rounded-full border-2 border-[#1A1A1A]/20 bg-[#FFF5E6] text-[#1A1A1A]">
+                    <span className="text-[10px] font-extrabold px-3 py-1 rounded-full border-2 border-[#1A1A1A] text-[#1A1A1A] shadow-[2px_2px_0_0_#1A1A1A]" style={{ backgroundColor: SUBJECT_BG[test.subject] }}>
                         {test.subject}
                     </span>
-                    <span className={`text-[10px] font-extrabold px-3 py-1 rounded-full border ${isCompleted ? 'bg-emerald-100 text-emerald-700 border-emerald-200' : isInProgress ? 'bg-[#FF6B4A]/10 text-[#FF6B4A] border-[#FF6B4A]/20' : 'bg-gray-100 text-gray-600 border-gray-200'}`}>
+                    <span className={`text-[10px] font-extrabold px-3 py-1 rounded-full border-2 border-[#1A1A1A] shadow-[2px_2px_0_0_#1A1A1A] ${isCompleted ? 'bg-emerald-100 text-emerald-700' : isInProgress ? 'bg-[#FF6B4A] text-white animate-pulse' : 'bg-gray-100 text-gray-600'}`}>
                         {statusLabel}
                     </span>
                 </div>
@@ -328,14 +328,14 @@ function DetailedReviewView({ test, onBack }: { test: Test; onBack: () => void }
                             return (
                                 <div key={q.id} className="rounded-2xl border-2 border-[#1A1A1A]/10 p-4 md:p-5 bg-[#FDFDFD]">
                                     <div className="flex flex-wrap items-center gap-2 mb-3">
-                                        <span className="text-[10px] font-extrabold px-2 py-1 rounded-full bg-[#1A1A1A] text-white">Câu {q.id}</span>
-                                        <span className="text-[10px] font-extrabold px-2 py-1 rounded-full border border-[#1A1A1A]/20 text-[#1A1A1A]/70">{q.topic}</span>
+                                        <span className="text-[10px] font-extrabold px-2 py-1 rounded-full bg-[#1A1A1A] text-white border-2 border-[#1A1A1A] shadow-[2px_2px_0_0_#1A1A1A]">Câu {q.id}</span>
+                                        <span className="text-[10px] font-extrabold px-2 py-1 rounded-full border-2 border-[#1A1A1A] text-[#1A1A1A] shadow-[2px_2px_0_0_#1A1A1A] bg-white">{q.topic}</span>
                                         {isSkipped ? (
-                                            <span className="text-[10px] font-extrabold px-2 py-1 rounded-full bg-amber-100 text-amber-700 border border-amber-200">Bỏ trống</span>
+                                            <span className="text-[10px] font-extrabold px-2 py-1 rounded-full bg-amber-100 text-amber-700 border-2 border-[#1A1A1A] shadow-[2px_2px_0_0_#1A1A1A]">Bỏ trống</span>
                                         ) : isCorrect ? (
-                                            <span className="text-[10px] font-extrabold px-2 py-1 rounded-full bg-emerald-100 text-emerald-700 border border-emerald-200">Đúng</span>
+                                            <span className="text-[10px] font-extrabold px-2 py-1 rounded-full bg-emerald-100 text-emerald-700 border-2 border-[#1A1A1A] shadow-[2px_2px_0_0_#1A1A1A]">Đúng</span>
                                         ) : (
-                                            <span className="text-[10px] font-extrabold px-2 py-1 rounded-full bg-red-100 text-red-700 border border-red-200">Sai</span>
+                                            <span className="text-[10px] font-extrabold px-2 py-1 rounded-full bg-red-100 text-red-700 border-2 border-[#1A1A1A] shadow-[2px_2px_0_0_#1A1A1A]">Sai</span>
                                         )}
                                     </div>
 
@@ -731,8 +731,7 @@ export function StudentTests() {
 
     const availableTests = allTests.filter(t => t.status !== 'completed');
     const completedTests = allTests.filter(t => t.status === 'completed');
-    const avgScore = completedTests.length > 0
-        ? (completedTests.reduce((s, t) => s + (t.score ?? 0), 0) / completedTests.length).toFixed(1) : '—';
+
 
     // Apply filters
     const filteredTests = useMemo(() => {
@@ -804,27 +803,9 @@ export function StudentTests() {
 
     return (
         <div className="p-6 lg:p-8 space-y-8 max-w-5xl mx-auto" style={{ fontFamily: "'Nunito', sans-serif" }}>
-            <div className="flex flex-col md:flex-row md:items-end justify-between gap-6">
-                <div>
-                    <p className="text-xs font-extrabold text-[#FF6B4A] uppercase tracking-widest mb-1">Học tập hiệu quả</p>
-                    <h1 className="text-4xl font-black text-[#1A1A1A] tracking-tight">Bài tập & Kiểm tra</h1>
-                </div>
-                
-                {/* Stats */}
-                <div className="flex gap-4 overflow-x-auto pb-2 -mx-6 px-6 md:pb-0 md:mx-0 md:px-0">
-                    <div className="shrink-0 rounded-3xl p-4 md:p-5 border-2 border-[#1A1A1A] bg-[#FFB5B5] shadow-[4px_4px_0_0_rgba(26,26,26,1)]">
-                        <div className="text-3xl font-black text-[#1A1A1A]">{availableTests.length}</div>
-                        <div className="text-[10px] md:text-xs font-extrabold text-[#1A1A1A] uppercase mt-1">Chưa làm</div>
-                    </div>
-                    <div className="shrink-0 rounded-3xl p-4 md:p-5 border-2 border-[#1A1A1A] bg-[#95E1D3] shadow-[4px_4px_0_0_rgba(26,26,26,1)]">
-                        <div className="text-3xl font-black text-[#1A1A1A]">{completedTests.length}</div>
-                        <div className="text-[10px] md:text-xs font-extrabold text-[#1A1A1A] uppercase mt-1">Đã xong</div>
-                    </div>
-                    <div className="shrink-0 rounded-3xl p-4 md:p-5 border-2 border-[#1A1A1A] bg-[#FCE38A] shadow-[4px_4px_0_0_rgba(26,26,26,1)]">
-                        <div className="text-3xl font-black text-[#1A1A1A]">{avgScore}</div>
-                        <div className="text-[10px] md:text-xs font-extrabold text-[#1A1A1A] uppercase mt-1">Điểm trung bình</div>
-                    </div>
-                </div>
+            <div className="mb-2">
+                <p className="text-xs font-extrabold text-[#FF6B4A] uppercase tracking-widest mb-1">Học tập hiệu quả</p>
+                <h1 className="text-4xl font-black text-[#1A1A1A] tracking-tight">Bài tập &amp; Kiểm tra</h1>
             </div>
 
             <div className="bg-white rounded-3xl border-2 border-[#1A1A1A] p-2 flex flex-col sm:flex-row gap-4 shadow-[4px_4px_0_0_rgba(26,26,26,1)] relative z-10 w-full">
