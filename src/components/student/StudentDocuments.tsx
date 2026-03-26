@@ -283,7 +283,7 @@ export function StudentDocuments() {
     // ── Lesson reader ─────────────────────────────────────────────────────────
     if (selectedLesson && selectedSubject) {
         return (
-            <div className="p-8 min-h-screen bg-[#F7F7F2]" style={{ fontFamily: "'Nunito', sans-serif" }}>
+            <div className="p-8 min-h-screen" style={{ fontFamily: "'Nunito', sans-serif" }}>
                 <LessonReader lesson={selectedLesson} subject={selectedSubject} onBack={() => setSelectedLesson(null)} />
             </div>
         );
@@ -293,7 +293,7 @@ export function StudentDocuments() {
     if (selectedSubject) {
         const totalLessons = selectedSubject.chapters.reduce((s, c) => s + c.lessons.length, 0);
         return (
-            <div className="p-8 min-h-screen bg-[#F7F7F2]" style={{ fontFamily: "'Nunito', sans-serif" }}>
+            <div className="p-8 min-h-screen" style={{ fontFamily: "'Nunito', sans-serif" }}>
                 <div className="max-w-3xl mx-auto space-y-5">
                     <button onClick={() => setSelectedSubject(null)} className="flex items-center gap-2 text-[#1A1A1A]/50 hover:text-[#1A1A1A] font-extrabold text-sm transition-colors">
                         <CaretLeft className="w-4 h-4" /> Tất cả môn học
@@ -363,7 +363,7 @@ export function StudentDocuments() {
 
     // ── Subject grid (home) ───────────────────────────────────────────────────
     return (
-        <div className="p-8 min-h-screen bg-[#F7F7F2]" style={{ fontFamily: "'Nunito', sans-serif" }}>
+        <div className="p-8 min-h-screen" style={{ fontFamily: "'Nunito', sans-serif" }}>
             <div className="max-w-4xl mx-auto space-y-6">
                 <div>
                     <p className="text-xs font-extrabold text-gray-400 uppercase tracking-widest mb-1">Chọn môn học để xem lý thuyết</p>

@@ -486,7 +486,7 @@ export function StudentSchedule() {
     };
 
     return (
-        <div className="p-8 pb-20 space-y-6 bg-[#F7F7F2] min-h-screen" style={{ fontFamily: "'Nunito', sans-serif" }}>
+        <div className="p-8 pb-20 space-y-6 min-h-screen" style={{ fontFamily: "'Nunito', sans-serif" }}>
             <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4">
                 <div className="flex items-center gap-3">
                     <div>
