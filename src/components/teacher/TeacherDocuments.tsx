@@ -1,4 +1,4 @@
-import { UploadSimple, FileText, Eye, List, SquaresFour, Info, CheckCircle, Trash } from '@phosphor-icons/react';
+import { UploadSimple, FileText, List, SquaresFour, Info, CheckCircle, Trash } from '@phosphor-icons/react';
 import { useState, useEffect, useRef } from 'react';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
 import { Label } from '../ui/label';

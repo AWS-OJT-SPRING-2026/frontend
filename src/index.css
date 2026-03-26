@@ -146,3 +146,159 @@
 .bg-white.rounded-2xl {
   box-shadow: 4px 4px 0 0 rgba(26, 26, 26, 1);
 }
+
+/* ═══════════════════════════════════════════════════════════════
+   DARK MODE – Global overrides for authenticated pages
+   Applied when <html class="dark"> is set by SettingsContext
+   ═══════════════════════════════════════════════════════════════ */
+
+/* ── Text colors ── */
+html.dark .text-\[\#1A1A1A\] { color: #e5e5e5 !important; }
+html.dark .text-\[\#1A1A1A\]\/50 { color: rgba(229, 229, 229, 0.6) !important; }
+html.dark .text-\[\#1A1A1A\]\/60 { color: rgba(229, 229, 229, 0.7) !important; }
+html.dark .text-\[\#1A1A1A\]\/70 { color: rgba(229, 229, 229, 0.8) !important; }
+html.dark .text-\[\#1A1A1A\]\/80 { color: rgba(229, 229, 229, 0.85) !important; }
+
+/* ── Background overrides ── */
+html.dark .bg-\[\#F7F7F2\] { background-color: #1e1e1e !important; }
+html.dark .bg-white { background-color: #262626 !important; }
+html.dark .bg-gray-50 { background-color: #1a1a1a !important; }
+html.dark .bg-gray-100 { background-color: #1f1f1f !important; }
+html.dark .bg-gray-50\/50 { background-color: rgba(26, 26, 26, 0.5) !important; }
+
+/* ── Card shadow removal in dark mode ── */
+html.dark .bg-white.rounded-3xl,
+html.dark .bg-white.rounded-2xl {
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.4) !important;
+}
+
+/* ── Border overrides ── */
+html.dark .border-\[\#1A1A1A\] { border-color: #444 !important; }
+html.dark .border-\[\#1A1A1A\]\/10 { border-color: rgba(255, 255, 255, 0.08) !important; }
+html.dark .border-\[\#1A1A1A\]\/20 { border-color: rgba(255, 255, 255, 0.12) !important; }
+html.dark .border-\[\#1A1A1A\]\/5 { border-color: rgba(255, 255, 255, 0.05) !important; }
+html.dark .border-gray-200 { border-color: #333 !important; }
+html.dark .border-gray-300 { border-color: #3a3a3a !important; }
+
+/* ── Input/Form elements ── */
+html.dark input,
+html.dark select,
+html.dark textarea {
+  background-color: #2a2a2a !important;
+  border-color: #444 !important;
+  color: #e5e5e5 !important;
+}
+
+html.dark input::placeholder,
+html.dark textarea::placeholder {
+  color: #888 !important;
+}
+
+html.dark input:focus,
+html.dark select:focus,
+html.dark textarea:focus {
+  border-color: #FF6B4A !important;
+  box-shadow: 0 0 0 2px rgba(255, 107, 74, 0.2) !important;
+}
+
+/* ── Table dark mode ── */
+html.dark table {
+  color: #d1d5db;
+}
+html.dark thead {
+  background-color: #2a2a2a !important;
+}
+html.dark th {
+  color: #9ca3af !important;
+  border-color: #444 !important;
+}
+html.dark td {
+  border-color: #333 !important;
+  color: #d1d5db !important;
+}
+html.dark tbody tr:hover {
+  background-color: rgba(255, 255, 255, 0.04) !important;
+}
+html.dark tbody tr:nth-child(even) {
+  background-color: rgba(255, 255, 255, 0.02);
+}
+
+/* ── Text color classes ── */
+html.dark .text-gray-400 { color: #9ca3af !important; }
+html.dark .text-gray-500 { color: #888 !important; }
+html.dark .text-gray-600 { color: #999 !important; }
+html.dark .text-gray-700 { color: #bbb !important; }
+html.dark .text-gray-800 { color: #d1d5db !important; }
+html.dark .text-gray-900 { color: #e5e5e5 !important; }
+html.dark .text-black { color: #e5e5e5 !important; }
+
+/* ── Specific component overrides for dark mode ── */
+html.dark .bg-\[\#F7F7F2\]\/80 { background-color: rgba(30, 30, 30, 0.8) !important; }
+
+/* Dialog/Modal dark mode */
+html.dark [role="dialog"],
+html.dark .dialog-content {
+  background-color: #262626 !important;
+  border-color: #444 !important;
+  color: #e5e5e5 !important;
+}
+
+/* Scrollbar dark mode */
+html.dark ::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+html.dark ::-webkit-scrollbar-track {
+  background: #1a1a1a;
+}
+html.dark ::-webkit-scrollbar-thumb {
+  background: #444;
+  border-radius: 4px;
+}
+html.dark ::-webkit-scrollbar-thumb:hover {
+  background: #555;
+}
+
+/* StudentReview number input spinner polish */
+.review-number-input::-webkit-outer-spin-button,
+.review-number-input::-webkit-inner-spin-button {
+  opacity: 1;
+  background: #f1f5f9;
+  border-left: 1px solid rgba(148, 163, 184, 0.6);
+  border-radius: 0 0.75rem 0.75rem 0;
+}
+
+html.dark .review-number-input::-webkit-outer-spin-button,
+html.dark .review-number-input::-webkit-inner-spin-button {
+  background: #334155;
+  border-left: 1px solid rgba(148, 163, 184, 0.5);
+  filter: invert(0.92) brightness(1.2);
+}
+
+/* Badge / Tag colors remain vivid in dark mode */
+html.dark .bg-\[\#FCE38A\] { background-color: #FCE38A !important; }
+html.dark .bg-\[\#B8B5FF\] { background-color: #B8B5FF !important; }
+html.dark .bg-\[\#95E1D3\] { background-color: #95E1D3 !important; }
+html.dark .bg-\[\#FFB5B5\] { background-color: #FFB5B5 !important; }
+
+/* Hover states */
+html.dark .hover\:bg-\[\#1A1A1A\]\/5:hover { background-color: rgba(255, 255, 255, 0.05) !important; }
+html.dark .hover\:bg-gray-50:hover { background-color: #2a2a2a !important; }
+
+/* ── bg-white/X overrides  ── */
+html.dark .bg-white\/5 { background-color: rgba(255, 255, 255, 0.05) !important; }
+html.dark .bg-white\/10 { background-color: rgba(255, 255, 255, 0.1) !important; }
+
+/* ── Selection highlight ── */
+html.dark ::selection {
+  background: rgba(255, 107, 74, 0.3);
+  color: #fff;
+}
+
+/* ── Divider ── */
+html.dark .divide-gray-200 > :not([hidden]) ~ :not([hidden]) {
+  border-color: #333;
+}
+html.dark hr {
+  border-color: #333;
+}

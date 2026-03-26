@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { UserCircle, Headset, X, PaperPlaneTilt, Phone } from '@phosphor-icons/react';
 import { useAuth } from '../context/AuthContext';
+import { useSettings } from '../context/SettingsContext';
 import { useNavigate } from 'react-router-dom';
 import { cn } from '../lib/utils';
 import { authService } from '../services/authService';
@@ -13,6 +14,7 @@ interface UserMenuProps {
 
 export function UserMenu({ role }: UserMenuProps) {
     const { user } = useAuth();
+    const { t } = useSettings();
     const navigate = useNavigate();
     const [isOpen, setIsOpen] = useState(false);
     const [activeModal, setActiveModal] = useState<'support' | null>(null);
@@ -22,7 +24,7 @@ export function UserMenu({ role }: UserMenuProps) {
     // Support States
     const [message, setMessage] = useState('');
     const [chat, setChat] = useState<{ type: 'user' | 'admin', text: string }[]>([
-        { type: 'admin', text: 'Chào bạn! EduCare có thể giúp gì cho bạn?' }
+        { type: 'admin', text: t.userMenu.supportGreeting }
     ]);
 
     const handleSendMessage = () => {
@@ -30,7 +32,7 @@ export function UserMenu({ role }: UserMenuProps) {
         setChat([...chat, { type: 'user', text: message }]);
         setMessage('');
         setTimeout(() => {
-            setChat(prev => [...prev, { type: 'admin', text: 'Cảm ơn bạn. Yêu cầu của bạn đang được xử lý.' }]);
+            setChat(prev => [...prev, { type: 'admin', text: t.userMenu.thankYou }]);
         }, 1000);
     };
 
@@ -126,14 +128,14 @@ export function UserMenu({ role }: UserMenuProps) {
                         className="w-full flex items-center gap-3 px-4 py-3 text-gray-400 hover:text-white hover:bg-white/5 transition-all font-extrabold text-sm border-b border-[#333]"
                     >
                         <UserCircle size={20} weight="bold" />
-                        Tài khoản
+                        {t.common.account}
                     </button>
                     <button 
                         onClick={() => { setActiveModal('support'); setIsOpen(false); }}
                         className="w-full flex items-center gap-3 px-4 py-3 text-gray-400 hover:text-white hover:bg-white/5 transition-all font-extrabold text-sm"
                     >
                         <Headset size={20} weight="bold" />
-                        Hỗ trợ
+                        {t.common.support}
                     </button>
                 </div>
             )}
@@ -149,10 +151,10 @@ export function UserMenu({ role }: UserMenuProps) {
                                     <Headset size={24} weight="fill" />
                                 </div>
                                 <div className="text-left">
-                                    <h2 className="text-lg font-extrabold text-[#1A1A1A]">Hỗ trợ EduCare</h2>
+                                    <h2 className="text-lg font-extrabold text-[#1A1A1A]">{t.userMenu.supportTitle}</h2>
                                     <p className="text-[10px] font-extrabold text-emerald-500 flex items-center gap-1">
                                         <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
-                                        Admin đang trực tuyến
+                                        {t.userMenu.adminOnline}
                                     </p>
                                 </div>
                             </div>
@@ -185,11 +187,11 @@ export function UserMenu({ role }: UserMenuProps) {
                             <div className="flex items-center gap-3">
                                 <Phone size={20} weight="fill" className="text-[#1A1A1A]" />
                                 <div className="text-left">
-                                    <p className="text-[9px] font-extrabold text-gray-500 uppercase tracking-widest leading-none mb-1">Hotline 24/7</p>
+                                    <p className="text-[9px] font-extrabold text-gray-500 uppercase tracking-widest leading-none mb-1">{t.userMenu.hotline}</p>
                                     <p className="text-sm font-extrabold text-[#1A1A1A]">1900 6688 (Admin)</p>
                                 </div>
                             </div>
-                            <a href="tel:19006688" className="bg-[#1A1A1A] text-white px-4 py-2 rounded-xl text-xs font-extrabold">Gọi ngay</a>
+                            <a href="tel:19006688" className="bg-[#1A1A1A] text-white px-4 py-2 rounded-xl text-xs font-extrabold">{t.userMenu.callNow}</a>
                         </div>
 
                         {/* Input Area */}
@@ -199,7 +201,7 @@ export function UserMenu({ role }: UserMenuProps) {
                                     value={message}
                                     onChange={(e) => setMessage(e.target.value)}
                                     onKeyPress={(e) => e.key === 'Enter' && handleSendMessage()}
-                                    placeholder="Nhập nội dung cần hỗ trợ..."
+                                    placeholder={t.userMenu.inputPlaceholder}
                                     className="w-full bg-[#F7F7F2] border-2 border-[#1A1A1A]/10 rounded-2xl px-6 py-4 font-bold focus:outline-none focus:border-[#FF6B4A] pr-16 text-left" 
                                 />
                                 <button 

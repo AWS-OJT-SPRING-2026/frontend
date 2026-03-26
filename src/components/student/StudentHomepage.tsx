@@ -1,6 +1,7 @@
 import { useRef, useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { MagnifyingGlass, Bell, BookmarkSimple, ArrowRight, CheckCircle, Info } from '@phosphor-icons/react';
+import { useSettings } from '../../context/SettingsContext';
 
 const courses = [
     {
@@ -90,8 +91,20 @@ const mockNotificationsData = [
     },
 ];
 
+function hexToRgba(hex: string, alpha: number): string {
+    const cleaned = hex.replace('#', '');
+    const normalized = cleaned.length === 3 ? cleaned.split('').map(ch => ch + ch).join('') : cleaned;
+    const intVal = parseInt(normalized, 16);
+    const r = (intVal >> 16) & 255;
+    const g = (intVal >> 8) & 255;
+    const b = intVal & 255;
+    return `rgba(${r}, ${g}, ${b}, ${alpha})`;
+}
+
 export function StudentHomepage() {
     const navigate = useNavigate();
+    const { theme } = useSettings();
+    const isDark = theme === 'dark';
     const [showNotifications, setShowNotifications] = useState(false);
     const [showAllNotifications, setShowAllNotifications] = useState(false);
     const [notifications, setNotifications] = useState(mockNotificationsData);
@@ -132,42 +145,42 @@ export function StudentHomepage() {
     }, []);
 
     return (
-        <div className="min-h-screen p-8" style={{ fontFamily: "'Nunito', sans-serif" }}>
+        <div className={`min-h-screen p-8 ${isDark ? 'bg-gradient-to-b from-[#111111] to-[#1a1a1a]' : ''}`} style={{ fontFamily: "'Nunito', sans-serif" }}>
             {/* Header */}
             <div className="flex items-center justify-between mb-8">
                 <div>
-                    <p className="text-sm font-bold text-gray-400 uppercase tracking-widest mb-1">
+                    <p className={`text-sm font-bold uppercase tracking-widest mb-1 ${isDark ? 'text-[#94a3b8]' : 'text-gray-400'}`}>
                         Chào mừng đến với
                         <span className="text-[#FF6B4A] ml-1">AntiEdu</span>
                     </p>
                     {quote ? (
                         <>
-                            <h1 className="text-2xl font-extrabold text-[#1A1A1A] max-w-xl leading-snug">
+                            <h1 className={`text-2xl font-extrabold max-w-xl leading-snug ${isDark ? 'text-white' : 'text-[#1A1A1A]'}`}>
                                 &ldquo;{quote.q}&rdquo;
                             </h1>
-                            <p className="mt-1 text-sm font-bold text-gray-400">— {quote.a}</p>
+                            <p className={`mt-1 text-sm font-bold ${isDark ? 'text-[#94a3b8]' : 'text-gray-400'}`}>— {quote.a}</p>
                         </>
                     ) : (
-                        <h1 className="text-3xl font-extrabold text-[#1A1A1A]">Chào buổi sáng, Văn A!</h1>
+                        <h1 className={`text-3xl font-extrabold ${isDark ? 'text-white' : 'text-[#1A1A1A]'}`}>Chào buổi sáng, Văn A!</h1>
                     )}
                 </div>
                 <div className="flex items-center gap-3">
                     {/* Search */}
                     <div className="relative">
-                        <MagnifyingGlass className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
+                        <MagnifyingGlass className={`absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 ${isDark ? 'text-[#9ca3af]' : 'text-gray-400'}`} />
                         <input
                             type="text"
                             placeholder="Tìm kiếm..."
-                            className="pl-11 pr-5 py-3 bg-white rounded-2xl border-none shadow-sm text-sm font-semibold text-gray-700 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-[#FF6B4A]/30 w-64"
+                            className={`pl-11 pr-5 py-3 rounded-2xl border-none shadow-sm text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-[#FF6B4A]/30 w-64 ${isDark ? 'bg-[#232328] text-[#f3f4f6] placeholder:text-[#9ca3af]' : 'bg-white text-gray-700 placeholder-gray-400'}`}
                         />
                     </div>
                     {/* Bell */}
                     <div className="relative">
                         <button
                             onClick={() => setShowNotifications(!showNotifications)}
-                            className="w-12 h-12 bg-white rounded-2xl flex items-center justify-center shadow-sm hover:shadow-md transition-shadow relative"
+                            className={`w-12 h-12 rounded-2xl flex items-center justify-center shadow-sm hover:shadow-md transition-shadow relative ${isDark ? 'bg-[#232328] border border-white/10' : 'bg-white'}`}
                         >
-                            <Bell className="w-5 h-5 text-[#1A1A1A]" weight={showNotifications ? 'fill' : 'regular'} />
+                            <Bell className={`w-5 h-5 ${isDark ? 'text-white' : 'text-[#1A1A1A]'}`} weight={showNotifications ? 'fill' : 'regular'} />
                             {unreadCount > 0 && (
                                 <span className="absolute top-2.5 right-2.5 w-2 h-2 bg-[#FF6B4A] rounded-full"></span>
                             )}
@@ -175,9 +188,9 @@ export function StudentHomepage() {
 
                         {/* Notification Dropdown */}
                         {showNotifications && (
-                            <div ref={notificationsRef} className="absolute right-0 mt-3 w-80 bg-white rounded-3xl shadow-2xl border-2 border-[#1A1A1A]/5 z-[100] overflow-hidden animate-[slideInDown_0.2s_ease-out]">
-                                <div className="px-6 py-4 border-b border-gray-100 flex items-center justify-between bg-gray-50/50">
-                                    <h3 className="font-extrabold text-[#1A1A1A] text-sm">Thông báo</h3>
+                            <div ref={notificationsRef} className={`absolute right-0 mt-3 w-80 rounded-3xl shadow-2xl z-[100] overflow-hidden animate-[slideInDown_0.2s_ease-out] ${isDark ? 'bg-[#1b1b22] border border-white/15' : 'bg-white border-2 border-[#1A1A1A]/5'}`}>
+                                <div className={`px-6 py-4 flex items-center justify-between ${isDark ? 'border-b border-white/10 bg-[#15161a]' : 'border-b border-gray-100 bg-gray-50/50'}`}>
+                                    <h3 className={`font-extrabold text-sm ${isDark ? 'text-white' : 'text-[#1A1A1A]'}`}>Thông báo</h3>
                                     <button
                                         onClick={markAllAsRead}
                                         className="text-[10px] font-extrabold text-[#FF6B4A] hover:underline uppercase tracking-widest disabled:opacity-50"
@@ -192,17 +205,17 @@ export function StudentHomepage() {
                                             <div
                                                 key={notif.id}
                                                 onClick={() => markAsRead(notif.id)}
-                                                className={`px-6 py-4 flex gap-4 hover:bg-gray-50 cursor-pointer transition-colors relative ${notif.unread ? 'bg-blue-50/10' : ''}`}
+                                                className={`px-6 py-4 flex gap-4 cursor-pointer transition-colors relative ${isDark ? 'hover:bg-white/5' : 'hover:bg-gray-50'} ${notif.unread ? (isDark ? 'bg-[#FF6B4A]/10' : 'bg-blue-50/10') : ''}`}
                                             >
                                                 <div className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0" style={{ backgroundColor: notif.iconColor + '15' }}>
                                                     <notif.icon className="w-5 h-5" style={{ color: notif.iconColor }} weight="fill" />
                                                 </div>
                                                 <div className="space-y-1 pr-2">
                                                     <div className="flex items-center justify-between gap-2">
-                                                        <p className="text-xs font-extrabold text-[#1A1A1A]">{notif.title}</p>
-                                                        <span className="text-[10px] font-bold text-gray-400 whitespace-nowrap">{notif.time}</span>
+                                                        <p className={`text-xs font-extrabold ${isDark ? 'text-white' : 'text-[#1A1A1A]'}`}>{notif.title}</p>
+                                                        <span className={`text-[10px] font-bold whitespace-nowrap ${isDark ? 'text-[#94a3b8]' : 'text-gray-400'}`}>{notif.time}</span>
                                                     </div>
-                                                    <p className="text-[11px] text-gray-500 font-semibold leading-relaxed">
+                                                    <p className={`text-[11px] font-semibold leading-relaxed ${isDark ? 'text-[#cbd5e1]' : 'text-gray-500'}`}>
                                                         {notif.desc}
                                                     </p>
                                                 </div>
@@ -212,18 +225,18 @@ export function StudentHomepage() {
                                             </div>
                                         )
                                     )) : (
-                                        <div className="py-12 text-center text-gray-400 font-bold text-sm">
+                                        <div className={`py-12 text-center font-bold text-sm ${isDark ? 'text-[#94a3b8]' : 'text-gray-400'}`}>
                                             Không có thông báo nào
                                         </div>
                                     )}
                                 </div>
-                                <div className="p-4 border-t border-gray-100 italic text-center">
+                                <div className={`p-4 italic text-center ${isDark ? 'border-t border-white/10' : 'border-t border-gray-100'}`}>
                                     <button
                                         onClick={() => {
                                             setShowAllNotifications(true);
                                             setShowNotifications(false);
                                         }}
-                                        className="text-[11px] font-extrabold text-gray-400 hover:text-[#1A1A1A] transition-colors"
+                                        className={`text-[11px] font-extrabold transition-colors ${isDark ? 'text-[#94a3b8] hover:text-white' : 'text-gray-400 hover:text-[#1A1A1A]'}`}
                                     >
                                         Xem tất cả thông báo
                                     </button>
@@ -240,16 +253,16 @@ export function StudentHomepage() {
 
             {/* Main Content Toggle */}
             {showAllNotifications ? (
-                <div className="bg-white rounded-3xl border-2 border-[#1A1A1A] overflow-hidden flex flex-col min-h-[600px] animate-[slideInUp_0.3s_ease-out]">
-                    <div className="px-8 py-6 border-b-2 border-[#1A1A1A]/10 flex items-center justify-between bg-gray-50/30">
+                <div className={`rounded-3xl overflow-hidden flex flex-col min-h-[600px] animate-[slideInUp_0.3s_ease-out] ${isDark ? 'bg-[#1b1b22] border border-white/10' : 'bg-white border-2 border-[#1A1A1A]'}`}>
+                    <div className={`px-8 py-6 flex items-center justify-between ${isDark ? 'border-b border-white/10 bg-[#15161a]' : 'border-b-2 border-[#1A1A1A]/10 bg-gray-50/30'}`}>
                         <div>
-                            <h2 className="text-2xl font-extrabold text-[#1A1A1A]">Tất cả thông báo</h2>
-                            <p className="text-sm font-semibold text-gray-400">Bạn có {unreadCount} thông báo chưa đọc</p>
+                            <h2 className={`text-2xl font-extrabold ${isDark ? 'text-white' : 'text-[#1A1A1A]'}`}>Tất cả thông báo</h2>
+                            <p className={`text-sm font-semibold ${isDark ? 'text-[#94a3b8]' : 'text-gray-400'}`}>Bạn có {unreadCount} thông báo chưa đọc</p>
                         </div>
                         <div className="flex gap-3">
                             <button
                                 onClick={markAllAsRead}
-                                className="px-5 py-2.5 rounded-2xl bg-white border-2 border-[#1A1A1A]/20 text-sm font-extrabold text-[#1A1A1A] hover:bg-gray-50 transition-colors flex items-center gap-2"
+                                className={`px-5 py-2.5 rounded-2xl text-sm font-extrabold transition-colors flex items-center gap-2 ${isDark ? 'bg-white/10 border border-white/20 text-white hover:bg-white/15' : 'bg-white border-2 border-[#1A1A1A]/20 text-[#1A1A1A] hover:bg-gray-50'}`}
                                 disabled={unreadCount === 0}
                             >
                                 <CheckCircle className="w-5 h-5 text-[#10B981]" weight="fill" />
@@ -257,7 +270,7 @@ export function StudentHomepage() {
                             </button>
                             <button
                                 onClick={() => setShowAllNotifications(false)}
-                                className="px-5 py-2.5 rounded-2xl bg-[#1A1A1A] text-white text-sm font-extrabold hover:bg-[#333] transition-colors"
+                                className={`px-5 py-2.5 rounded-2xl text-sm font-extrabold transition-colors ${isDark ? 'bg-[#FF6B4A] text-white hover:bg-[#ff8b63]' : 'bg-[#1A1A1A] text-white hover:bg-[#333]'}`}
                             >
                                 Quay lại
                             </button>
@@ -269,17 +282,17 @@ export function StudentHomepage() {
                             <div
                                 key={notif.id}
                                 onClick={() => markAsRead(notif.id)}
-                                className={`p-6 rounded-3xl flex gap-6 hover:shadow-md transition-all cursor-pointer relative group border-2 ${notif.unread ? 'bg-[#FF6B4A]/5 border-[#FF6B4A]/20' : 'bg-white border-transparent hover:border-[#1A1A1A]/5'}`}
+                                className={`p-6 rounded-3xl flex gap-6 hover:shadow-md transition-all cursor-pointer relative group ${isDark ? 'border border-white/10' : 'border-2'} ${notif.unread ? (isDark ? 'bg-[#FF6B4A]/10 border-[#ff8e73]/40' : 'bg-[#FF6B4A]/5 border-[#FF6B4A]/20') : (isDark ? 'bg-white/[0.02] hover:bg-white/[0.04]' : 'bg-white border-transparent hover:border-[#1A1A1A]/5')}`}
                             >
                                 <div className="w-14 h-14 rounded-2xl flex items-center justify-center shrink-0 shadow-sm transition-transform group-hover:scale-105" style={{ backgroundColor: notif.iconColor + '20' }}>
                                     <notif.icon className="w-7 h-7" style={{ color: notif.iconColor }} weight="fill" />
                                 </div>
                                 <div className="space-y-1.5 flex-1">
                                     <div className="flex items-center justify-between">
-                                        <h4 className="text-base font-extrabold text-[#1A1A1A]">{notif.title}</h4>
-                                        <span className="text-xs font-bold text-gray-400">{notif.time}</span>
+                                        <h4 className={`text-base font-extrabold ${isDark ? 'text-white' : 'text-[#1A1A1A]'}`}>{notif.title}</h4>
+                                        <span className={`text-xs font-bold ${isDark ? 'text-[#94a3b8]' : 'text-gray-400'}`}>{notif.time}</span>
                                     </div>
-                                    <p className="text-sm text-gray-500 font-semibold leading-relaxed max-w-3xl">
+                                    <p className={`text-sm font-semibold leading-relaxed max-w-3xl ${isDark ? 'text-[#cbd5e1]' : 'text-gray-500'}`}>
                                         {notif.desc}
                                     </p>
                                 </div>
@@ -295,14 +308,14 @@ export function StudentHomepage() {
                     {/* My Courses */}
                     <section className="mb-8">
                         <div className="flex items-center justify-between mb-5">
-                            <h2 className="text-xl font-extrabold text-[#1A1A1A]">Khóa học của tôi</h2>
+                            <h2 className={`text-xl font-extrabold ${isDark ? 'text-white' : 'text-[#1A1A1A]'}`}>Khóa học của tôi</h2>
                             <div className="flex gap-2">
                                 {['Tất cả', 'Toán học', 'Tiếng Anh', 'Ngữ Văn'].map((tab, i) => (
                                     <button
                                         key={tab}
                                         className={`px-4 py-1.5 rounded-full text-sm font-bold transition-all ${i === 0
-                                                ? 'bg-[#1A1A1A] text-white'
-                                                : 'bg-white text-gray-500 hover:bg-gray-100 border border-gray-200'
+                                                ? (isDark ? 'bg-white text-[#1A1A1A]' : 'bg-[#1A1A1A] text-white')
+                                                : (isDark ? 'bg-white/5 text-[#cbd5e1] hover:bg-white/10 border border-white/10' : 'bg-white text-gray-500 hover:bg-gray-100 border border-gray-200')
                                             }`}
                                     >
                                         {tab}
@@ -315,36 +328,36 @@ export function StudentHomepage() {
                             {courses.map((course) => (
                                 <div
                                     key={course.title}
-                                    className="rounded-3xl p-6 flex flex-col gap-4 shadow-sm hover:shadow-md hover:-translate-y-0.5 transition-all cursor-pointer"
-                                    style={{ backgroundColor: course.bg }}
+                                    className={`rounded-3xl p-6 flex flex-col gap-4 shadow-sm hover:shadow-md hover:-translate-y-0.5 transition-all cursor-pointer ${isDark ? 'border border-white/10' : ''}`}
+                                    style={{ backgroundColor: isDark ? hexToRgba(course.bg, 0.22) : course.bg }}
                                 >
                                     {/* Tag + bookmark */}
                                     <div className="flex items-center justify-between">
                                         <span
                                             className="text-xs font-extrabold px-3 py-1 rounded-full"
-                                            style={{ backgroundColor: course.tagBg, color: course.tagColor }}
+                                            style={{ backgroundColor: isDark ? 'rgba(255,255,255,0.12)' : course.tagBg, color: isDark ? '#f3f4f6' : course.tagColor }}
                                         >
                                             {course.tag}
                                         </span>
-                                        <button className="w-8 h-8 bg-white/40 hover:bg-white/70 rounded-xl flex items-center justify-center transition-colors">
-                                            <BookmarkSimple className="w-4 h-4 text-[#1A1A1A]" />
+                                        <button className={`w-8 h-8 rounded-xl flex items-center justify-center transition-colors ${isDark ? 'bg-white/10 hover:bg-white/20' : 'bg-white/40 hover:bg-white/70'}`}>
+                                            <BookmarkSimple className={`w-4 h-4 ${isDark ? 'text-[#e5e7eb]' : 'text-[#1A1A1A]'}`} />
                                         </button>
                                     </div>
 
                                     {/* Title */}
-                                    <h3 className="text-lg font-extrabold text-[#1A1A1A] leading-snug">{course.title}</h3>
+                                    <h3 className={`text-lg font-extrabold leading-snug ${isDark ? 'text-[#f8fafc]' : 'text-[#1A1A1A]'}`}>{course.title}</h3>
 
                                     {/* Progress */}
                                     <div>
-                                        <div className="flex justify-between text-xs font-bold text-[#1A1A1A]/60 mb-1.5">
+                                        <div className={`flex justify-between text-xs font-bold mb-1.5 ${isDark ? 'text-[#d1d5db]' : 'text-[#1A1A1A]/60'}`}>
                                             <span>Tiến độ</span>
                                             <span>{course.progress}/{course.total} bài học</span>
                                         </div>
-                                        <div className="h-1.5 bg-black/10 rounded-full overflow-hidden">
+                                        <div className={`h-1.5 rounded-full overflow-hidden ${isDark ? 'bg-white/20' : 'bg-black/10'}`}>
                                             <div
                                                 className="h-full rounded-full transition-all"
                                                 style={{
-                                                    backgroundColor: course.bar,
+                                                    backgroundColor: isDark ? '#f3f4f6' : course.bar,
                                                     width: `${(course.progress / course.total) * 100}%`
                                                 }}
                                             />
@@ -357,13 +370,13 @@ export function StudentHomepage() {
                                             {course.avatars.map((a, i) => (
                                                 <div
                                                     key={i}
-                                                    className="w-8 h-8 rounded-full bg-white flex items-center justify-center text-[10px] font-extrabold text-[#1A1A1A] ring-2 ring-[#1A1A1A]/10"
+                                                    className={`w-8 h-8 rounded-full flex items-center justify-center text-[10px] font-extrabold ring-2 ${isDark ? 'bg-[#1f2937] text-white ring-white/20' : 'bg-white text-[#1A1A1A] ring-[#1A1A1A]/10'}`}
                                                     style={{ marginLeft: i > 0 ? '-8px' : '0' }}
                                                 >
                                                     {a}
                                                 </div>
                                             ))}
-                                            <span className="ml-2 text-xs font-extrabold text-[#1A1A1A]/60">{course.count}</span>
+                                            <span className={`ml-2 text-xs font-extrabold ${isDark ? 'text-[#d1d5db]' : 'text-[#1A1A1A]/60'}`}>{course.count}</span>
                                         </div>
                                         <button
                                             className="bg-[#FF6B4A] hover:bg-[#ff5535] text-white text-sm font-extrabold px-5 py-2 rounded-full transition-all shadow-sm hover:shadow-md"
@@ -380,52 +393,52 @@ export function StudentHomepage() {
                     {/* Bottom section: lessons + AI suggestion */}
                     <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
                         {/* Next lessons table */}
-                        <div className="lg:col-span-2 bg-white rounded-3xl p-6 shadow-sm">
+                        <div className={`lg:col-span-2 rounded-3xl p-6 shadow-sm ${isDark ? 'bg-[#232328] border border-white/10' : 'bg-white'}`}>
                             <div className="flex items-center justify-between mb-5">
-                                <h2 className="text-lg font-extrabold text-[#1A1A1A]">Bài học tiếp theo</h2>
+                                <h2 className={`text-lg font-extrabold ${isDark ? 'text-white' : 'text-[#1A1A1A]'}`}>Bài học tiếp theo</h2>
                                 <button className="text-sm font-bold text-[#FF6B4A] hover:text-[#ff5535] flex items-center gap-1">
                                     Xem tất cả <ArrowRight className="w-4 h-4" />
                                 </button>
                             </div>
 
-                            <div className="text-xs font-extrabold text-gray-400 uppercase tracking-widest grid grid-cols-[2rem_1fr_1fr_5rem] gap-x-4 pb-3 border-b border-gray-100 mb-1">
+                            <div className={`text-xs font-extrabold uppercase tracking-widest grid grid-cols-[2rem_1fr_1fr_5rem] gap-x-4 pb-3 mb-1 ${isDark ? 'text-[#94a3b8] border-b border-white/10' : 'text-gray-400 border-b border-gray-100'}`}>
                                 <span>#</span>
                                 <span>Bài học</span>
                                 <span>Giáo viên</span>
                                 <span className="text-right">Thời gian</span>
                             </div>
 
-                            <div className="flex flex-col divide-y divide-gray-50">
+                            <div className={`flex flex-col ${isDark ? 'divide-y divide-white/10' : 'divide-y divide-gray-50'}`}>
                                 {lessons.map((l) => (
                                     <div
                                         key={l.order}
-                                        className="grid grid-cols-[2rem_1fr_1fr_5rem] gap-x-4 py-4 items-center hover:bg-gray-50 rounded-xl px-1 -mx-1 cursor-pointer transition-colors"
+                                        className={`grid grid-cols-[2rem_1fr_1fr_5rem] gap-x-4 py-4 items-center rounded-xl px-1 -mx-1 cursor-pointer transition-colors ${isDark ? 'hover:bg-white/5' : 'hover:bg-gray-50'}`}
                                     >
-                                        <span className="text-sm font-extrabold text-gray-300">{l.order}</span>
+                                        <span className={`text-sm font-extrabold ${isDark ? 'text-[#94a3b8]' : 'text-gray-300'}`}>{l.order}</span>
                                         <div>
-                                            <p className="text-sm font-extrabold text-[#1A1A1A]">{l.title}</p>
-                                            <p className="text-xs text-gray-400 font-semibold">{l.subject}</p>
+                                            <p className={`text-sm font-extrabold ${isDark ? 'text-white' : 'text-[#1A1A1A]'}`}>{l.title}</p>
+                                            <p className={`text-xs font-semibold ${isDark ? 'text-[#94a3b8]' : 'text-gray-400'}`}>{l.subject}</p>
                                         </div>
                                         <div className="flex items-center gap-2">
-                                            <div className="w-7 h-7 rounded-full bg-[#FCE38A] flex items-center justify-center text-[10px] font-extrabold text-[#1A1A1A]">
+                                            <div className={`w-7 h-7 rounded-full flex items-center justify-center text-[10px] font-extrabold ${isDark ? 'bg-[#fde68a]/30 text-[#fef3c7]' : 'bg-[#FCE38A] text-[#1A1A1A]'}`}>
                                                 {l.teacher.split(' ').pop()?.[0]}
                                             </div>
-                                            <span className="text-xs font-semibold text-gray-500 truncate">{l.teacher}</span>
+                                            <span className={`text-xs font-semibold truncate ${isDark ? 'text-[#cbd5e1]' : 'text-gray-500'}`}>{l.teacher}</span>
                                         </div>
-                                        <span className="text-xs font-bold text-gray-400 text-right">{l.duration}</span>
+                                        <span className={`text-xs font-bold text-right ${isDark ? 'text-[#94a3b8]' : 'text-gray-400'}`}>{l.duration}</span>
                                     </div>
                                 ))}
                             </div>
                         </div>
 
                         {/* AI suggestion card */}
-                        <div className="bg-[#1A1A1A] rounded-3xl p-6 flex flex-col gap-4 shadow-sm">
-                            <p className="text-xs font-extrabold text-gray-500 uppercase tracking-widest">Gợi ý mới</p>
+                        <div className={`rounded-3xl p-6 flex flex-col gap-4 shadow-sm ${isDark ? 'bg-[#17171d] border border-white/10' : 'bg-[#1A1A1A]'}`}>
+                            <p className={`text-xs font-extrabold uppercase tracking-widest ${isDark ? 'text-[#94a3b8]' : 'text-gray-500'}`}>Gợi ý mới</p>
                             <span className="inline-block text-xs font-extrabold bg-[#FCE38A] text-[#1A1A1A] px-3 py-1 rounded-full w-fit">Toán học</span>
                             <h3 className="text-xl font-extrabold text-white leading-snug">
                                 Ôn tập: Nguyên hàm & Tích phân
                             </h3>
-                            <p className="text-sm text-gray-400 font-semibold leading-relaxed">
+                            <p className={`text-sm font-semibold leading-relaxed ${isDark ? 'text-[#cbd5e1]' : 'text-gray-400'}`}>
                                 Dựa trên kết quả bài kiểm tra tuần trước, AI gợi ý bài ôn tập này phù hợp với bạn.
                             </p>
                             <div className="flex items-center gap-2 mt-auto">
@@ -436,7 +449,7 @@ export function StudentHomepage() {
                                         </div>
                                     ))}
                                 </div>
-                                <span className="text-xs text-gray-500 font-semibold">42 học sinh đang học</span>
+                                <span className={`text-xs font-semibold ${isDark ? 'text-[#94a3b8]' : 'text-gray-500'}`}>42 học sinh đang học</span>
                             </div>
                             <button
                                 className="w-full bg-[#FF6B4A] hover:bg-[#ff5535] text-white font-extrabold py-3 rounded-2xl transition-all mt-2 text-sm"
@@ -449,7 +462,7 @@ export function StudentHomepage() {
                 </>
             )}
 
-            <footer className="mt-10 text-center text-xs font-semibold text-gray-400">
+            <footer className={`mt-10 text-center text-xs font-semibold ${isDark ? 'text-[#94a3b8]' : 'text-gray-400'}`}>
                 © 2024 AntiEdu – Nền tảng học tập thông minh.
             </footer>
         </div>

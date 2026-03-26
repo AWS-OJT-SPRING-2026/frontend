@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider, useAuth } from './context/AuthContext';
+import { SettingsProvider, useSettings } from './context/SettingsContext';
 import type { TransitionType, TransitionPhase } from './context/AuthContext';
 import { Login } from './components/Login';
 import { Register } from './components/Register';
@@ -30,21 +31,23 @@ import { StudentDocuments } from './components/student/StudentDocuments';
 import { AccountSettings } from './components/AccountSettings';
 
 /** Returns the correct overlay message based on transition type & phase */
-function getOverlayMessage(type: TransitionType, phase: TransitionPhase): { text: string; sub?: string; isGoodbye?: boolean } {
+function useOverlayMessage(type: TransitionType, phase: TransitionPhase) {
+  const { t } = useSettings();
+
   if (type === 'login') {
-    if (phase === 1) return { text: 'Đang đăng nhập...', sub: 'Vui lòng chờ trong giây lát' };
-    return { text: 'Đang tải dữ liệu...', sub: 'Hệ thống đang chuẩn bị giao diện cho bạn' };
+    if (phase === 1) return { text: t.auth.loggingIn, sub: t.auth.loggingInSub };
+    return { text: t.auth.loadingData, sub: t.auth.loadingDataSub };
   }
   if (type === 'logout') {
-    if (phase === 1) return { text: 'Đang đăng xuất...', sub: 'Đang xóa phiên làm việc' };
-    return { text: 'Bạn đã đăng xuất.', sub: 'Hẹn gặp lại! 👋', isGoodbye: true };
+    if (phase === 1) return { text: t.auth.loggingOut, sub: t.auth.loggingOutSub };
+    return { text: t.auth.loggedOut, sub: t.auth.loggedOutSub, isGoodbye: true };
   }
-  return { text: 'Đang tải hệ thống…' };
+  return { text: t.auth.loadingSystem };
 }
 
 /** Full-screen overlay shown while initialising or during login/logout transition */
 function LoadingOverlay({ type, phase }: { type: TransitionType; phase: TransitionPhase }) {
-  const msg = getOverlayMessage(type, phase);
+  const msg = useOverlayMessage(type, phase);
 
   return (
     <div
@@ -91,6 +94,8 @@ function LoadingOverlay({ type, phase }: { type: TransitionType; phase: Transiti
 
 /** Full-screen overlay shown when session has expired */
 function SessionExpiredOverlay() {
+  const { t } = useSettings();
+
   return (
     <div
       className="fixed inset-0 z-[100] flex flex-col items-center justify-center bg-[#1A1A1A]"
@@ -103,9 +108,9 @@ function SessionExpiredOverlay() {
         <span className="text-3xl">⏱️</span>
       </div>
 
-      <p className="text-white font-extrabold text-lg mb-1 tracking-wide">Phiên làm việc đã hết hạn</p>
+      <p className="text-white font-extrabold text-lg mb-1 tracking-wide">{t.auth.sessionExpired}</p>
       <p className="text-gray-400 font-semibold text-sm mb-6 text-center max-w-xs leading-relaxed">
-        Vui lòng đăng nhập lại để tiếp tục sử dụng hệ thống.
+        {t.auth.sessionExpiredSub}
       </p>
 
       {/* Nút đăng nhập lại — reload về "/" để React Router redirect */}
@@ -113,7 +118,7 @@ function SessionExpiredOverlay() {
         onClick={() => { window.location.href = '/login'; }}
         className="px-8 py-3 rounded-2xl bg-[#FF6B4A] hover:bg-[#ff5535] text-white font-extrabold text-sm transition-colors"
       >
-        Đăng nhập lại
+        {t.auth.loginAgain}
       </button>
     </div>
   );
@@ -172,6 +177,7 @@ function AuthPages() {
 
 function AppRoutes() {
   const { isInitializing, isTransitioning, transitionType, transitionPhase, sessionExpired } = useAuth();
+  const { t } = useSettings();
 
   if (isInitializing || isTransitioning) {
     return <LoadingOverlay type={transitionType} phase={transitionPhase} />;
@@ -196,7 +202,7 @@ function AppRoutes() {
         <Route path="classes" element={<ClassManage />} />
         <Route path="schedule" element={<AdminSchedule />} />
         <Route path="questions" element={<QuestionBank />} />
-        <Route path="*" element={<div className="font-bold text-2xl p-8">Page Under Construction</div>} />
+        <Route path="*" element={<div className="font-bold text-2xl p-8">{t.common.pageUnderConstruction}</div>} />
       </Route>
 
       {/* Teacher */}
@@ -207,7 +213,7 @@ function AppRoutes() {
         <Route path="documents" element={<TeacherDocuments />} />
         <Route path="schedule" element={<TeacherSchedule />} />
         <Route path="account" element={<AccountSettings />} />
-        <Route path="*" element={<div className="font-bold text-2xl p-8">Teacher Page Under Construction</div>} />
+        <Route path="*" element={<div className="font-bold text-2xl p-8">{t.common.pageUnderConstruction}</div>} />
       </Route>
 
       {/* Student */}
@@ -220,7 +226,7 @@ function AppRoutes() {
         <Route path="documents" element={<StudentDocuments />} />
         <Route path="chat" element={<StudentChat />} />
         <Route path="account" element={<AccountSettings />} />
-        <Route path="*" element={<div className="font-bold text-2xl p-8">Student Page Under Construction</div>} />
+        <Route path="*" element={<div className="font-bold text-2xl p-8">{t.common.pageUnderConstruction}</div>} />
       </Route>
 
       <Route path="*" element={<Navigate to="/" replace />} />
@@ -230,14 +236,14 @@ function AppRoutes() {
 
 function App() {
   return (
-    <AuthProvider>
-      <BrowserRouter>
-        <AppRoutes />
-      </BrowserRouter>
-    </AuthProvider>
+    <SettingsProvider>
+      <AuthProvider>
+        <BrowserRouter>
+          <AppRoutes />
+        </BrowserRouter>
+      </AuthProvider>
+    </SettingsProvider>
   );
 }
 
 export default App;
-
-

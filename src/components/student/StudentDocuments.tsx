@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { CaretLeft, CaretDown, CaretRight, BookOpen, FileText, Stack } from '@phosphor-icons/react';
+import { useSettings } from '../../context/SettingsContext';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 interface Lesson {
@@ -20,78 +21,96 @@ interface Subject {
     name: string;
     color: string;
     bg: string;
-    icon: React.ReactNode;
+    iconKey: 'NguVan' | 'Toan' | 'VatLy' | 'HoaHoc' | 'TiengAnh' | 'LichSu';
     chapters: Chapter[];
 }
 
 // ─── Subject Icons (SVG geometric, monochromatic per subject) ─────────────────
-const SubjectIcons: Record<string, (color: string) => React.ReactNode> = {
-    NguVan: (c) => (
+const SubjectIcons: Record<string, (color: string, isDark?: boolean) => React.ReactNode> = {
+    NguVan: (c, isDark = false) => {
+        const ink = isDark ? '#E5E7EB' : '#1A1A1A';
+        return (
         <svg viewBox="0 0 40 40" fill="none" xmlns="http://www.w3.org/2000/svg" width="100%" height="100%">
             {/* Book body - solid stroke for clarity */}
-            <rect x="6" y="4" width="22" height="30" rx="3" fill={c} fillOpacity="0.15" stroke="#1A1A1A" strokeWidth="2.5" />
+            <rect x="6" y="4" width="22" height="30" rx="3" fill={c} fillOpacity="0.22" stroke={ink} strokeWidth="2.5" />
             {/* Lines of text */}
-            <rect x="10" y="10" width="14" height="2.5" rx="1" fill="#1A1A1A" />
-            <rect x="10" y="15" width="14" height="2.5" rx="1" fill="#1A1A1A" />
-            <rect x="10" y="20" width="10" height="2.5" rx="1" fill="#1A1A1A" />
+            <rect x="10" y="10" width="14" height="2.5" rx="1" fill={ink} />
+            <rect x="10" y="15" width="14" height="2.5" rx="1" fill={ink} />
+            <rect x="10" y="20" width="10" height="2.5" rx="1" fill={ink} />
             {/* Ink drop or accent */}
             <circle cx="28" cy="28" r="5" fill={c} />
             <circle cx="28" cy="28" r="2.5" fill="white" fillOpacity="0.5" />
         </svg>
-    ),
-    Toan: (c) => (
+    );
+    },
+    Toan: (c, isDark = false) => {
+        const ink = isDark ? '#E5E7EB' : '#1A1A1A';
+        return (
         <svg viewBox="0 0 40 40" fill="none" xmlns="http://www.w3.org/2000/svg" width="100%" height="100%">
             {/* Plus cross - made bold and dark center */}
-            <rect x="17" y="6" width="6" height="28" rx="3" fill="#1A1A1A" />
-            <rect x="6" y="17" width="28" height="6" rx="3" fill="#1A1A1A" />
+            <rect x="17" y="6" width="6" height="28" rx="3" fill={ink} />
+            <rect x="6" y="17" width="28" height="6" rx="3" fill={ink} />
             {/* Accent dots in subject color */}
             <circle cx="10" cy="10" r="3.5" fill={c} />
             <circle cx="30" cy="30" r="3.5" fill={c} />
             <circle cx="30" cy="10" r="3.5" fill={c} opacity="0.5" />
             <circle cx="10" cy="30" r="3.5" fill={c} opacity="0.5" />
         </svg>
-    ),
-    VatLy: (c) => (
+    );
+    },
+    VatLy: (c, isDark = false) => {
+        const ink = isDark ? '#E5E7EB' : '#1A1A1A';
+        return (
         <svg viewBox="0 0 40 40" fill="none" xmlns="http://www.w3.org/2000/svg" width="100%" height="100%">
             {/* Orbits */}
-            <ellipse cx="20" cy="20" rx="17" ry="6" stroke="#1A1A1A" strokeWidth="2.5" fill="none" opacity="0.3" />
-            <ellipse cx="20" cy="20" rx="17" ry="6" stroke="#1A1A1A" strokeWidth="2.5" fill="none" transform="rotate(60 20 20)" opacity="0.6" />
-            <ellipse cx="20" cy="20" rx="17" ry="6" stroke="#1A1A1A" strokeWidth="2.5" fill="none" transform="rotate(120 20 20)" />
+            <ellipse cx="20" cy="20" rx="17" ry="6" stroke={ink} strokeWidth="2.5" fill="none" opacity="0.4" />
+            <ellipse cx="20" cy="20" rx="17" ry="6" stroke={ink} strokeWidth="2.5" fill="none" transform="rotate(60 20 20)" opacity="0.7" />
+            <ellipse cx="20" cy="20" rx="17" ry="6" stroke={ink} strokeWidth="2.5" fill="none" transform="rotate(120 20 20)" />
             {/* Nucleus */}
             <circle cx="20" cy="20" r="5" fill={c} />
             <circle cx="20" cy="20" r="2.5" fill="white" opacity="0.4" />
         </svg>
-    ),
-    HoaHoc: (c) => (
+    );
+    },
+    HoaHoc: (c, isDark = false) => {
+        const ink = isDark ? '#E5E7EB' : '#1A1A1A';
+        return (
         <svg viewBox="0 0 40 40" fill="none" xmlns="http://www.w3.org/2000/svg" width="100%" height="100%">
             {/* Flask body */}
             <path d="M12 10 L28 10 L34 32 C35 36 32 37 20 37 C8 37 5 36 6 32 Z"
-                fill={c} opacity="0.15" stroke="#1A1A1A" strokeWidth="2.5" />
+                fill={c} opacity="0.22" stroke={ink} strokeWidth="2.5" />
             {/* Liquid line */}
             <path d="M8 26 C12 24 28 28 32 26 V32 C32 35 28 35 20 35 C12 35 8 35 8 32 Z" fill={c} />
             {/* Bubbles */}
-            <circle cx="15" cy="18" r="2.5" fill="#1A1A1A" opacity="0.6" />
-            <circle cx="24" cy="15" r="2" fill="#1A1A1A" opacity="0.4" />
-            <circle cx="20" cy="22" r="1.5" fill="#1A1A1A" opacity="0.2" />
+            <circle cx="15" cy="18" r="2.5" fill={ink} opacity="0.7" />
+            <circle cx="24" cy="15" r="2" fill={ink} opacity="0.5" />
+            <circle cx="20" cy="22" r="1.5" fill={ink} opacity="0.3" />
         </svg>
-    ),
-    TiengAnh: (c) => (
+    );
+    },
+    TiengAnh: (c, isDark = false) => {
+        const ink = isDark ? '#E5E7EB' : '#1A1A1A';
+        return (
         <svg viewBox="0 0 40 40" fill="none" xmlns="http://www.w3.org/2000/svg" width="100%" height="100%">
-            <circle cx="20" cy="20" r="16" stroke="#1A1A1A" strokeWidth="2.5" fill={c} fillOpacity="0.1" />
-            <ellipse cx="20" cy="20" rx="6" ry="16" stroke="#1A1A1A" strokeWidth="2" fill="none" />
-            <line x1="4" y1="20" x2="36" y2="20" stroke="#1A1A1A" strokeWidth="2" strokeLinecap="round" />
+            <circle cx="20" cy="20" r="16" stroke={ink} strokeWidth="2.5" fill={c} fillOpacity="0.14" />
+            <ellipse cx="20" cy="20" rx="6" ry="16" stroke={ink} strokeWidth="2" fill="none" />
+            <line x1="4" y1="20" x2="36" y2="20" stroke={ink} strokeWidth="2" strokeLinecap="round" />
             <path d="M7 12 Q20 8 33 12" stroke={c} strokeWidth="2.5" fill="none" strokeLinecap="round" />
             <path d="M7 28 Q20 32 33 28" stroke={c} strokeWidth="2.5" fill="none" strokeLinecap="round" />
         </svg>
-    ),
-    LichSu: (c) => (
+    );
+    },
+    LichSu: (c, isDark = false) => {
+        const ink = isDark ? '#E5E7EB' : '#1A1A1A';
+        return (
         <svg viewBox="0 0 40 40" fill="none" xmlns="http://www.w3.org/2000/svg" width="100%" height="100%">
-            <path d="M20 5 L35 33 H5 Z" fill={c} opacity="0.1" stroke="#1A1A1A" strokeWidth="2.5" />
-            <rect x="16" y="24" width="8" height="9" rx="1" fill="#1A1A1A" />
-            <path d="M5 33 H35" stroke="#1A1A1A" strokeWidth="3" strokeLinecap="round" />
+            <path d="M20 5 L35 33 H5 Z" fill={c} opacity="0.16" stroke={ink} strokeWidth="2.5" />
+            <rect x="16" y="24" width="8" height="9" rx="1" fill={ink} />
+            <path d="M5 33 H35" stroke={ink} strokeWidth="3" strokeLinecap="round" />
             <circle cx="20" cy="15" r="3" fill={c} />
         </svg>
-    ),
+    );
+    },
 };
 
 
@@ -99,7 +118,7 @@ const SubjectIcons: Record<string, (color: string) => React.ReactNode> = {
 const subjects: Subject[] = [
     {
         id: 1, name: 'Ngữ Văn', color: '#905de9ff', bg: '#bbaefaff',
-        icon: SubjectIcons.NguVan('#905de9ff'),
+        iconKey: 'NguVan',
         chapters: [
             {
                 id: 11, title: 'Chương 1: Văn học dân gian Việt Nam',
@@ -119,7 +138,7 @@ const subjects: Subject[] = [
     },
     {
         id: 2, name: 'Toán học', color: '#D4A017', bg: '#FCE38A',
-        icon: SubjectIcons.Toan('#D4A017'),
+        iconKey: 'Toan',
         chapters: [
             {
                 id: 21, title: 'Chương 1: Giới hạn và Liên tục',
@@ -138,7 +157,7 @@ const subjects: Subject[] = [
     },
     {
         id: 3, name: 'Vật Lý', color: '#0E9E8E', bg: '#95E1D3',
-        icon: SubjectIcons.VatLy('#0E9E8E'),
+        iconKey: 'VatLy',
         chapters: [
             {
                 id: 31, title: 'Chương 1: Điện học',
@@ -151,7 +170,7 @@ const subjects: Subject[] = [
     },
     {
         id: 4, name: 'Hóa Học', color: '#E05050', bg: '#FFB5B5',
-        icon: SubjectIcons.HoaHoc('#E05050'),
+        iconKey: 'HoaHoc',
         chapters: [
             {
                 id: 41, title: 'Chương 1: Nguyên tử và Bảng tuần hoàn',
@@ -163,7 +182,7 @@ const subjects: Subject[] = [
     },
     {
         id: 5, name: 'Tiếng Anh', color: '#2E9E55', bg: '#C8F7C5',
-        icon: SubjectIcons.TiengAnh('#2E9E55'),
+        iconKey: 'TiengAnh',
         chapters: [
             {
                 id: 51, title: 'Chương 1: Grammar – Tenses',
@@ -175,7 +194,7 @@ const subjects: Subject[] = [
     },
     {
         id: 6, name: 'Lịch Sử', color: '#C07820', bg: '#FFD9A0',
-        icon: SubjectIcons.LichSu('#C07820'),
+        iconKey: 'LichSu',
         chapters: [
             {
                 id: 61, title: 'Chương 1: Việt Nam 1945–1954',
@@ -188,43 +207,44 @@ const subjects: Subject[] = [
 ];
 
 // ─── Simple renderer ───────────────────────────────────────────────────────────
-function parseInline(text: string): React.ReactNode {
+function parseInline(text: string, isDark: boolean): React.ReactNode {
     const parts = text.split(/(\*\*[^*]+\*\*|\*[^*]+\*)/g);
     return parts.map((part, i) => {
-        if (part.startsWith('**') && part.endsWith('**')) return <strong key={i} className="font-extrabold text-[#1A1A1A]">{part.slice(2, -2)}</strong>;
-        if (part.startsWith('*') && part.endsWith('*')) return <em key={i} className="italic text-[#1A1A1A]/60">{part.slice(1, -1)}</em>;
+        if (part.startsWith('**') && part.endsWith('**')) return <strong key={i} className={isDark ? 'font-extrabold text-white' : 'font-extrabold text-[#1A1A1A]'}>{part.slice(2, -2)}</strong>;
+        if (part.startsWith('*') && part.endsWith('*')) return <em key={i} className={isDark ? 'italic text-[#cbd5e1]' : 'italic text-[#1A1A1A]/60'}>{part.slice(1, -1)}</em>;
         return part;
     });
 }
 
-function renderContent(text: string) {
+function renderContent(text: string, isDark: boolean) {
     return text.split('\n').map((line, i) => {
-        if (line.startsWith('- ')) return <li key={i} className="ml-4 text-[#1A1A1A]/70 font-semibold list-disc">{parseInline(line.slice(2))}</li>;
-        if (/^\d+\.\s/.test(line)) return <li key={i} className="ml-4 text-[#1A1A1A]/70 font-semibold list-decimal">{parseInline(line.replace(/^\d+\.\s/, ''))}</li>;
-        if (line.startsWith('---')) return <hr key={i} className="border-[#1A1A1A]/10 my-3" />;
+        if (line.startsWith('- ')) return <li key={i} className={isDark ? 'ml-4 text-[#e5e7eb] font-semibold list-disc' : 'ml-4 text-[#1A1A1A]/70 font-semibold list-disc'}>{parseInline(line.slice(2), isDark)}</li>;
+        if (/^\d+\.\s/.test(line)) return <li key={i} className={isDark ? 'ml-4 text-[#e5e7eb] font-semibold list-decimal' : 'ml-4 text-[#1A1A1A]/70 font-semibold list-decimal'}>{parseInline(line.replace(/^\d+\.\s/, ''), isDark)}</li>;
+        if (line.startsWith('---')) return <hr key={i} className={isDark ? 'border-white/15 my-3' : 'border-[#1A1A1A]/10 my-3'} />;
         if (line.startsWith('| ')) return null;
         if (line.trim() === '') return <div key={i} className="h-2" />;
-        return <p key={i} className="text-[#1A1A1A]/70 font-semibold leading-relaxed">{parseInline(line)}</p>;
+        return <p key={i} className={isDark ? 'text-[#e5e7eb] font-semibold leading-relaxed' : 'text-[#1A1A1A]/70 font-semibold leading-relaxed'}>{parseInline(line, isDark)}</p>;
     });
 }
 
 // ─── Lesson Reader ────────────────────────────────────────────────────────────
-function LessonReader({ lesson, subject, onBack }: { lesson: Lesson; subject: Subject; onBack: () => void }) {
+function LessonReader({ lesson, subject, onBack, isDark }: { lesson: Lesson; subject: Subject; onBack: () => void; isDark: boolean }) {
+    const iconNode = SubjectIcons[subject.iconKey](subject.color, isDark);
     return (
         <div className="max-w-3xl mx-auto space-y-5">
-            <button onClick={onBack} className="flex items-center gap-2 text-[#1A1A1A]/50 hover:text-[#1A1A1A] font-extrabold text-sm transition-colors">
+            <button onClick={onBack} className={`flex items-center gap-2 font-extrabold text-sm transition-colors ${isDark ? 'text-[#b3b3b3] hover:text-white' : 'text-[#1A1A1A]/50 hover:text-[#1A1A1A]'}`}>
                 <CaretLeft className="w-4 h-4" /> Quay lại
             </button>
 
-            <div className="rounded-3xl border-2 border-[#1A1A1A] overflow-hidden bg-white">
+            <div className={`rounded-3xl overflow-hidden ${isDark ? 'border border-white/10 bg-[#1b1b20]' : 'border-2 border-[#1A1A1A] bg-white'}`}>
                 {/* Header */}
-                <div className="p-6 border-b-2 border-[#1A1A1A]" style={{ backgroundColor: subject.bg }}>
-                    <span className="inline-flex items-center gap-2 text-[10px] font-extrabold border-2 border-[#1A1A1A]/20 px-3 py-1 rounded-full uppercase tracking-widest text-[#1A1A1A] bg-white/70">
-                        <span className="w-4 h-4 shrink-0 flex items-center justify-center">{subject.icon}</span>
+                <div className={`p-6 ${isDark ? 'border-b border-white/10' : 'border-b-2 border-[#1A1A1A]'}`} style={{ backgroundColor: isDark ? `${subject.bg}40` : subject.bg }}>
+                    <span className={`inline-flex items-center gap-2 text-[10px] font-extrabold px-3 py-1 rounded-full uppercase tracking-widest ${isDark ? 'border border-white/15 text-[#f3f4f6] bg-[#111]/55' : 'border-2 border-[#1A1A1A]/20 text-[#1A1A1A] bg-white/70'}`}>
+                        <span className="w-4 h-4 shrink-0 flex items-center justify-center">{iconNode}</span>
                         {subject.name}
                     </span>
-                    <h1 className="text-xl font-extrabold text-[#1A1A1A] mt-3">{lesson.title}</h1>
-                    <p className="text-xs text-[#1A1A1A]/60 font-bold mt-1 flex items-center gap-1">
+                    <h1 className={`text-xl font-extrabold mt-3 ${isDark ? 'text-white' : 'text-[#1A1A1A]'}`}>{lesson.title}</h1>
+                    <p className={`text-xs font-bold mt-1 flex items-center gap-1 ${isDark ? 'text-[#d1d5db]' : 'text-[#1A1A1A]/60'}`}>
                         <BookOpen className="w-3.5 h-3.5" weight="fill" /> Thời gian đọc ≈ {lesson.readTime} phút
                     </p>
                 </div>
@@ -244,16 +264,16 @@ function LessonReader({ lesson, subject, onBack }: { lesson: Lesson; subject: Su
                                 const parseRow = (r: string) => r.split('|').filter((_, i, a) => i > 0 && i < a.length - 1).map(c => c.trim());
                                 return (
                                     <div key={bi} className="overflow-x-auto my-3">
-                                        <table className="w-full text-sm border-2 border-[#1A1A1A] rounded-2xl overflow-hidden">
+                                        <table className={`w-full text-sm rounded-2xl overflow-hidden ${isDark ? 'border border-white/15' : 'border-2 border-[#1A1A1A]'}`}>
                                             <thead>
-                                                <tr className="bg-[#1A1A1A]/5 border-b-2 border-[#1A1A1A]">
-                                                    {parseRow(head).map((h, i) => <th key={i} className="text-left px-4 py-2.5 font-extrabold text-[#1A1A1A]">{h}</th>)}
+                                                <tr className={isDark ? 'bg-white/5 border-b border-white/15' : 'bg-[#1A1A1A]/5 border-b-2 border-[#1A1A1A]'}>
+                                                    {parseRow(head).map((h, i) => <th key={i} className={isDark ? 'text-left px-4 py-2.5 font-extrabold text-white' : 'text-left px-4 py-2.5 font-extrabold text-[#1A1A1A]'}>{h}</th>)}
                                                 </tr>
                                             </thead>
                                             <tbody>
                                                 {body.map((row, ri) => (
-                                                    <tr key={ri} className="border-b border-[#1A1A1A]/10 hover:bg-[#1A1A1A]/3">
-                                                        {parseRow(row).map((c, ci) => <td key={ci} className="px-4 py-2.5 text-[#1A1A1A]/60 font-semibold">{c}</td>)}
+                                                    <tr key={ri} className={isDark ? 'border-b border-white/10 hover:bg-white/5' : 'border-b border-[#1A1A1A]/10 hover:bg-[#1A1A1A]/3'}>
+                                                        {parseRow(row).map((c, ci) => <td key={ci} className={isDark ? 'px-4 py-2.5 text-[#d1d5db] font-semibold' : 'px-4 py-2.5 text-[#1A1A1A]/60 font-semibold'}>{c}</td>)}
                                                     </tr>
                                                 ))}
                                             </tbody>
@@ -261,9 +281,9 @@ function LessonReader({ lesson, subject, onBack }: { lesson: Lesson; subject: Su
                                     </div>
                                 );
                             }
-                            return <div key={bi}>{renderContent(block.join('\n'))}</div>;
+                            return <div key={bi}>{renderContent(block.join('\n'), isDark)}</div>;
                         });
-                    })() : renderContent(lesson.content)}
+                    })() : renderContent(lesson.content, isDark)}
                 </div>
             </div>
         </div>
@@ -272,6 +292,10 @@ function LessonReader({ lesson, subject, onBack }: { lesson: Lesson; subject: Su
 
 // ─── Main Component ───────────────────────────────────────────────────────────
 export function StudentDocuments() {
+            const renderSubjectIcon = (subject: Subject) => SubjectIcons[subject.iconKey](subject.color, isDark);
+
+    const { theme } = useSettings();
+    const isDark = theme === 'dark';
     const [selectedSubject, setSelectedSubject] = useState<Subject | null>(null);
     const [openChapters, setOpenChapters] = useState<number[]>([]);
     const [selectedLesson, setSelectedLesson] = useState<Lesson | null>(null);
@@ -283,8 +307,8 @@ export function StudentDocuments() {
     // ── Lesson reader ─────────────────────────────────────────────────────────
     if (selectedLesson && selectedSubject) {
         return (
-            <div className="p-8 min-h-screen" style={{ fontFamily: "'Nunito', sans-serif" }}>
-                <LessonReader lesson={selectedLesson} subject={selectedSubject} onBack={() => setSelectedLesson(null)} />
+            <div className={`p-8 min-h-screen ${isDark ? 'bg-gradient-to-b from-[#111111] to-[#1a1a1a]' : ''}`} style={{ fontFamily: "'Nunito', sans-serif" }}>
+                <LessonReader lesson={selectedLesson} subject={selectedSubject} onBack={() => setSelectedLesson(null)} isDark={isDark} />
             </div>
         );
     }
@@ -293,19 +317,19 @@ export function StudentDocuments() {
     if (selectedSubject) {
         const totalLessons = selectedSubject.chapters.reduce((s, c) => s + c.lessons.length, 0);
         return (
-            <div className="p-8 min-h-screen" style={{ fontFamily: "'Nunito', sans-serif" }}>
+            <div className={`p-8 min-h-screen ${isDark ? 'bg-gradient-to-b from-[#111111] to-[#1a1a1a]' : ''}`} style={{ fontFamily: "'Nunito', sans-serif" }}>
                 <div className="max-w-3xl mx-auto space-y-5">
-                    <button onClick={() => setSelectedSubject(null)} className="flex items-center gap-2 text-[#1A1A1A]/50 hover:text-[#1A1A1A] font-extrabold text-sm transition-colors">
+                    <button onClick={() => setSelectedSubject(null)} className={`flex items-center gap-2 font-extrabold text-sm transition-colors ${isDark ? 'text-[#b3b3b3] hover:text-white' : 'text-[#1A1A1A]/50 hover:text-[#1A1A1A]'}`}>
                         <CaretLeft className="w-4 h-4" /> Tất cả môn học
                     </button>
 
                     {/* Subject header */}
-                    <div className="rounded-3xl border-2 border-[#1A1A1A] overflow-hidden" style={{ backgroundColor: selectedSubject.bg }}>
+                    <div className={`rounded-3xl overflow-hidden ${isDark ? 'border border-white/10 bg-[rgba(30,30,30,0.9)] shadow-[0_14px_32px_rgba(0,0,0,0.35)]' : 'border-2 border-[#1A1A1A]'}`} style={{ backgroundColor: isDark ? undefined : selectedSubject.bg }}>
                         <div className="p-6 flex items-center gap-5">
-                            <div className="w-14 h-14 shrink-0 rounded-2xl border-2 border-[#1A1A1A] flex items-center justify-center p-3 bg-white shadow-[3px_3px_0_0_#1A1A1A]">{selectedSubject.icon}</div>
+                            <div className={`w-14 h-14 shrink-0 rounded-2xl flex items-center justify-center p-3 ${isDark ? 'border border-white/10 bg-[#17171a] shadow-[0_0_20px_rgba(255,255,255,0.06)]' : 'border-2 border-[#1A1A1A] bg-white shadow-[3px_3px_0_0_#1A1A1A]'}`}>{renderSubjectIcon(selectedSubject)}</div>
                             <div>
-                                <h1 className="text-2xl font-extrabold text-[#1A1A1A]">{selectedSubject.name}</h1>
-                                <p className="text-sm font-bold text-[#1A1A1A]/60 mt-1">{selectedSubject.chapters.length} chương · {totalLessons} bài học</p>
+                                <h1 className={`text-2xl font-black ${isDark ? 'text-white' : 'text-[#1A1A1A]'}`}>{selectedSubject.name}</h1>
+                                <p className={`text-sm font-bold mt-1 ${isDark ? 'text-[#b3b3b3]' : 'text-[#1A1A1A]/60'}`}>{selectedSubject.chapters.length} chương · {totalLessons} bài học</p>
                             </div>
                         </div>
                     </div>
@@ -315,17 +339,17 @@ export function StudentDocuments() {
                         {selectedSubject.chapters.map((chapter) => {
                             const isOpen = openChapters.includes(chapter.id);
                             return (
-                                <div key={chapter.id} className="rounded-3xl border-2 border-[#1A1A1A] bg-white overflow-hidden">
+                                <div key={chapter.id} className={`rounded-3xl overflow-hidden ${isDark ? 'border border-white/10 bg-[rgba(30,30,30,0.9)] shadow-[0_10px_24px_rgba(0,0,0,0.28)]' : 'border-2 border-[#1A1A1A] bg-white'}`}>
                                     <button
                                         onClick={() => toggleChapter(chapter.id)}
-                                        className="w-full p-5 flex items-center gap-4 text-left hover:bg-[#1A1A1A]/3 transition-colors"
+                                        className={`w-full p-5 flex items-center gap-4 text-left transition-colors ${isDark ? 'hover:bg-white/5' : 'hover:bg-[#1A1A1A]/3'}`}
                                     >
-                                        <div className="shrink-0 w-10 h-10 rounded-2xl border-2 border-[#1A1A1A]/20 flex items-center justify-center" style={{ backgroundColor: selectedSubject.bg }}>
-                                            <Stack className="w-5 h-5 text-[#1A1A1A]" weight="fill" />
+                                        <div className={`shrink-0 w-10 h-10 rounded-2xl flex items-center justify-center ${isDark ? 'border border-white/10 bg-[#17171a] shadow-[0_0_14px_rgba(255,255,255,0.06)]' : 'border-2 border-[#1A1A1A]/20'}`} style={{ backgroundColor: isDark ? undefined : selectedSubject.bg }}>
+                                            <Stack className={`w-5 h-5 ${isDark ? 'text-[#f3f4f6]' : 'text-[#1A1A1A]'}`} weight="fill" />
                                         </div>
                                         <div className="flex-1 min-w-0">
-                                            <h3 className="font-extrabold text-[#1A1A1A] text-sm">{chapter.title}</h3>
-                                            <p className="text-xs text-[#1A1A1A]/50 font-bold mt-0.5">{chapter.lessons.length} bài học</p>
+                                            <h3 className={`font-extrabold text-sm ${isDark ? 'text-white' : 'text-[#1A1A1A]'}`}>{chapter.title}</h3>
+                                            <p className={`text-xs font-bold mt-0.5 ${isDark ? 'text-[#b3b3b3]' : 'text-[#1A1A1A]/50'}`}>{chapter.lessons.length} bài học</p>
                                         </div>
                                         {isOpen
                                             ? <CaretDown className="w-5 h-5 text-[#1A1A1A]/40 shrink-0" />
@@ -333,19 +357,19 @@ export function StudentDocuments() {
                                     </button>
 
                                     {isOpen && (
-                                        <div className="border-t-2 border-[#1A1A1A]/10 divide-y divide-[#1A1A1A]/10">
+                                        <div className={`${isDark ? 'border-t border-white/10 divide-y divide-white/10' : 'border-t-2 border-[#1A1A1A]/10 divide-y divide-[#1A1A1A]/10'}`}>
                                             {chapter.lessons.map((lesson) => (
                                                 <button
                                                     key={lesson.id}
                                                     onClick={() => setSelectedLesson(lesson)}
-                                                    className="w-full px-5 py-4 flex items-center gap-4 text-left hover:bg-[#1A1A1A]/3 transition-colors"
+                                                    className={`w-full px-5 py-4 flex items-center gap-4 text-left transition-colors ${isDark ? 'hover:bg-white/5' : 'hover:bg-[#1A1A1A]/3'}`}
                                                 >
-                                                    <div className="shrink-0 w-8 h-8 rounded-xl bg-[#1A1A1A]/5 border border-[#1A1A1A]/15 flex items-center justify-center">
-                                                        <FileText className="w-4 h-4 text-[#1A1A1A]/50" weight="fill" />
+                                                    <div className={`shrink-0 w-8 h-8 rounded-xl flex items-center justify-center ${isDark ? 'bg-[#17171a] border border-white/10 shadow-[0_0_12px_rgba(255,255,255,0.06)]' : 'bg-[#1A1A1A]/5 border border-[#1A1A1A]/15'}`}>
+                                                        <FileText className={`w-4 h-4 ${isDark ? 'text-[#d1d5db]' : 'text-[#1A1A1A]/50'}`} weight="fill" />
                                                     </div>
                                                     <div className="flex-1 min-w-0">
-                                                        <p className="font-extrabold text-[#1A1A1A] text-sm truncate">{lesson.title}</p>
-                                                        <p className="text-xs text-[#1A1A1A]/40 font-bold mt-0.5">≈ {lesson.readTime} phút đọc</p>
+                                                        <p className={`font-extrabold text-sm truncate ${isDark ? 'text-white' : 'text-[#1A1A1A]'}`}>{lesson.title}</p>
+                                                        <p className={`text-xs font-bold mt-0.5 ${isDark ? 'text-[#b3b3b3]' : 'text-[#1A1A1A]/40'}`}>≈ {lesson.readTime} phút đọc</p>
                                                     </div>
                                                     <CaretRight className="w-4 h-4 text-[#1A1A1A]/30 shrink-0" />
                                                 </button>
@@ -363,11 +387,11 @@ export function StudentDocuments() {
 
     // ── Subject grid (home) ───────────────────────────────────────────────────
     return (
-        <div className="p-8 min-h-screen" style={{ fontFamily: "'Nunito', sans-serif" }}>
+        <div className={`p-8 min-h-screen ${isDark ? 'bg-gradient-to-b from-[#111111] to-[#1a1a1a]' : ''}`} style={{ fontFamily: "'Nunito', sans-serif" }}>
             <div className="max-w-4xl mx-auto space-y-6">
                 <div>
                     <p className="text-xs font-extrabold text-gray-400 uppercase tracking-widest mb-1">Chọn môn học để xem lý thuyết</p>
-                    <h1 className="text-3xl font-extrabold text-[#1A1A1A]">Tài liệu học tập</h1>
+                    <h1 className={`text-3xl font-black ${isDark ? 'text-white' : 'text-[#1A1A1A]'}`}>Tài liệu học tập</h1>
                 </div>
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -383,15 +407,15 @@ export function StudentDocuments() {
                                 }}
                                 className="text-left group"
                             >
-                                <div className="rounded-3xl border-2 border-[#1A1A1A] overflow-hidden hover:shadow-lg transition-all duration-200 group-hover:-translate-y-0.5 bg-white">
-                                    <div className="h-2 w-full" style={{ backgroundColor: subject.bg }} />
+                                <div className={`rounded-3xl overflow-hidden transition-all duration-200 bg-white ${isDark ? 'bg-[rgba(30,30,30,0.9)] border border-[rgba(255,255,255,0.08)] shadow-[0_14px_30px_rgba(0,0,0,0.32)] group-hover:-translate-y-1 group-hover:shadow-[0_18px_40px_rgba(0,0,0,0.45)]' : 'border-2 border-[#1A1A1A] hover:shadow-lg group-hover:-translate-y-0.5'}`}>
+                                    <div className={`h-2 w-full ${isDark ? 'shadow-[0_0_14px_rgba(255,255,255,0.25)]' : ''}`} style={{ backgroundColor: subject.bg }} />
                                     <div className="p-6">
-                                        <div className="w-14 h-14 rounded-2xl border-2 border-[#1A1A1A] flex items-center justify-center mb-4 p-3 group-hover:scale-105 transition-transform bg-white shadow-[3px_3px_0_0_#1A1A1A]">
-                                            {subject.icon}
+                                        <div className={`w-14 h-14 rounded-2xl flex items-center justify-center mb-4 p-3 group-hover:scale-105 transition-transform ${isDark ? 'border border-white/10 bg-[#17171a] shadow-[0_0_18px_rgba(255,255,255,0.08)]' : 'border-2 border-[#1A1A1A] bg-white shadow-[3px_3px_0_0_#1A1A1A]'}`}>
+                                            {renderSubjectIcon(subject)}
                                         </div>
-                                        <h3 className="font-extrabold text-[#1A1A1A] text-lg">{subject.name}</h3>
-                                        <p className="text-xs font-bold text-[#1A1A1A]/50 mt-1">{subject.chapters.length} chương · {totalLessons} bài học</p>
-                                        <div className="mt-4 inline-flex items-center gap-1.5 text-xs font-extrabold text-[#FF6B4A]">
+                                        <h3 className={`text-lg ${isDark ? 'text-white font-black' : 'text-[#1A1A1A] font-extrabold'}`}>{subject.name}</h3>
+                                        <p className={`text-xs font-bold mt-1 ${isDark ? 'text-[#b3b3b3]' : 'text-[#1A1A1A]/50'}`}>{subject.chapters.length} chương · {totalLessons} bài học</p>
+                                        <div className={`mt-4 inline-flex items-center gap-1.5 text-xs font-extrabold ${isDark ? 'text-[#ff7849] group-hover:text-[#ff9a73]' : 'text-[#FF6B4A]'}`}>
                                             Xem tài liệu <CaretRight className="w-3.5 h-3.5" />
                                         </div>
                                     </div>
