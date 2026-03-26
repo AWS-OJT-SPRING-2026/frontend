@@ -21,6 +21,7 @@ export interface MyProfileResponse {
   parentPhone?: string;
   parentEmail?: string;
   parentRelationship?: string;
+  lastPasswordChangeAt?: string;
 }
 
 export interface UpdateMyStudentProfileRequest {

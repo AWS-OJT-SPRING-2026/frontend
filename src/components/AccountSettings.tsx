@@ -23,6 +23,28 @@ const PASSWORD_CHANGE_COOLDOWN_DAYS = 7;
 const PASSWORD_CHANGE_COOLDOWN_MS = PASSWORD_CHANGE_COOLDOWN_DAYS * 24 * 60 * 60 * 1000;
 const PASSWORD_CHANGE_HISTORY_KEY = 'educare_last_password_change_at';
 
+function parseLastPasswordChangeAt(value?: string): Date | null {
+    if (!value) return null;
+    const parsed = new Date(value);
+    return Number.isNaN(parsed.getTime()) ? null : parsed;
+}
+
+function formatRemainingPasswordCooldown(remainingMs: number): string {
+    if (remainingMs <= 0) return '0 phút';
+    const totalMinutes = Math.ceil(remainingMs / (1000 * 60));
+    const days = Math.floor(totalMinutes / (60 * 24));
+    const hours = Math.floor((totalMinutes % (60 * 24)) / 60);
+    const minutes = totalMinutes % 60;
+
+    if (days > 0) {
+        return `${days} ngày${hours > 0 ? ` ${hours} giờ` : ''}`;
+    }
+    if (hours > 0) {
+        return `${hours} giờ${minutes > 0 ? ` ${minutes} phút` : ''}`;
+    }
+    return `${minutes} phút`;
+}
+
 function mapProfileToFormData(profile: MyProfileResponse) {
     return {
         name: profile.fullName || '',
@@ -178,12 +200,14 @@ export function AccountSettings() {
     // OTP Timer
     const [countdown, setCountdown] = useState(90);
 
-    // Last password change date (null means no recent change)
+    // Last password change date (null means no cooldown)
     const [lastPasswordChangeDate, setLastPasswordChangeDate] = useState<Date | null>(null);
+    const [cooldownNowMs, setCooldownNowMs] = useState(() => Date.now());
 
-    const timeSinceLastChange = lastPasswordChangeDate ? new Date().getTime() - lastPasswordChangeDate.getTime() : Infinity;
-    const canChangePassword = timeSinceLastChange >= PASSWORD_CHANGE_COOLDOWN_MS;
-    const daysRemaining = canChangePassword ? 0 : Math.ceil((PASSWORD_CHANGE_COOLDOWN_MS - timeSinceLastChange) / (1000 * 60 * 60 * 24));
+    const cooldownEndMs = lastPasswordChangeDate ? lastPasswordChangeDate.getTime() + PASSWORD_CHANGE_COOLDOWN_MS : 0;
+    const remainingCooldownMs = lastPasswordChangeDate ? Math.max(0, cooldownEndMs - cooldownNowMs) : 0;
+    const canChangePassword = remainingCooldownMs === 0;
+    const remainingCooldownText = formatRemainingPasswordCooldown(remainingCooldownMs);
 
     useEffect(() => {
         const userId = user?.id;
@@ -199,14 +223,6 @@ export function AccountSettings() {
             return;
         }
 
-        const savedCooldownRaw = localStorage.getItem(`${PASSWORD_CHANGE_HISTORY_KEY}:${userId}`);
-        if (savedCooldownRaw) {
-            const parsedDate = new Date(savedCooldownRaw);
-            if (!Number.isNaN(parsedDate.getTime())) {
-                setLastPasswordChangeDate(parsedDate);
-            }
-        }
-
         const loadProfile = async () => {
             setIsLoadingProfile(true);
             try {
@@ -214,6 +230,23 @@ export function AccountSettings() {
                 setFormData(mapProfileToFormData(profile));
                 setAvatarUrl(profile.avatarUrl || null);
                 setProfileId(resolveProfileId(profile));
+
+                const backendLastChange = parseLastPasswordChangeAt(profile.lastPasswordChangeAt);
+                if (backendLastChange) {
+                    setLastPasswordChangeDate(backendLastChange);
+                    if (userId) {
+                        localStorage.setItem(`${PASSWORD_CHANGE_HISTORY_KEY}:${userId}`, backendLastChange.toISOString());
+                    }
+                } else {
+                    const savedCooldownRaw = localStorage.getItem(`${PASSWORD_CHANGE_HISTORY_KEY}:${userId}`);
+                    if (savedCooldownRaw) {
+                        const parsedDate = new Date(savedCooldownRaw);
+                        if (!Number.isNaN(parsedDate.getTime())) {
+                            setLastPasswordChangeDate(parsedDate);
+                        }
+                    }
+                }
+
                 if (user) {
                     updateUser({
                         ...user,
@@ -254,6 +287,19 @@ export function AccountSettings() {
             isCancelled = true;
         };
     }, [avatarUrl]);
+
+    useEffect(() => {
+        if (!lastPasswordChangeDate) return;
+        if (remainingCooldownMs === 0) return;
+
+        const timer = window.setInterval(() => {
+            setCooldownNowMs(Date.now());
+        }, 1000);
+
+        return () => {
+            window.clearInterval(timer);
+        };
+    }, [lastPasswordChangeDate, remainingCooldownMs]);
 
     useEffect(() => {
         let timer: NodeJS.Timeout;
@@ -379,9 +425,16 @@ export function AccountSettings() {
             setErrorMessage(apiMessage);
 
             if (user?.id && isPasswordChangeLimited(apiMessage)) {
-                const now = new Date();
-                localStorage.setItem(`${PASSWORD_CHANGE_HISTORY_KEY}:${user.id}`, now.toISOString());
-                setLastPasswordChangeDate(now);
+                try {
+                    const profile = await profileService.getMyProfile(token);
+                    const backendLastChange = parseLastPasswordChangeAt(profile.lastPasswordChangeAt);
+                    if (backendLastChange) {
+                        setLastPasswordChangeDate(backendLastChange);
+                        localStorage.setItem(`${PASSWORD_CHANGE_HISTORY_KEY}:${user.id}`, backendLastChange.toISOString());
+                    }
+                } catch {
+                    // Keep current cooldown state if profile refresh fails.
+                }
             }
         }
     };
@@ -457,9 +510,16 @@ export function AccountSettings() {
             const fallback = 'Đổi mật khẩu thất bại. Vui lòng kiểm tra lại OTP.';
             setErrorMessage(apiMessage || fallback);
             if (user?.id && isPasswordChangeLimited(apiMessage)) {
-                const now = new Date();
-                localStorage.setItem(`${PASSWORD_CHANGE_HISTORY_KEY}:${user.id}`, now.toISOString());
-                setLastPasswordChangeDate(now);
+                try {
+                    const profile = await profileService.getMyProfile(token);
+                    const backendLastChange = parseLastPasswordChangeAt(profile.lastPasswordChangeAt);
+                    if (backendLastChange) {
+                        setLastPasswordChangeDate(backendLastChange);
+                        localStorage.setItem(`${PASSWORD_CHANGE_HISTORY_KEY}:${user.id}`, backendLastChange.toISOString());
+                    }
+                } catch {
+                    // Keep current cooldown state if profile refresh fails.
+                }
             }
         }
     };
@@ -854,7 +914,7 @@ export function AccountSettings() {
                                     Hệ thống chỉ cho phép đổi mật khẩu <strong className="text-[#1A1A1A]">7 ngày</strong> một lần để đảm bảo an toàn.
                                 </p>
                                 <div className="mt-2 text-[11px] font-extrabold text-[#FF6B4A] bg-[#FF6B4A]/10 px-4 py-2 rounded-xl border border-[#FF6B4A]/20">
-                                    Thử lại sau {daysRemaining} ngày
+                                    Thử lại sau {remainingCooldownText}
                                 </div>
                             </div>
                         ) : (

@@ -122,15 +122,32 @@ const MIN_DURATION_HOURS = DRAG_MINUTE_STEP / 60;
 
 const STATUS_LABELS: Record<ScheduleEvent['status'], { label: string; color: string; bgColor: string }> = {
     ongoing: { label: 'Đang diễn ra', color: '#16A34A', bgColor: '#DCFCE7' },
-    upcoming: { label: 'Sắp tới', color: '#D97706', bgColor: '#FEF3C7' },
-    completed: { label: 'Đã hoàn thành', color: '#6B7280', bgColor: '#F3F4F6' },
+    upcoming: { label: 'Sắp tới', color: '#4F46E5', bgColor: '#EEF2FF' },
+    completed: { label: 'Đã kết thúc', color: '#6B7280', bgColor: '#F3F4F6' },
 };
 
-const STATUS_CARD_STYLES: Record<ScheduleEvent['status'], { border: string; glow: string }> = {
-    ongoing: { border: '#22C55E', glow: '0 0 0 2px rgba(34, 197, 94, 0.15)' },
-    upcoming: { border: '#F59E0B', glow: '0 0 0 2px rgba(245, 158, 11, 0.12)' },
-    completed: { border: '#9CA3AF', glow: '0 0 0 1px rgba(156, 163, 175, 0.15)' },
+const STATUS_CARD_STYLES: Record<ScheduleEvent['status'], { bg: string; border: string; text: string; glow: string }> = {
+    ongoing: {
+        bg: '#DCFCE7',
+        border: '#22C55E',
+        text: '#047857',
+        glow: '0 0 0 2px rgba(34, 197, 94, 0.15)',
+    },
+    upcoming: {
+        bg: '#EEF2FF',
+        border: '#C7D2FE',
+        text: '#4F46E5',
+        glow: '0 0 0 2px rgba(99, 102, 241, 0.12)',
+    },
+    completed: {
+        bg: '#F3F4F6',
+        border: '#D1D5DB',
+        text: '#6B7280',
+        glow: '0 0 0 1px rgba(156, 163, 175, 0.15)',
+    },
 };
+
+const hasMeetLink = (meetLink?: string) => Boolean(meetLink?.trim());
 
 const fmtTime = (h: number) => {
     const hh = Math.floor(h);
@@ -871,7 +888,7 @@ export function AdminSchedule() {
                     { label: 'Tổng buổi hôm nay', value: stats.totalToday, bg: '#FCE38A' },
                     { label: 'Đang diễn ra', value: stats.ongoing, bg: '#95E1D3' },
                     { label: 'Sắp bắt đầu', value: stats.upcoming, bg: '#B8B5FF' },
-                    { label: 'Đã hoàn thành', value: stats.completed, bg: '#FFB5B5' },
+                    { label: 'Đã kết thúc', value: stats.completed, bg: '#FFB5B5' },
                 ].map((s) => (
                     <div key={s.label} className="rounded-3xl p-5 border-2 border-[#1A1A1A]" style={{ backgroundColor: s.bg }}>
                         <p className="text-xs font-extrabold text-[#1A1A1A]/60 uppercase tracking-wider mb-3">{s.label}</p>
@@ -994,16 +1011,35 @@ export function AdminSchedule() {
                                     />
                                 </div>
 
-                                {/* Color legend */}
+                                {/* Status legend */}
                                 <div className="bg-white rounded-3xl border-2 border-[#1A1A1A] p-5 shadow-sm">
-                                    <h4 className="font-extrabold text-sm text-[#1A1A1A] mb-3">Chú thích màu sắc</h4>
-                                    <div className="grid grid-cols-2 gap-2">
-                                        {Object.entries(SUBJECT_COLORS).map(([sub, c]) => (
-                                            <div key={sub} className="flex items-center gap-2 p-1.5 rounded-lg hover:bg-gray-50 transition-colors cursor-default">
-                                                <div className="w-4 h-4 rounded-md" style={{ backgroundColor: c.dot }} />
-                                                <span className="text-xs font-bold text-[#1A1A1A]/70">{sub}</span>
+                                    <h4 className="font-extrabold text-sm text-[#1A1A1A] mb-3">Chú thích trạng thái</h4>
+                                    <div className="space-y-2">
+                                        {([
+                                            { status: 'completed' as const, label: 'Đã kết thúc' },
+                                            { status: 'ongoing' as const, label: 'Đang diễn ra' },
+                                            { status: 'upcoming' as const, label: 'Sắp tới' },
+                                        ]).map((item) => {
+                                            const stCard = STATUS_CARD_STYLES[item.status];
+                                            return (
+                                                <div key={item.status} className="flex items-center gap-2 p-1.5 rounded-lg hover:bg-gray-50 transition-colors cursor-default">
+                                                    <div className="w-4 h-4 rounded-md border" style={{ backgroundColor: stCard.bg, borderColor: stCard.border }} />
+                                                    <span className="text-xs font-bold" style={{ color: stCard.text }}>{item.label}</span>
+                                                </div>
+                                            );
+                                        })}
+                                    </div>
+                                    <div className="mt-3 pt-3 border-t border-[#1A1A1A]/10 space-y-2">
+                                        <div className="flex items-center gap-2 p-1.5 rounded-lg hover:bg-gray-50 transition-colors cursor-default">
+                                            <div className="inline-flex items-center justify-center w-4 h-4 rounded border border-[#86EFAC] bg-[#DCFCE7]">
+                                                <VideoCamera className="w-2.5 h-2.5 text-[#15803D]" weight="fill" />
                                             </div>
-                                        ))}
+                                            <span className="text-xs font-bold text-[#166534]">Có link Meet</span>
+                                        </div>
+                                        <div className="flex items-center gap-2 p-1.5 rounded-lg hover:bg-gray-50 transition-colors cursor-default">
+                                            <div className="inline-flex items-center justify-center h-4 rounded border border-[#FDBA74] bg-[#FFF7ED] px-1 text-[8px] font-extrabold text-[#C2410C]">!</div>
+                                            <span className="text-xs font-bold text-[#C2410C]">Chưa có link Meet</span>
+                                        </div>
                                     </div>
                                 </div>
                             </div>
@@ -1023,14 +1059,18 @@ export function AdminSchedule() {
                     {tooltip.type === 'event' ? (
                         (() => {
                             const ev = tooltip.event;
-                            const clr = getSubjectColor(ev.subject);
                             const st = STATUS_LABELS[ev.status];
+                            const stCard = STATUS_CARD_STYLES[ev.status];
                             return (
-                                <div className="w-[300px] rounded-2xl border-2 bg-white p-3 shadow-2xl" style={{ borderColor: clr.border }}>
-                                    <div className="text-sm font-extrabold" style={{ color: clr.text }}>{ev.subject}</div>
+                                <div className="w-[300px] rounded-2xl border-2 p-3 shadow-2xl" style={{ borderColor: stCard.border, backgroundColor: stCard.bg }}>
+                                    <div className="text-sm font-extrabold" style={{ color: stCard.text }}>{ev.subject}</div>
                                     <div className="text-xs font-semibold text-gray-500 mt-0.5">Lớp {ev.classroom}</div>
                                     <div className="text-xs font-semibold text-gray-500">GV: {ev.teacher}</div>
                                     <div className="text-xs font-semibold text-gray-500 truncate">Chủ đề: {ev.topic}</div>
+                                    <div className="mt-1 flex items-center gap-1.5 text-[11px] font-extrabold" style={{ color: hasMeetLink(ev.meetLink) ? '#15803D' : '#C2410C' }}>
+                                        <VideoCamera className="w-3 h-3" weight={hasMeetLink(ev.meetLink) ? 'fill' : 'regular'} />
+                                        {hasMeetLink(ev.meetLink) ? 'Có link Meet' : 'Chưa có link Meet'}
+                                    </div>
                                     <div className="mt-2 flex items-center justify-between gap-2">
                                         <span className="text-[11px] font-bold text-gray-400">{fmtTime(ev.startHour)} - {fmtTime(ev.startHour + ev.duration)}</span>
                                         <span className="text-[10px] font-extrabold px-1.5 py-0.5 rounded" style={{ backgroundColor: st.bgColor, color: st.color }}>{st.label}</span>
@@ -1067,7 +1107,7 @@ export function AdminSchedule() {
                                         return haystack.includes(q);
                                     })
                                     .map((ev) => {
-                                    const clr = getSubjectColor(ev.subject);
+                                    const stCard = STATUS_CARD_STYLES[ev.status];
                                     return (
                                         <button
                                             type="button"
@@ -1078,9 +1118,9 @@ export function AdminSchedule() {
                                                 setTooltip(null);
                                             }}
                                             className="w-full text-left rounded-lg border px-2 py-1.5 text-xs hover:brightness-95 transition-colors"
-                                            style={{ borderColor: clr.border, backgroundColor: clr.bg }}
+                                            style={{ borderColor: stCard.border, backgroundColor: stCard.bg }}
                                         >
-                                            <div className="font-extrabold truncate" style={{ color: clr.text }}>{fmtTime(ev.startHour)} {ev.subject}</div>
+                                            <div className="font-extrabold truncate" style={{ color: stCard.text }}>{fmtTime(ev.startHour)} {ev.subject}</div>
                                             <div className="font-semibold text-gray-500 truncate">Lớp {ev.classroom} · GV: {ev.teacher}</div>
                                         </button>
                                     );
@@ -1804,7 +1844,6 @@ function WeekView({
                         return (
                             <div key={group.key} className="absolute" style={{ top, left: leftBase, width: colW, height, zIndex: 20 }}>
                                 {group.items.map((ev, idx) => {
-                                    const clr = getSubjectColor(ev.subject);
                                     const st = STATUS_LABELS[ev.status];
                                     const stCard = STATUS_CARD_STYLES[ev.status];
                                     const isHovered = hoveredCardId === ev.id;
@@ -1834,20 +1873,24 @@ function WeekView({
                                                 onMouseDown={(e) => onDragStart(ev.id, 'move', e)}
                                                 className={`relative h-full rounded-xl border-2 p-2 flex flex-col cursor-pointer overflow-hidden ${draggingEventId === ev.id ? 'ring-2 ring-[#FF6B4A]/30' : ''}`}
                                                 style={{
-                                                    backgroundColor: clr.bg,
-                                                    borderColor: isHovered ? clr.border : stCard.border,
+                                                    backgroundColor: stCard.bg,
+                                                    borderColor: stCard.border,
                                                     boxShadow: isHovered
-                                                        ? `0 8px 25px rgba(0,0,0,0.18), 0 0 0 2px ${clr.border}40`
+                                                        ? `0 8px 25px rgba(0,0,0,0.18), 0 0 0 2px ${stCard.border}40`
                                                         : stCard.glow,
                                                     transition: 'box-shadow 0.22s cubic-bezier(.4,0,.2,1), border-color 0.15s ease',
                                                 }}
                                             >
-                                                {!ev.meetLink && (
-                                                    <span className="absolute top-1.5 right-1.5 rounded-md bg-[#FFF7ED] px-1.5 py-0.5 text-[8px] font-extrabold text-[#C2410C] border border-[#FDBA74]">
-                                                        Chưa link
+                                                {hasMeetLink(ev.meetLink) ? (
+                                                    <span className="absolute top-1.5 right-1.5 inline-flex items-center justify-center rounded-md border border-[#86EFAC] bg-[#DCFCE7] p-1" title="Có link Meet">
+                                                        <VideoCamera className="w-2.5 h-2.5 text-[#15803D]" weight="fill" />
+                                                    </span>
+                                                ) : (
+                                                    <span className="absolute top-1.5 right-1.5 rounded-md bg-[#FFF7ED] px-1.5 py-0.5 text-[8px] font-extrabold text-[#C2410C] border border-[#FDBA74]" title="Chưa có link Meet">
+                                                        !
                                                     </span>
                                                 )}
-                                                <div className="text-[13px] font-extrabold leading-tight truncate" style={{ color: clr.text }}>{ev.subject}</div>
+                                                <div className="text-[13px] font-extrabold leading-tight truncate" style={{ color: stCard.text }}>{ev.subject}</div>
                                                 <div className="text-[12px] font-bold text-gray-500 truncate">{ev.classroom}</div>
 
                                                 <div
@@ -1893,7 +1936,6 @@ function WeekView({
                     return (
                         <div key={group.key} className="absolute" style={{ top, left: leftBase, width: colW, height, zIndex: 20 }}>
                             {shown.map((ev, idx) => {
-                                const clr = getSubjectColor(ev.subject);
                                 const st = STATUS_LABELS[ev.status];
                                 const stCard = STATUS_CARD_STYLES[ev.status];
                                 const isHovered = hoveredCardId === ev.id;
@@ -1924,21 +1966,25 @@ function WeekView({
                                             className={`relative h-full rounded-xl border-2 p-1.5 flex flex-col cursor-pointer overflow-hidden
                                                 ${draggingEventId === ev.id ? 'ring-2 ring-[#FF6B4A]/30' : ''}`}
                                             style={{
-                                                backgroundColor: clr.bg,
-                                                borderColor: isHovered ? clr.border : stCard.border,
+                                                backgroundColor: stCard.bg,
+                                                borderColor: stCard.border,
                                                 boxShadow: isHovered
-                                                    ? `0 8px 25px rgba(0,0,0,0.18), 0 0 0 2px ${clr.border}40`
+                                                    ? `0 8px 25px rgba(0,0,0,0.18), 0 0 0 2px ${stCard.border}40`
                                                     : `${stCard.glow}, 2px 0 6px rgba(0,0,0,0.06)`,
                                                 transition: 'box-shadow 0.22s cubic-bezier(.4,0,.2,1), border-color 0.15s ease',
                                             }}
                                         >
-                                            {!ev.meetLink && (
-                                                <span className="absolute top-1 right-1 rounded bg-[#FFF7ED] px-1 py-0.5 text-[7px] font-extrabold text-[#C2410C] border border-[#FDBA74] leading-none">
-                                                    Chưa link
+                                            {hasMeetLink(ev.meetLink) ? (
+                                                <span className="absolute top-1 right-1 inline-flex items-center justify-center rounded border border-[#86EFAC] bg-[#DCFCE7] p-1" title="Có link Meet">
+                                                    <VideoCamera className="w-2 h-2 text-[#15803D]" weight="fill" />
+                                                </span>
+                                            ) : (
+                                                <span className="absolute top-1 right-1 rounded bg-[#FFF7ED] px-1 py-0.5 text-[7px] font-extrabold text-[#C2410C] border border-[#FDBA74] leading-none" title="Chưa có link Meet">
+                                                    !
                                                 </span>
                                             )}
                                             {/* Compact: subject + classroom horizontal */}
-                                            <div className="text-[11px] font-extrabold leading-tight truncate" style={{ color: clr.text }}>
+                                            <div className="text-[11px] font-extrabold leading-tight truncate" style={{ color: stCard.text }}>
                                                 {ev.subject}
                                             </div>
                                             <div className="text-[10px] font-bold text-gray-500 truncate">
@@ -2106,8 +2152,8 @@ function TodayTimelineView({
                     const columns = group.length;
 
                     return group.map((ev, idx) => {
-                        const clr = getSubjectColor(ev.subject);
                         const st = STATUS_LABELS[ev.status];
+                        const stCard = STATUS_CARD_STYLES[ev.status];
                         return (
                             <div
                                 key={ev.id}
@@ -2122,17 +2168,21 @@ function TodayTimelineView({
                             >
                                 <div
                                     className="relative h-full rounded-2xl border-2 p-3 cursor-pointer overflow-hidden hover:shadow-lg hover:-translate-y-0.5 transition-all"
-                                    style={{ borderColor: clr.border, backgroundColor: clr.bg }}
+                                    style={{ borderColor: stCard.border, backgroundColor: stCard.bg }}
                                     onMouseEnter={(e) => onShowTooltip(ev, e)}
                                     onMouseLeave={onHideTooltip}
                                     onClick={() => onEventClick(ev)}
                                 >
-                                    {!ev.meetLink && (
-                                        <span className="absolute top-2 right-2 rounded-md border border-[#FDBA74] bg-[#FFF7ED] px-1.5 py-0.5 text-[9px] font-extrabold text-[#C2410C]">
-                                            Chưa link
+                                    {hasMeetLink(ev.meetLink) ? (
+                                        <span className="absolute top-2 right-2 inline-flex items-center justify-center rounded-md border border-[#86EFAC] bg-[#DCFCE7] p-1" title="Có link Meet">
+                                            <VideoCamera className="w-3 h-3 text-[#15803D]" weight="fill" />
+                                        </span>
+                                    ) : (
+                                        <span className="absolute top-2 right-2 rounded-md border border-[#FDBA74] bg-[#FFF7ED] px-1.5 py-0.5 text-[9px] font-extrabold text-[#C2410C]" title="Chưa có link Meet">
+                                            !
                                         </span>
                                     )}
-                                    <div className="text-[15px] font-extrabold truncate leading-tight" style={{ color: clr.text }}>{ev.subject}</div>
+                                    <div className="text-[15px] font-extrabold truncate leading-tight" style={{ color: stCard.text }}>{ev.subject}</div>
                                     <div className="text-[13px] font-bold text-gray-500 truncate">Lớp {ev.classroom}</div>
                                     <div className="text-[12px] font-semibold text-gray-400 truncate">GV: {ev.teacher}</div>
                                     <div className="mt-1 flex items-center justify-between gap-2">
@@ -2262,8 +2312,6 @@ function MonthView({
                                         <div className={`text-sm font-extrabold mb-1.5 ${isToday ? 'text-[#FF6B4A]' : 'text-[#1A1A1A]/60'}`}>{date.getDate()}</div>
                                         <div className="space-y-1">
                                             {dayEvents.slice(0, 3).map((ev) => {
-                                                const clr = getSubjectColor(ev.subject);
-                                                const st = STATUS_LABELS[ev.status];
                                                 const stCard = STATUS_CARD_STYLES[ev.status];
                                                 const isHovered = hoveredEventId === ev.id;
                                                 return (
@@ -2278,21 +2326,32 @@ function MonthView({
                                                             hideMonthHover();
                                                         }}
                                                         onClick={() => onEventClick(ev)}
-                                                        className="text-xs font-bold px-2 py-1 rounded-lg cursor-pointer border-2 overflow-hidden"
+                                                        className="relative text-xs font-bold px-1.5 py-1 rounded-lg cursor-pointer border-2 overflow-hidden"
                                                         style={{
-                                                            backgroundColor: clr.bg,
-                                                            color: clr.text,
-                                                            borderColor: isHovered ? clr.border : stCard.border,
+                                                            backgroundColor: stCard.bg,
+                                                            color: stCard.text,
+                                                            borderColor: stCard.border,
                                                             boxShadow: isHovered
-                                                                ? `0 8px 25px rgba(0,0,0,0.18), 0 0 0 2px ${clr.border}40`
+                                                                ? `0 8px 25px rgba(0,0,0,0.18), 0 0 0 2px ${stCard.border}40`
                                                                 : stCard.glow,
                                                             transform: isHovered ? 'translateY(-2px) scale(1.02)' : 'translateY(0) scale(1)',
                                                             transition: 'box-shadow 0.22s cubic-bezier(.4,0,.2,1), border-color 0.15s ease, transform 0.22s cubic-bezier(.4,0,.2,1)',
                                                         }}
                                                     >
-                                                        <div className="flex items-center justify-between gap-1">
-                                                            <span className="truncate">{fmtTime(ev.startHour)} {ev.subject}</span>
-                                                            <span className="text-[9px] px-1 rounded" style={{ backgroundColor: st.bgColor, color: st.color }}>{st.label.split(' ')[0]}</span>
+                                                        {hasMeetLink(ev.meetLink) ? (
+                                                            <span className="absolute top-1 right-1 inline-flex h-4 w-4 items-center justify-center rounded-full border border-[#86EFAC] bg-[#DCFCE7] shadow-[0_1px_2px_rgba(0,0,0,0.08)]" title="Có link Meet">
+                                                                <VideoCamera className="w-2.5 h-2.5 text-[#15803D]" weight="fill" />
+                                                            </span>
+                                                        ) : (
+                                                            <span className="absolute top-1 right-1 inline-flex h-4 w-4 items-center justify-center rounded-full border border-[#FDBA74] bg-[#FFF7ED] text-[10px] font-black text-[#C2410C] leading-none shadow-[0_1px_2px_rgba(0,0,0,0.08)]" title="Chưa có link Meet">
+                                                                !
+                                                            </span>
+                                                        )}
+                                                        <div className="pr-5 leading-tight">
+                                                            <div className="flex items-center gap-1">
+                                                                <span className="shrink-0 text-[10px] font-extrabold">{fmtTime(ev.startHour)}</span>
+                                                                <span className="min-w-0 truncate text-[10px] sm:text-[11px]">{ev.subject}</span>
+                                                            </div>
                                                         </div>
                                                         <div
                                                             className="overflow-hidden"
@@ -2343,14 +2402,18 @@ function MonthView({
                     {monthHoverCard.type === 'event' ? (
                         (() => {
                             const ev = monthHoverCard.event;
-                            const clr = getSubjectColor(ev.subject);
                             const st = STATUS_LABELS[ev.status];
+                            const stCard = STATUS_CARD_STYLES[ev.status];
                             return (
-                                <div className="w-[300px] rounded-2xl border-2 bg-white p-3 shadow-2xl" style={{ borderColor: clr.border }}>
-                                    <div className="text-sm font-extrabold" style={{ color: clr.text }}>{ev.subject}</div>
+                                <div className="w-[300px] rounded-2xl border-2 p-3 shadow-2xl" style={{ borderColor: stCard.border, backgroundColor: stCard.bg }}>
+                                    <div className="text-sm font-extrabold" style={{ color: stCard.text }}>{ev.subject}</div>
                                     <div className="text-xs font-semibold text-gray-500 mt-0.5">Lớp {ev.classroom}</div>
                                     <div className="text-xs font-semibold text-gray-500">GV: {ev.teacher}</div>
                                     <div className="text-xs font-semibold text-gray-500 truncate">Chủ đề: {ev.topic}</div>
+                                    <div className="mt-1 flex items-center gap-1.5 text-[11px] font-extrabold" style={{ color: hasMeetLink(ev.meetLink) ? '#15803D' : '#C2410C' }}>
+                                        <VideoCamera className="w-3 h-3" weight={hasMeetLink(ev.meetLink) ? 'fill' : 'regular'} />
+                                        {hasMeetLink(ev.meetLink) ? 'Có link Meet' : 'Chưa có link Meet'}
+                                    </div>
                                     <div className="mt-2 flex items-center justify-between gap-2">
                                         <span className="text-[11px] font-bold text-gray-400">{fmtTime(ev.startHour)} - {fmtTime(ev.startHour + ev.duration)}</span>
                                         <span className="text-[10px] font-extrabold px-1.5 py-0.5 rounded" style={{ backgroundColor: st.bgColor, color: st.color }}>{st.label}</span>
@@ -2386,7 +2449,7 @@ function MonthView({
                                         return haystack.includes(q);
                                     })
                                     .map((ev) => {
-                                    const clr = getSubjectColor(ev.subject);
+                                    const stCard = STATUS_CARD_STYLES[ev.status];
                                     return (
                                         <button
                                             type="button"
@@ -2396,9 +2459,9 @@ function MonthView({
                                                 setMonthHoverCard(null);
                                             }}
                                             className="w-full text-left rounded-lg border px-2 py-1.5 text-xs hover:brightness-95 transition-colors"
-                                            style={{ borderColor: clr.border, backgroundColor: clr.bg }}
+                                            style={{ borderColor: stCard.border, backgroundColor: stCard.bg }}
                                         >
-                                            <div className="font-extrabold truncate" style={{ color: clr.text }}>{fmtTime(ev.startHour)} {ev.subject}</div>
+                                            <div className="font-extrabold truncate" style={{ color: stCard.text }}>{fmtTime(ev.startHour)} {ev.subject}</div>
                                             <div className="font-semibold text-gray-500 truncate">Lớp {ev.classroom} · GV: {ev.teacher}</div>
                                         </button>
                                     );
