@@ -7,6 +7,7 @@ import {
 } from '@phosphor-icons/react';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
 import { isUserOnline, formatTimeAgo } from '../../lib/timeUtils';
+import { useSettings } from '../../context/SettingsContext';
 
 /* ── Color palette ── */
 const CLASS_COLORS = ['#FCE38A', '#B8B5FF', '#FFB5B5', '#95E1D3'];
@@ -82,6 +83,8 @@ function SkeletonRow() {
 
 /* ── Student Profile Modal ── */
 function StudentProfileModal({ student, onClose }: { student: typeof MOCK_STUDENTS[0]; onClose: () => void }) {
+    const { theme } = useSettings();
+    const isDark = theme === 'dark';
     const colorIdx = MOCK_STUDENTS.findIndex(s => s.id === student.id);
     const bg = STUDENT_COLORS[colorIdx % 4];
 
@@ -89,19 +92,19 @@ function StudentProfileModal({ student, onClose }: { student: typeof MOCK_STUDEN
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4" onClick={onClose}>
             <div className="absolute inset-0 bg-black/40 backdrop-blur-sm transition-opacity" />
             <div
-                className="relative w-full max-w-md bg-white rounded-3xl border-2 border-[#1A1A1A] shadow-2xl overflow-hidden animate-[slideUp_0.3s_ease-out]"
+                className={`relative w-full max-w-md rounded-3xl border-2 shadow-2xl overflow-hidden animate-[slideUp_0.3s_ease-out] ${isDark ? 'bg-[#171b20] border-white/10' : 'bg-white border-[#1A1A1A]'}`}
                 onClick={e => e.stopPropagation()}
             >
                 {/* Header */}
-                <div className="px-6 py-5 flex items-center gap-4" style={{ backgroundColor: bg }}>
-                    <div className="w-16 h-16 rounded-full border-2 border-[#1A1A1A] flex items-center justify-center font-extrabold text-2xl text-[#1A1A1A] bg-white/50">
+                <div className="px-6 py-5 flex items-center gap-4" style={{ backgroundColor: isDark ? '#202734' : bg }}>
+                    <div className={`w-16 h-16 rounded-full border-2 flex items-center justify-center font-extrabold text-2xl ${isDark ? 'border-white/20 text-gray-100 bg-white/10' : 'border-[#1A1A1A] text-[#1A1A1A] bg-white/50'}`}>
                         {student.name.charAt(0)}
                     </div>
                     <div className="flex-1">
-                        <h3 className="font-extrabold text-xl text-[#1A1A1A]">{student.name}</h3>
-                        <p className="text-sm font-mono text-[#1A1A1A]/60">MSSV: {student.id}</p>
+                        <h3 className={`font-extrabold text-xl ${isDark ? 'text-gray-100' : 'text-[#1A1A1A]'}`}>{student.name}</h3>
+                        <p className={`text-sm font-mono ${isDark ? 'text-gray-400' : 'text-[#1A1A1A]/60'}`}>MSSV: {student.id}</p>
                     </div>
-                    <button onClick={onClose} className="w-8 h-8 rounded-xl bg-[#1A1A1A]/10 hover:bg-[#1A1A1A]/20 flex items-center justify-center transition-colors">
+                    <button onClick={onClose} className={`w-8 h-8 rounded-xl flex items-center justify-center transition-colors ${isDark ? 'bg-white/10 hover:bg-white/20 text-gray-100' : 'bg-[#1A1A1A]/10 hover:bg-[#1A1A1A]/20'}`}>
                         <X className="w-4 h-4" />
                     </button>
                 </div>
@@ -116,37 +119,37 @@ function StudentProfileModal({ student, onClose }: { student: typeof MOCK_STUDEN
                             { icon: Phone, label: 'Điện thoại', value: student.phone },
                         ].map(item => (
                             <div key={item.label} className="space-y-1">
-                                <div className="flex items-center gap-1.5 text-[10px] font-extrabold text-[#1A1A1A]/50 uppercase tracking-widest">
+                                <div className={`flex items-center gap-1.5 text-[10px] font-extrabold uppercase tracking-widest ${isDark ? 'text-gray-500' : 'text-[#1A1A1A]/50'}`}>
                                     <item.icon className="w-3 h-3" /> {item.label}
                                 </div>
-                                <p className="text-sm font-bold text-[#1A1A1A] truncate">{item.value}</p>
+                                <p className={`text-sm font-bold truncate ${isDark ? 'text-gray-100' : 'text-[#1A1A1A]'}`}>{item.value}</p>
                             </div>
                         ))}
                     </div>
 
                     <div className="space-y-1">
-                        <div className="flex items-center gap-1.5 text-[10px] font-extrabold text-[#1A1A1A]/50 uppercase tracking-widest">
+                        <div className={`flex items-center gap-1.5 text-[10px] font-extrabold uppercase tracking-widest ${isDark ? 'text-gray-500' : 'text-[#1A1A1A]/50'}`}>
                             <House className="w-3 h-3" /> Địa chỉ
                         </div>
-                        <p className="text-sm font-bold text-[#1A1A1A]">{student.address}</p>
+                        <p className={`text-sm font-bold ${isDark ? 'text-gray-100' : 'text-[#1A1A1A]'}`}>{student.address}</p>
                     </div>
 
                     {/* Stats */}
                     <div className="grid grid-cols-2 gap-3 pt-2">
-                        <div className="rounded-2xl p-4 border-2 border-[#1A1A1A]/10" style={{ backgroundColor: student.completion >= 80 ? '#95E1D3' : student.completion >= 50 ? '#FCE38A' : '#FFB5B5' }}>
-                            <div className="text-[10px] font-extrabold text-[#1A1A1A]/50 uppercase tracking-widest mb-1">Hoàn thành</div>
-                            <div className="text-2xl font-extrabold text-[#1A1A1A]">{student.completion}%</div>
+                        <div className={`rounded-2xl p-4 border-2 ${isDark ? 'border-white/10 bg-white/5' : 'border-[#1A1A1A]/10'}`} style={{ backgroundColor: isDark ? undefined : student.completion >= 80 ? '#95E1D3' : student.completion >= 50 ? '#FCE38A' : '#FFB5B5' }}>
+                            <div className={`text-[10px] font-extrabold uppercase tracking-widest mb-1 ${isDark ? 'text-gray-400' : 'text-[#1A1A1A]/50'}`}>Hoàn thành</div>
+                            <div className={`text-2xl font-extrabold ${isDark ? 'text-gray-100' : 'text-[#1A1A1A]'}`}>{student.completion}%</div>
                         </div>
-                        <div className="rounded-2xl p-4 border-2 border-[#1A1A1A]/10" style={{ backgroundColor: student.tb >= 8 ? '#95E1D3' : student.tb >= 5 ? '#B8B5FF' : '#FFB5B5' }}>
-                            <div className="text-[10px] font-extrabold text-[#1A1A1A]/50 uppercase tracking-widest mb-1">Điểm TB</div>
-                            <div className="text-2xl font-extrabold text-[#1A1A1A]">{student.tb.toFixed(1)}</div>
+                        <div className={`rounded-2xl p-4 border-2 ${isDark ? 'border-white/10 bg-white/5' : 'border-[#1A1A1A]/10'}`} style={{ backgroundColor: isDark ? undefined : student.tb >= 8 ? '#95E1D3' : student.tb >= 5 ? '#B8B5FF' : '#FFB5B5' }}>
+                            <div className={`text-[10px] font-extrabold uppercase tracking-widest mb-1 ${isDark ? 'text-gray-400' : 'text-[#1A1A1A]/50'}`}>Điểm TB</div>
+                            <div className={`text-2xl font-extrabold ${isDark ? 'text-gray-100' : 'text-[#1A1A1A]'}`}>{student.tb.toFixed(1)}</div>
                         </div>
                     </div>
                 </div>
 
                 {/* Actions */}
                 <div className="px-6 pb-6 flex gap-3">
-                    <button className="flex-1 py-3 bg-[#1A1A1A]/5 hover:bg-[#1A1A1A]/10 text-[#1A1A1A] font-extrabold rounded-2xl border-2 border-[#1A1A1A]/10 transition-colors flex items-center justify-center gap-2">
+                    <button className={`flex-1 py-3 font-extrabold rounded-2xl border-2 transition-colors flex items-center justify-center gap-2 ${isDark ? 'bg-white/5 hover:bg-white/10 text-gray-100 border-white/10' : 'bg-[#1A1A1A]/5 hover:bg-[#1A1A1A]/10 text-[#1A1A1A] border-[#1A1A1A]/10'}`}>
                         <Envelope className="w-4 h-4" /> Liên hệ
                     </button>
                     <button onClick={onClose} className="flex-1 py-3 bg-[#FF6B4A] hover:bg-[#ff5535] text-white font-extrabold rounded-2xl transition-colors">
@@ -160,6 +163,9 @@ function StudentProfileModal({ student, onClose }: { student: typeof MOCK_STUDEN
 
 /* ──── MAIN COMPONENT ──── */
 export function TeacherClassList() {
+    const { theme } = useSettings();
+    const isDark = theme === 'dark';
+
     const [view, setView] = useState<ViewMode>('overview');
     const [selectedClass, setSelectedClass] = useState<typeof MOCK_CLASSES[0] | null>(null);
     const [isLoading, setIsLoading] = useState(true);
@@ -226,6 +232,14 @@ export function TeacherClassList() {
         attention: MOCK_STUDENTS.filter(s => s.completion < 50 || s.tb < 5).length,
     }), []);
 
+    const classCardPalette = isDark
+        ? ['#2f2a1a', '#252744', '#3a2025', '#173434']
+        : CLASS_COLORS;
+
+    const studentBadgePalette = isDark
+        ? ['#9f8c3d', '#6e6ab8', '#b97373', '#5ca89d']
+        : STUDENT_COLORS;
+
     return (
         <div className="p-8 space-y-6 max-w-7xl mx-auto" style={{ fontFamily: "'Nunito', sans-serif" }}>
             {/* ═══ Breadcrumb ═══ */}
@@ -260,7 +274,7 @@ export function TeacherClassList() {
                             <p className="text-xs font-extrabold text-gray-400 uppercase tracking-widest mb-1">
                                 Quản lý {MOCK_CLASSES.length} lớp • Học kỳ I, 2025-2026
                             </p>
-                            <h1 className="text-3xl font-extrabold text-[#1A1A1A]">Học sinh của tôi</h1>
+                            <h1 className={`text-3xl font-extrabold ${isDark ? 'text-gray-100' : 'text-[#1A1A1A]'}`}>Học sinh của tôi</h1>
                         </div>
                         <div className="flex gap-3">
                             <div className="relative">
@@ -268,7 +282,7 @@ export function TeacherClassList() {
                                 <input
                                     type="text"
                                     placeholder="Tìm kiếm lớp..."
-                                    className="pl-9 pr-4 h-10 border-2 border-[#1A1A1A]/20 bg-white rounded-2xl text-sm font-bold text-[#1A1A1A] placeholder:text-gray-400 focus:outline-none focus:border-[#FF6B4A] transition-colors w-48"
+                                    className={`pl-9 pr-4 h-10 border-2 rounded-2xl text-sm font-bold placeholder:text-gray-400 focus:outline-none focus:border-[#FF6B4A] transition-colors w-48 ${isDark ? 'border-white/15 bg-[#20242b] text-gray-100' : 'border-[#1A1A1A]/20 bg-white text-[#1A1A1A]'}`}
                                 />
                             </div>
                         </div>
@@ -286,8 +300,8 @@ export function TeacherClassList() {
                                     onClick={() => handleClassSelect(cls)}
                                     onMouseEnter={() => setHoveredClass(cls.id)}
                                     onMouseLeave={() => setHoveredClass(null)}
-                                    className="text-left rounded-3xl border-2 border-[#1A1A1A] p-6 hover:shadow-xl hover:-translate-y-1 active:translate-y-0 active:shadow-md transition-all duration-200 group relative overflow-hidden"
-                                    style={{ backgroundColor: CLASS_COLORS[idx % 4] }}
+                                    className={`text-left rounded-3xl border-2 p-6 hover:shadow-xl hover:-translate-y-1 active:translate-y-0 active:shadow-md transition-all duration-200 group relative overflow-hidden ${isDark ? 'border-white/10' : 'border-[#1A1A1A]'}`}
+                                    style={{ backgroundColor: classCardPalette[idx % 4] }}
                                 >
                                     {/* Decorative circle */}
                                     <div className="absolute -right-6 -top-6 w-24 h-24 rounded-full bg-[#1A1A1A]/5 group-hover:scale-125 transition-transform duration-300" />
@@ -296,23 +310,23 @@ export function TeacherClassList() {
                                         {/* Class name */}
                                         <div className="flex items-center justify-between mb-4">
                                             <div>
-                                                <h3 className="text-xl font-extrabold text-[#1A1A1A]">Lớp {cls.name}</h3>
-                                                <p className="text-xs font-bold text-[#1A1A1A]/60 mt-0.5">{cls.subject}</p>
+                                                <h3 className={`text-xl font-extrabold ${isDark ? 'text-gray-100' : 'text-[#1A1A1A]'}`}>Lớp {cls.name}</h3>
+                                                <p className={`text-xs font-bold mt-0.5 ${isDark ? 'text-gray-400' : 'text-[#1A1A1A]/60'}`}>{cls.subject}</p>
                                             </div>
-                                            <div className="w-10 h-10 bg-[#1A1A1A] rounded-2xl flex items-center justify-center group-hover:rotate-6 transition-transform">
+                                            <div className={`w-10 h-10 rounded-2xl flex items-center justify-center group-hover:rotate-6 transition-transform ${isDark ? 'bg-black/40' : 'bg-[#1A1A1A]'}`}>
                                                 <GraduationCap className="w-5 h-5 text-white" weight="fill" />
                                             </div>
                                         </div>
 
                                         {/* Progress bar - enrollment */}
                                         <div className="mb-4">
-                                            <div className="flex justify-between text-xs font-extrabold text-[#1A1A1A]/60 mb-1.5">
+                                            <div className={`flex justify-between text-xs font-extrabold mb-1.5 ${isDark ? 'text-gray-400' : 'text-[#1A1A1A]/60'}`}>
                                                 <span>Sĩ số: {cls.students}/{cls.maxStudents}</span>
                                                 <span>{Math.round((cls.students / cls.maxStudents) * 100)}%</span>
                                             </div>
-                                            <div className="h-2 w-full bg-[#1A1A1A]/10 rounded-full overflow-hidden">
+                                            <div className={`h-2 w-full rounded-full overflow-hidden ${isDark ? 'bg-white/10' : 'bg-[#1A1A1A]/10'}`}>
                                                 <div
-                                                    className="h-full rounded-full bg-[#1A1A1A]/40 transition-all duration-500"
+                                                    className={`h-full rounded-full transition-all duration-500 ${isDark ? 'bg-white/35' : 'bg-[#1A1A1A]/40'}`}
                                                     style={{ width: `${(cls.students / cls.maxStudents) * 100}%` }}
                                                 />
                                             </div>
@@ -320,22 +334,22 @@ export function TeacherClassList() {
 
                                         {/* Stats row */}
                                         <div className="grid grid-cols-3 gap-3">
-                                            <div className="rounded-xl bg-white/50 p-2.5 text-center border border-[#1A1A1A]/10">
-                                                <div className="text-[9px] font-extrabold text-[#1A1A1A]/50 uppercase tracking-widest">Điểm TB</div>
-                                                <div className="text-lg font-extrabold text-[#1A1A1A]">{cls.avgScore}</div>
+                                            <div className={`rounded-xl p-2.5 text-center border ${isDark ? 'bg-white/10 border-white/10' : 'bg-white/50 border-[#1A1A1A]/10'}`}>
+                                                <div className={`text-[9px] font-extrabold uppercase tracking-widest ${isDark ? 'text-gray-400' : 'text-[#1A1A1A]/50'}`}>Điểm TB</div>
+                                                <div className={`text-lg font-extrabold ${isDark ? 'text-gray-100' : 'text-[#1A1A1A]'}`}>{cls.avgScore}</div>
                                             </div>
-                                            <div className="rounded-xl bg-white/50 p-2.5 text-center border border-[#1A1A1A]/10">
-                                                <div className="text-[9px] font-extrabold text-[#1A1A1A]/50 uppercase tracking-widest">Online</div>
+                                            <div className={`rounded-xl p-2.5 text-center border ${isDark ? 'bg-white/10 border-white/10' : 'bg-white/50 border-[#1A1A1A]/10'}`}>
+                                                <div className={`text-[9px] font-extrabold uppercase tracking-widest ${isDark ? 'text-gray-400' : 'text-[#1A1A1A]/50'}`}>Online</div>
                                                 <div className="text-lg font-extrabold text-emerald-600">{cls.onlineCount}</div>
                                             </div>
-                                            <div className="rounded-xl bg-white/50 p-2.5 text-center border border-[#1A1A1A]/10">
-                                                <div className="text-[9px] font-extrabold text-[#1A1A1A]/50 uppercase tracking-widest">Chú ý</div>
+                                            <div className={`rounded-xl p-2.5 text-center border ${isDark ? 'bg-white/10 border-white/10' : 'bg-white/50 border-[#1A1A1A]/10'}`}>
+                                                <div className={`text-[9px] font-extrabold uppercase tracking-widest ${isDark ? 'text-gray-400' : 'text-[#1A1A1A]/50'}`}>Chú ý</div>
                                                 <div className="text-lg font-extrabold text-[#FF6B4A]">{cls.needAttention}</div>
                                             </div>
                                         </div>
 
                                         {/* Hover arrow */}
-                                        <div className={`flex items-center gap-1.5 mt-4 text-sm font-extrabold text-[#1A1A1A]/70 transition-all duration-200 ${hoveredClass === cls.id ? 'translate-x-1 opacity-100' : 'opacity-60'}`}>
+                                        <div className={`flex items-center gap-1.5 mt-4 text-sm font-extrabold transition-all duration-200 ${isDark ? 'text-gray-300' : 'text-[#1A1A1A]/70'} ${hoveredClass === cls.id ? 'translate-x-1 opacity-100' : 'opacity-60'}`}>
                                             Xem danh sách <CaretRight className="w-4 h-4" weight="bold" />
                                         </div>
                                     </div>
@@ -356,28 +370,28 @@ export function TeacherClassList() {
                         <div className="flex items-center gap-4">
                             <button
                                 onClick={handleBackToOverview}
-                                className="w-10 h-10 rounded-2xl border-2 border-[#1A1A1A]/20 bg-white flex items-center justify-center hover:bg-[#1A1A1A]/5 active:scale-95 transition-all"
+                                className={`w-10 h-10 rounded-2xl border-2 flex items-center justify-center active:scale-95 transition-all ${isDark ? 'border-white/15 bg-[#20242b] hover:bg-[#272c35]' : 'border-[#1A1A1A]/20 bg-white hover:bg-[#1A1A1A]/5'}`}
                             >
-                                <ArrowLeft className="w-5 h-5 text-[#1A1A1A]" />
+                                <ArrowLeft className={`w-5 h-5 ${isDark ? 'text-gray-100' : 'text-[#1A1A1A]'}`} />
                             </button>
                             <div>
                                 <p className="text-xs font-extrabold text-gray-400 uppercase tracking-widest mb-1">
                                     Sĩ số: {selectedClass.students} • GVCN: Phan Văn A • {selectedClass.subject}
                                 </p>
-                                <h1 className="text-3xl font-extrabold text-[#1A1A1A]">Danh sách lớp {selectedClass.name}</h1>
+                                <h1 className={`text-3xl font-extrabold ${isDark ? 'text-gray-100' : 'text-[#1A1A1A]'}`}>Danh sách lớp {selectedClass.name}</h1>
                             </div>
                         </div>
                         <div className="flex gap-3">
-                            <button className="flex items-center gap-2 border-2 border-[#1A1A1A]/20 bg-white px-4 h-10 rounded-2xl font-extrabold text-sm text-[#1A1A1A] hover:bg-gray-50 active:scale-95 transition-all">
+                            <button className={`flex items-center gap-2 border-2 px-4 h-10 rounded-2xl font-extrabold text-sm active:scale-95 transition-all ${isDark ? 'border-white/15 bg-[#20242b] text-gray-100 hover:bg-[#272c35]' : 'border-[#1A1A1A]/20 bg-white text-[#1A1A1A] hover:bg-gray-50'}`}>
                                 <Download className="w-4 h-4" weight="fill" /> Xuất báo cáo
                             </button>
                         </div>
                     </div>
 
                     {/* Student table */}
-                    <div className="bg-white rounded-3xl border-2 border-[#1A1A1A] overflow-hidden">
+                    <div className={`rounded-3xl border-2 overflow-hidden ${isDark ? 'bg-[#171b20] border-white/10' : 'bg-white border-[#1A1A1A]'}`}>
                         {/* Tabs + Search + Sort */}
-                        <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4 p-4 border-b-2 border-[#1A1A1A]/20">
+                        <div className={`flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4 p-4 border-b-2 ${isDark ? 'border-white/10' : 'border-[#1A1A1A]/20'}`}>
                             <div className="flex gap-2 overflow-x-auto pb-1">
                                 {([
                                     { key: 'all' as TabFilter, label: 'Tất cả', count: tabCounts.all },
@@ -391,11 +405,11 @@ export function TeacherClassList() {
                                         className={`px-4 py-2 text-sm font-extrabold rounded-2xl whitespace-nowrap transition-all duration-200 flex items-center gap-2 ${
                                             activeTab === tab.key
                                                 ? 'bg-[#FF6B4A] text-white shadow-md shadow-[#FF6B4A]/20'
-                                                : 'bg-[#1A1A1A]/5 text-[#1A1A1A]/60 hover:bg-[#1A1A1A]/10'
+                                                : isDark ? 'bg-white/5 text-gray-300 hover:bg-white/10' : 'bg-[#1A1A1A]/5 text-[#1A1A1A]/60 hover:bg-[#1A1A1A]/10'
                                         }`}
                                     >
                                         {tab.label}
-                                        <span className={`text-[10px] px-1.5 py-0.5 rounded-full ${activeTab === tab.key ? 'bg-white/20' : 'bg-[#1A1A1A]/10'}`}>
+                                        <span className={`text-[10px] px-1.5 py-0.5 rounded-full ${activeTab === tab.key ? 'bg-white/20' : isDark ? 'bg-white/10' : 'bg-[#1A1A1A]/10'}`}>
                                             {tab.count}
                                         </span>
                                     </button>
@@ -409,13 +423,13 @@ export function TeacherClassList() {
                                         placeholder="Tìm tên hoặc MSSV..."
                                         value={searchQuery}
                                         onChange={e => { setSearchQuery(e.target.value); setCurrentPage(1); }}
-                                        className="pl-9 pr-4 h-9 border-2 border-[#1A1A1A]/20 bg-[#F7F7F2] rounded-2xl text-sm font-bold text-[#1A1A1A] placeholder:text-gray-400 focus:outline-none focus:border-[#FF6B4A] transition-colors w-52"
+                                        className={`pl-9 pr-4 h-9 border-2 rounded-2xl text-sm font-bold placeholder:text-gray-400 focus:outline-none focus:border-[#FF6B4A] transition-colors w-52 ${isDark ? 'border-white/15 bg-[#20242b] text-gray-100' : 'border-[#1A1A1A]/20 bg-[#F7F7F2] text-[#1A1A1A]'}`}
                                     />
                                 </div>
                                 <div className="flex items-center gap-2">
                                     <SortAscending className="w-4 h-4 text-gray-400" />
                                     <Select value={sortBy} onValueChange={v => setSortBy(v)}>
-                                        <SelectTrigger className="w-40 bg-[#F7F7F2] rounded-2xl border-2 border-[#1A1A1A]/20 h-9 font-bold text-[#1A1A1A]">
+                                        <SelectTrigger className={`w-40 rounded-2xl border-2 h-9 font-bold ${isDark ? 'bg-[#20242b] border-white/15 text-gray-100' : 'bg-[#F7F7F2] border-[#1A1A1A]/20 text-[#1A1A1A]'}`}>
                                             <SelectValue />
                                         </SelectTrigger>
                                         <SelectContent>
@@ -433,14 +447,14 @@ export function TeacherClassList() {
                         {/* Table */}
                         <div className="overflow-x-auto">
                             <table className="w-full text-left text-sm">
-                                <thead className="bg-[#1A1A1A]/5 border-b-2 border-[#1A1A1A]/20">
+                                <thead className={`border-b-2 ${isDark ? 'bg-white/5 border-white/10' : 'bg-[#1A1A1A]/5 border-[#1A1A1A]/20'}`}>
                                     <tr>
                                         {['Họ tên', 'Tỷ lệ hoàn thành', 'Điểm TB', 'Trạng thái', 'Chi tiết'].map(h => (
-                                            <th key={h} className="px-6 py-4 text-xs font-extrabold text-[#1A1A1A]/50 uppercase tracking-wider">{h}</th>
+                                            <th key={h} className={`px-6 py-4 text-xs font-extrabold uppercase tracking-wider ${isDark ? 'text-gray-400' : 'text-[#1A1A1A]/50'}`}>{h}</th>
                                         ))}
                                     </tr>
                                 </thead>
-                                <tbody className="divide-y divide-[#1A1A1A]/10">
+                                <tbody className={isDark ? 'divide-y divide-white/10' : 'divide-y divide-[#1A1A1A]/10'}>
                                     {isLoading
                                         ? Array.from({ length: 4 }).map((_, i) => <SkeletonRow key={i} />)
                                         : paginatedStudents.length === 0
@@ -460,29 +474,29 @@ export function TeacherClassList() {
                                             : paginatedStudents.map((hs) => {
                                                 const globalIdx = MOCK_STUDENTS.findIndex(s => s.id === hs.id);
                                                 return (
-                                                    <tr key={hs.id} className="hover:bg-[#1A1A1A]/[0.03] transition-colors group/row">
+                                                    <tr key={hs.id} className={isDark ? 'hover:bg-white/5 transition-colors group/row' : 'hover:bg-[#1A1A1A]/[0.03] transition-colors group/row'}>
                                                         <td className="px-6 py-4">
                                                             <div className="flex items-center gap-3">
                                                                 <div
-                                                                    className="w-10 h-10 rounded-full border-2 border-[#1A1A1A] flex items-center justify-center font-extrabold text-sm text-[#1A1A1A] group-hover/row:scale-110 transition-transform"
-                                                                    style={{ backgroundColor: STUDENT_COLORS[globalIdx % 4] }}
+                                                                    className={`w-10 h-10 rounded-full border-2 flex items-center justify-center font-extrabold text-sm group-hover/row:scale-110 transition-transform ${isDark ? 'border-white/15 text-gray-100' : 'border-[#1A1A1A] text-[#1A1A1A]'}`}
+                                                                    style={{ backgroundColor: studentBadgePalette[globalIdx % 4] }}
                                                                 >
                                                                     {hs.name.charAt(0)}
                                                                 </div>
                                                                 <div>
-                                                                    <div className="font-extrabold text-[#1A1A1A]">{hs.name}</div>
+                                                                    <div className={`font-extrabold ${isDark ? 'text-gray-100' : 'text-[#1A1A1A]'}`}>{hs.name}</div>
                                                                     <div className="text-xs text-gray-400 font-mono">{hs.id}</div>
                                                                 </div>
                                                             </div>
                                                         </td>
                                                         <td className="px-6 py-4">
                                                             <div className="w-36">
-                                                                <div className="flex justify-between text-xs font-extrabold text-[#1A1A1A] mb-1">
+                                                                <div className={`flex justify-between text-xs font-extrabold mb-1 ${isDark ? 'text-gray-100' : 'text-[#1A1A1A]'}`}>
                                                                     <span>{hs.completion}%</span>
                                                                     {hs.completion < 50 && <Warning className="w-3.5 h-3.5 text-[#FF6B4A]" weight="fill" />}
                                                                     {hs.completion === 100 && <CheckCircle className="w-3.5 h-3.5 text-emerald-500" weight="fill" />}
                                                                 </div>
-                                                                <div className="h-2.5 w-full bg-[#1A1A1A]/10 rounded-full border border-[#1A1A1A]/20 overflow-hidden">
+                                                                <div className={`h-2.5 w-full rounded-full border overflow-hidden ${isDark ? 'bg-white/10 border-white/15' : 'bg-[#1A1A1A]/10 border-[#1A1A1A]/20'}`}>
                                                                     <div
                                                                         className="h-full rounded-full transition-all duration-500"
                                                                         style={{
@@ -495,8 +509,8 @@ export function TeacherClassList() {
                                                         </td>
                                                         <td className="px-6 py-4">
                                                             <span
-                                                                className="inline-flex items-center justify-center w-10 h-10 rounded-2xl font-extrabold text-sm border-2 border-[#1A1A1A] text-[#1A1A1A]"
-                                                                style={{ backgroundColor: STUDENT_COLORS[globalIdx % 4] }}
+                                                                className={`inline-flex items-center justify-center w-10 h-10 rounded-2xl font-extrabold text-sm border-2 ${isDark ? 'border-white/15 text-gray-100' : 'border-[#1A1A1A] text-[#1A1A1A]'}`}
+                                                                style={{ backgroundColor: studentBadgePalette[globalIdx % 4] }}
                                                             >
                                                                 {hs.tb.toFixed(1)}
                                                             </span>
@@ -504,7 +518,7 @@ export function TeacherClassList() {
                                                         <td className="px-6 py-4">
                                                             <div className="flex items-center gap-2">
                                                                 <span className={`w-2.5 h-2.5 rounded-full ${isUserOnline(hs.lastActiveAt) ? 'bg-emerald-500 animate-pulse' : 'bg-gray-300'}`} />
-                                                                <span className="text-sm font-bold text-[#1A1A1A]/70">
+                                                                <span className={`text-sm font-bold ${isDark ? 'text-gray-300' : 'text-[#1A1A1A]/70'}`}>
                                                                     {isUserOnline(hs.lastActiveAt) ? 'Online' : formatTimeAgo(hs.lastActiveAt)}
                                                                 </span>
                                                             </div>
@@ -529,7 +543,7 @@ export function TeacherClassList() {
                         </div>
 
                         {/* Pagination */}
-                        <div className="p-4 border-t-2 border-[#1A1A1A]/10 flex items-center justify-between">
+                        <div className={`p-4 border-t-2 flex items-center justify-between ${isDark ? 'border-white/10' : 'border-[#1A1A1A]/10'}`}>
                             <span className="text-sm font-bold text-gray-400">
                                 Hiển thị {filteredStudents.length === 0 ? 0 : (currentPage - 1) * itemsPerPage + 1}-{Math.min(currentPage * itemsPerPage, filteredStudents.length)} / {filteredStudents.length} học sinh
                             </span>
@@ -537,7 +551,7 @@ export function TeacherClassList() {
                                 <button
                                     onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
                                     disabled={currentPage === 1}
-                                    className="w-8 h-8 rounded-xl font-extrabold text-sm border-2 border-[#1A1A1A]/20 bg-white text-[#1A1A1A] hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed transition-all"
+                                    className={`w-8 h-8 rounded-xl font-extrabold text-sm border-2 disabled:opacity-40 disabled:cursor-not-allowed transition-all ${isDark ? 'border-white/15 bg-[#20242b] text-gray-100 hover:bg-[#272c35]' : 'border-[#1A1A1A]/20 bg-white text-[#1A1A1A] hover:bg-gray-50'}`}
                                 >
                                     &lt;
                                 </button>
@@ -548,7 +562,7 @@ export function TeacherClassList() {
                                         className={`w-8 h-8 rounded-xl font-extrabold text-sm border-2 transition-all ${
                                             p === currentPage
                                                 ? 'bg-[#FF6B4A] text-white border-[#FF6B4A] shadow-md shadow-[#FF6B4A]/20'
-                                                : 'border-[#1A1A1A]/20 bg-white text-[#1A1A1A] hover:bg-gray-50'
+                                                : isDark ? 'border-white/15 bg-[#20242b] text-gray-100 hover:bg-[#272c35]' : 'border-[#1A1A1A]/20 bg-white text-[#1A1A1A] hover:bg-gray-50'
                                         }`}
                                     >
                                         {p}
@@ -557,7 +571,7 @@ export function TeacherClassList() {
                                 <button
                                     onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
                                     disabled={currentPage === totalPages}
-                                    className="w-8 h-8 rounded-xl font-extrabold text-sm border-2 border-[#1A1A1A]/20 bg-white text-[#1A1A1A] hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed transition-all"
+                                    className={`w-8 h-8 rounded-xl font-extrabold text-sm border-2 disabled:opacity-40 disabled:cursor-not-allowed transition-all ${isDark ? 'border-white/15 bg-[#20242b] text-gray-100 hover:bg-[#272c35]' : 'border-[#1A1A1A]/20 bg-white text-[#1A1A1A] hover:bg-gray-50'}`}
                                 >
                                     &gt;
                                 </button>
@@ -568,46 +582,46 @@ export function TeacherClassList() {
                     {/* Bottom section: Chart + Notifications */}
                     <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
                         {/* Chart */}
-                        <div className="lg:col-span-2 bg-white rounded-3xl border-2 border-[#1A1A1A] overflow-hidden">
-                            <div className="px-6 py-4 border-b-2 border-[#1A1A1A] flex justify-between items-center">
-                                <h3 className="font-extrabold text-lg text-[#1A1A1A]">Thống kê điểm theo tuần</h3>
+                        <div className={`lg:col-span-2 rounded-3xl border-2 overflow-hidden ${isDark ? 'bg-[#171b20] border-white/10' : 'bg-white border-[#1A1A1A]'}`}>
+                            <div className={`px-6 py-4 border-b-2 flex justify-between items-center ${isDark ? 'border-white/10' : 'border-[#1A1A1A]'}`}>
+                                <h3 className={`font-extrabold text-lg ${isDark ? 'text-gray-100' : 'text-[#1A1A1A]'}`}>Thống kê điểm theo tuần</h3>
                                 <button className="text-sm font-extrabold text-[#FF6B4A] hover:text-[#ff5535] transition-colors">Xem đầy đủ →</button>
                             </div>
                             <div className="p-6 h-56 flex items-end justify-around pb-6 pt-6 gap-3">
                                 {CHART_DATA.map((col, i) => (
                                     <div key={i} className="flex flex-col items-center gap-2 h-full flex-1 group/bar">
                                         <div className="w-full h-full flex flex-col justify-end gap-0.5">
-                                            <div className="w-full rounded-t-xl border-2 border-[#1A1A1A]/30 group-hover/bar:brightness-110 transition-all" style={{ height: `${col.v1}%`, backgroundColor: '#FF6B4A' }} />
+                                            <div className={`w-full rounded-t-xl border-2 group-hover/bar:brightness-110 transition-all ${isDark ? 'border-white/10' : 'border-[#1A1A1A]/30'}`} style={{ height: `${col.v1}%`, backgroundColor: '#FF6B4A' }} />
                                             <div className="w-full rounded-b-sm group-hover/bar:brightness-110 transition-all" style={{ height: `${col.v2}%`, backgroundColor: '#FCE38A' }} />
                                         </div>
-                                        <span className="text-xs font-extrabold text-[#1A1A1A]/50">{col.w}</span>
+                                        <span className={`text-xs font-extrabold ${isDark ? 'text-gray-400' : 'text-[#1A1A1A]/50'}`}>{col.w}</span>
                                     </div>
                                 ))}
                             </div>
                         </div>
 
                         {/* Notifications */}
-                        <div className="bg-white rounded-3xl border-2 border-[#1A1A1A] overflow-hidden">
-                            <div className="px-6 py-4 border-b-2 border-[#1A1A1A]">
-                                <h3 className="font-extrabold text-lg text-[#1A1A1A]">Thông báo mới nhất</h3>
+                        <div className={`rounded-3xl border-2 overflow-hidden ${isDark ? 'bg-[#171b20] border-white/10' : 'bg-white border-[#1A1A1A]'}`}>
+                            <div className={`px-6 py-4 border-b-2 ${isDark ? 'border-white/10' : 'border-[#1A1A1A]'}`}>
+                                <h3 className={`font-extrabold text-lg ${isDark ? 'text-gray-100' : 'text-[#1A1A1A]'}`}>Thông báo mới nhất</h3>
                             </div>
                             <div className="p-5 space-y-3 flex-1">
                                 {NOTIFICATIONS.map((n, i) => (
-                                    <div key={i} className="flex gap-3 p-3 rounded-2xl border-2 border-[#1A1A1A]/15 hover:shadow-md hover:-translate-y-0.5 transition-all duration-200 cursor-pointer" style={{ backgroundColor: n.bg }}>
-                                        <div className="w-8 h-8 shrink-0 rounded-xl flex items-center justify-center bg-white">
+                                    <div key={i} className={`flex gap-3 p-3 rounded-2xl border-2 hover:shadow-md hover:-translate-y-0.5 transition-all duration-200 cursor-pointer ${isDark ? 'border-white/10 bg-white/5' : 'border-[#1A1A1A]/15'}`} style={{ backgroundColor: isDark ? undefined : n.bg }}>
+                                        <div className={`w-8 h-8 shrink-0 rounded-xl flex items-center justify-center ${isDark ? 'bg-white/10' : 'bg-white'}`}>
                                             {n.icon === 'warning' && <Warning className="w-4 h-4 text-yellow-600" weight="fill" />}
                                             {n.icon === 'check' && <CheckCircle className="w-4 h-4 text-emerald-600" weight="fill" />}
                                             {n.icon === 'clipboard' && <span className="text-sm font-extrabold text-red-500">!</span>}
                                         </div>
                                         <div>
-                                            <h4 className="font-extrabold text-sm text-[#1A1A1A]">{n.title}</h4>
-                                            <p className="text-xs text-[#1A1A1A]/60 font-semibold mt-0.5">{n.sub}</p>
+                                            <h4 className={`font-extrabold text-sm ${isDark ? 'text-gray-100' : 'text-[#1A1A1A]'}`}>{n.title}</h4>
+                                            <p className={`text-xs font-semibold mt-0.5 ${isDark ? 'text-gray-400' : 'text-[#1A1A1A]/60'}`}>{n.sub}</p>
                                         </div>
                                     </div>
                                 ))}
                             </div>
-                            <div className="p-4 border-t-2 border-[#1A1A1A]/10">
-                                <button className="w-full py-2.5 font-extrabold text-sm text-[#1A1A1A] border-2 border-[#1A1A1A]/20 rounded-2xl hover:bg-[#1A1A1A]/5 active:scale-[0.98] transition-all">
+                            <div className={`p-4 border-t-2 ${isDark ? 'border-white/10' : 'border-[#1A1A1A]/10'}`}>
+                                <button className={`w-full py-2.5 font-extrabold text-sm border-2 rounded-2xl active:scale-[0.98] transition-all ${isDark ? 'text-gray-100 border-white/15 hover:bg-white/5' : 'text-[#1A1A1A] border-[#1A1A1A]/20 hover:bg-[#1A1A1A]/5'}`}>
                                     Xem tất cả thông báo
                                 </button>
                             </div>

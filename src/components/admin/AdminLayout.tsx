@@ -1,3 +1,4 @@
+import { useEffect } from 'react';
 import { Outlet, NavLink } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import { useSettings } from '../../context/SettingsContext';
@@ -25,6 +26,13 @@ export function AdminLayout() {
         { to: "questions", label: t.admin.questionBank, icon: Question },
         { to: "statistics", label: t.admin.statistics, icon: ChartBar },
     ];
+
+    useEffect(() => {
+        document.body.classList.add('admin-mode');
+        return () => {
+            document.body.classList.remove('admin-mode');
+        };
+    }, []);
 
     return (
         <div className={cn("h-screen flex overflow-hidden transition-colors duration-300", isDark ? "bg-[#0a0a0a]" : "bg-[#111111]")} style={{ fontFamily: "'Nunito', sans-serif" }}>

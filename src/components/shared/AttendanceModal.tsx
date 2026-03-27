@@ -3,6 +3,7 @@ import { X, Check, Warning, Clock } from '@phosphor-icons/react';
 import { isPast24hAfterEnd, hasClassStarted } from '../../lib/timeUtils';
 import { authService } from '../../services/authService';
 import { timetableService, type AttendanceRequest } from '../../services/timetableService';
+import { useSettings } from '../../context/SettingsContext';
 
 export interface AttendanceStudent {
     id: number;
@@ -25,6 +26,9 @@ interface StudentAttendance {
 }
 
 export function AttendanceModal({ isOpen, onClose, event, isAdmin }: AttendanceModalProps) {
+    const { theme } = useSettings();
+    const isDark = theme === 'dark';
+
     const [students, setStudents] = useState<AttendanceStudent[]>([]);
     const [attendance, setAttendance] = useState<Record<string, StudentAttendance>>({});
     const [isLoading, setIsLoading] = useState(false);
@@ -151,17 +155,17 @@ export function AttendanceModal({ isOpen, onClose, event, isAdmin }: AttendanceM
 
     return (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/40 backdrop-blur-sm" onClick={onClose}>
-            <div 
-                className="w-[min(96vw,78rem)] max-w-5xl bg-white rounded-3xl border-2 border-[#1A1A1A] shadow-2xl flex flex-col max-h-[92vh] animate-[slideUp_0.3s_ease-out]"
+            <div
+                className={`w-[min(96vw,78rem)] max-w-5xl rounded-3xl border-2 shadow-2xl flex flex-col max-h-[92vh] animate-[slideUp_0.3s_ease-out] ${isDark ? 'bg-[#171b20] border-white/10' : 'bg-white border-[#1A1A1A]'}`}
                 onClick={e => e.stopPropagation()}
             >
                 {/* Header */}
-                <div className="px-6 py-4 border-b-2 border-[#1A1A1A] flex items-center justify-between bg-[#FCE38A] rounded-t-3xl">
+                <div className={`px-6 py-4 border-b-2 flex items-center justify-between rounded-t-3xl ${isDark ? 'border-white/10 bg-[#2f2a1a]' : 'border-[#1A1A1A] bg-[#FCE38A]'}`}>
                     <div>
-                        <h3 className="font-extrabold text-xl text-[#1A1A1A]">Điểm danh: {event.className}</h3>
-                        <p className="text-sm font-bold text-[#1A1A1A]/70">{event.title}</p>
+                        <h3 className={`font-extrabold text-xl ${isDark ? 'text-gray-100' : 'text-[#1A1A1A]'}`}>Điểm danh: {event.className}</h3>
+                        <p className={`text-sm font-bold ${isDark ? 'text-gray-300' : 'text-[#1A1A1A]/70'}`}>{event.title}</p>
                     </div>
-                    <button onClick={onClose} className="w-8 h-8 flex flex-shrink-0 items-center justify-center rounded-xl bg-black/5 hover:bg-black/10 transition-colors">
+                    <button onClick={onClose} className={`w-8 h-8 flex flex-shrink-0 items-center justify-center rounded-xl transition-colors ${isDark ? 'bg-white/10 hover:bg-white/20 text-gray-100' : 'bg-black/5 hover:bg-black/10'}`}>
                         <X className="w-4 h-4" />
                     </button>
                 </div>
@@ -169,17 +173,17 @@ export function AttendanceModal({ isOpen, onClose, event, isAdmin }: AttendanceM
                 {/* Notifications */}
                 <div className="px-6 pt-4 shrink-0">
                     {!hasStarted ? (
-                        <div className="p-3 bg-yellow-50 border-2 border-yellow-200 rounded-2xl flex items-center gap-2 text-yellow-700 font-bold text-sm">
+                        <div className={`p-3 border-2 rounded-2xl flex items-center gap-2 font-bold text-sm ${isDark ? 'bg-yellow-300/10 border-yellow-300/30 text-yellow-200' : 'bg-yellow-50 border-yellow-200 text-yellow-700'}`}>
                             <Clock className="w-5 h-5" />
                             Buổi học chưa bắt đầu. Bạn chưa thể điểm danh.
                         </div>
                     ) : !isAdmin && isPast24h ? (
-                        <div className="p-3 bg-red-50 border-2 border-red-200 rounded-2xl flex items-center gap-2 text-red-600 font-bold text-sm">
+                        <div className={`p-3 border-2 rounded-2xl flex items-center gap-2 font-bold text-sm ${isDark ? 'bg-red-300/10 border-red-300/30 text-red-200' : 'bg-red-50 border-red-200 text-red-600'}`}>
                             <Warning className="w-5 h-5" />
                             Đã quá hạn 24h, chỉ Admin mới có thể chỉnh sửa điểm danh.
                         </div>
                     ) : isAdmin && isPast24h ? (
-                        <div className="p-3 bg-blue-50 border-2 border-blue-200 rounded-2xl flex items-center gap-2 text-blue-700 font-bold text-sm">
+                        <div className={`p-3 border-2 rounded-2xl flex items-center gap-2 font-bold text-sm ${isDark ? 'bg-blue-300/10 border-blue-300/30 text-blue-200' : 'bg-blue-50 border-blue-200 text-blue-700'}`}>
                             <Warning className="w-5 h-5 inline" />
                             Buổi học đã qua 24h. Bạn đang sửa với quyền Admin.
                         </div>
@@ -190,25 +194,31 @@ export function AttendanceModal({ isOpen, onClose, event, isAdmin }: AttendanceM
                 <div className="p-4 sm:p-6 overflow-y-auto flex-1">
                     <div className="w-full">
                     <table className="w-full table-fixed text-left text-sm">
-                        <thead className="bg-[#1A1A1A]/5 border-b-2 border-[#1A1A1A]/20">
+                        <thead className={`border-b-2 ${isDark ? 'bg-white/5 border-white/10' : 'bg-[#1A1A1A]/5 border-[#1A1A1A]/20'}`}>
                             <tr>
-                                <th className="px-3 sm:px-4 py-3 font-extrabold text-[#1A1A1A]/50 uppercase tracking-wider text-xs w-14 text-center">STT</th>
-                                <th className="px-3 sm:px-4 py-3 font-extrabold text-[#1A1A1A]/50 uppercase tracking-wider text-xs w-[30%]">Học sinh</th>
-                                <th className="px-3 sm:px-4 py-3 font-extrabold text-[#1A1A1A]/50 uppercase tracking-wider text-xs text-center w-[28%]">Trạng thái</th>
-                                <th className="px-3 sm:px-4 py-3 font-extrabold text-[#1A1A1A]/50 uppercase tracking-wider text-xs w-[34%]">Ghi chú</th>
+                                <th className={`px-3 sm:px-4 py-3 font-extrabold uppercase tracking-wider text-xs w-14 text-center ${isDark ? 'text-gray-400' : 'text-[#1A1A1A]/50'}`}>STT</th>
+                                <th className={`px-3 sm:px-4 py-3 font-extrabold uppercase tracking-wider text-xs w-[30%] ${isDark ? 'text-gray-400' : 'text-[#1A1A1A]/50'}`}>Học sinh</th>
+                                <th className={`px-3 sm:px-4 py-3 font-extrabold uppercase tracking-wider text-xs text-center w-[28%] ${isDark ? 'text-gray-400' : 'text-[#1A1A1A]/50'}`}>Trạng thái</th>
+                                <th className={`px-3 sm:px-4 py-3 font-extrabold uppercase tracking-wider text-xs w-[34%] ${isDark ? 'text-gray-400' : 'text-[#1A1A1A]/50'}`}>Ghi chú</th>
                             </tr>
                         </thead>
-                        <tbody className="divide-y divide-[#1A1A1A]/10">
+                        <tbody className={isDark ? 'divide-y divide-white/10' : 'divide-y divide-[#1A1A1A]/10'}>
                             {students.map((student, idx) => (
-                                <tr key={student.id} className="hover:bg-gray-50/50">
+                                <tr key={student.id} className={isDark ? 'hover:bg-white/5' : 'hover:bg-gray-50/50'}>
                                     <td className="px-3 sm:px-4 py-3 text-center font-bold text-gray-500">{idx + 1}</td>
                                     <td className="px-3 sm:px-4 py-3">
-                                        <div className="font-extrabold text-[#1A1A1A] truncate" title={student.name}>{student.name}</div>
+                                        <div className={`font-extrabold truncate ${isDark ? 'text-gray-100' : 'text-[#1A1A1A]'}`} title={student.name}>{student.name}</div>
                                         <div className="text-xs text-gray-400 font-mono truncate">{student.code}</div>
                                     </td>
                                     <td className="px-3 sm:px-4 py-3">
-                                        <div className={`flex items-center justify-center gap-1 sm:gap-2 p-1 rounded-xl border-2 ${readOnly ? 'opacity-50 cursor-not-allowed border-gray-200 bg-gray-50' : 'border-[#1A1A1A]/10 bg-white'}`}>
-                                            <label className={`flex items-center justify-center cursor-pointer p-2 rounded-lg transition-colors flex-1 min-w-0 ${attendance[student.id]?.status === 'present' ? 'bg-emerald-100 text-emerald-800 font-bold' : 'hover:bg-gray-100'}`}>
+                                        <div className={`flex items-center justify-center gap-1 sm:gap-2 p-1 rounded-xl border-2 ${readOnly
+                                            ? isDark ? 'opacity-50 cursor-not-allowed border-white/10 bg-white/5' : 'opacity-50 cursor-not-allowed border-gray-200 bg-gray-50'
+                                            : isDark ? 'border-white/10 bg-[#20242b]' : 'border-[#1A1A1A]/10 bg-white'
+                                            }`}>
+                                            <label className={`flex items-center justify-center cursor-pointer p-2 rounded-lg transition-colors flex-1 min-w-0 ${attendance[student.id]?.status === 'present'
+                                                ? isDark ? 'bg-emerald-400/20 text-emerald-200 font-bold' : 'bg-emerald-100 text-emerald-800 font-bold'
+                                                : isDark ? 'text-gray-300 hover:bg-white/10' : 'hover:bg-gray-100'
+                                                }`}>
                                                 <input 
                                                     type="radio" 
                                                     name={`attendance-${student.id}`} 
@@ -219,7 +229,10 @@ export function AttendanceModal({ isOpen, onClose, event, isAdmin }: AttendanceM
                                                 />
                                                 <span className="text-xs whitespace-nowrap">Có mặt</span>
                                             </label>
-                                            <label className={`flex items-center justify-center cursor-pointer p-2 rounded-lg transition-colors flex-1 min-w-0 ${attendance[student.id]?.status === 'absent' ? 'bg-red-100 text-red-800 font-bold' : 'hover:bg-gray-100'}`}>
+                                            <label className={`flex items-center justify-center cursor-pointer p-2 rounded-lg transition-colors flex-1 min-w-0 ${attendance[student.id]?.status === 'absent'
+                                                ? isDark ? 'bg-red-400/20 text-red-200 font-bold' : 'bg-red-100 text-red-800 font-bold'
+                                                : isDark ? 'text-gray-300 hover:bg-white/10' : 'hover:bg-gray-100'
+                                                }`}>
                                                 <input 
                                                     type="radio" 
                                                     name={`attendance-${student.id}`} 
@@ -239,7 +252,10 @@ export function AttendanceModal({ isOpen, onClose, event, isAdmin }: AttendanceM
                                             onChange={(e) => handleNoteChange(student.id, e.target.value)}
                                             placeholder="Nhập ghi chú..."
                                             disabled={readOnly}
-                                            className="w-full min-w-0 text-sm rounded-xl border-2 border-[#1A1A1A]/20 bg-white px-3 py-2 font-semibold text-[#1A1A1A] transition-colors focus:border-[#FF6B4A] focus:outline-none disabled:opacity-50 disabled:bg-gray-50 disabled:cursor-not-allowed"
+                                            className={`w-full min-w-0 text-sm rounded-xl border-2 px-3 py-2 font-semibold transition-colors focus:border-[#FF6B4A] focus:outline-none disabled:opacity-50 disabled:cursor-not-allowed ${isDark
+                                                ? 'border-white/15 bg-[#20242b] text-gray-100 disabled:bg-[#20242b]'
+                                                : 'border-[#1A1A1A]/20 bg-white text-[#1A1A1A] disabled:bg-gray-50'
+                                                }`}
                                         />
                                     </td>
                                 </tr>
@@ -247,22 +263,22 @@ export function AttendanceModal({ isOpen, onClose, event, isAdmin }: AttendanceM
                         </tbody>
                     </table>
                     {isLoading && (
-                        <p className="mt-4 text-sm font-bold text-[#1A1A1A]/60">Đang tải danh sách học sinh...</p>
+                        <p className={`mt-4 text-sm font-bold ${isDark ? 'text-gray-400' : 'text-[#1A1A1A]/60'}`}>Đang tải danh sách học sinh...</p>
                     )}
                     {!isLoading && fetchError && (
                         <p className="mt-4 text-sm font-bold text-red-600">{fetchError}</p>
                     )}
                     {!isLoading && !fetchError && students.length === 0 && (
-                        <p className="mt-4 text-sm font-bold text-[#1A1A1A]/60">Buổi học này chưa có học sinh để điểm danh.</p>
+                        <p className={`mt-4 text-sm font-bold ${isDark ? 'text-gray-400' : 'text-[#1A1A1A]/60'}`}>Buổi học này chưa có học sinh để điểm danh.</p>
                     )}
                     </div>
                 </div>
 
                 {/* Footer Actions */}
-                <div className="p-6 border-t-2 border-[#1A1A1A]/10 flex gap-3 shrink-0">
+                <div className={`p-6 border-t-2 flex gap-3 shrink-0 ${isDark ? 'border-white/10' : 'border-[#1A1A1A]/10'}`}>
                     <button 
                         onClick={onClose}
-                        className="flex-1 py-3 px-4 font-extrabold text-[#1A1A1A] border-2 border-[#1A1A1A]/20 bg-white hover:bg-gray-50 rounded-2xl transition-all"
+                        className={`flex-1 py-3 px-4 font-extrabold border-2 rounded-2xl transition-all ${isDark ? 'text-gray-100 border-white/15 bg-[#20242b] hover:bg-[#272c35]' : 'text-[#1A1A1A] border-[#1A1A1A]/20 bg-white hover:bg-gray-50'}`}
                     >
                         Hủy
                     </button>

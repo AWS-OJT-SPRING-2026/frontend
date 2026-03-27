@@ -8,15 +8,24 @@ import { Input } from '../ui/input';
 import { AttendanceModal } from '../shared/AttendanceModal';
 import { authService } from '../../services/authService';
 import { timetableService, type TimetableItem, type TeacherScheduleStats } from '../../services/timetableService';
+import { useSettings } from '../../context/SettingsContext';
 
 /* ── Status-based color system ── */
 type EventStatus = 'past' | 'upcoming' | 'ongoing';
 
-const STATUS_STYLES: Record<EventStatus, { bg: string; border: string; text: string; label: string; dot: string }> = {
-    past: { bg: '#F3F4F6', border: '#D1D5DB', text: '#4B5563', label: 'Đã kết thúc', dot: '#6B7280' },
-    upcoming: { bg: '#FEF3C7', border: '#FCD34D', text: '#92400E', label: 'Sắp diễn ra', dot: '#D97706' },
-    ongoing: { bg: '#DCFCE7', border: '#86EFAC', text: '#166534', label: 'Đang diễn ra', dot: '#22C55E' },
-};
+function getStatusStyles(isDark: boolean): Record<EventStatus, { bg: string; border: string; text: string; label: string; dot: string }> {
+    return isDark
+        ? {
+            past: { bg: '#1f2630', border: '#3e4b60', text: '#cbd5e1', label: 'Đã kết thúc', dot: '#94a3b8' },
+            upcoming: { bg: '#312817', border: '#7a5b25', text: '#fde68a', label: 'Sắp diễn ra', dot: '#f59e0b' },
+            ongoing: { bg: '#13352c', border: '#1f6b54', text: '#a7f3d0', label: 'Đang diễn ra', dot: '#34d399' },
+        }
+        : {
+            past: { bg: '#F3F4F6', border: '#D1D5DB', text: '#4B5563', label: 'Đã kết thúc', dot: '#6B7280' },
+            upcoming: { bg: '#FEF3C7', border: '#FCD34D', text: '#92400E', label: 'Sắp diễn ra', dot: '#D97706' },
+            ongoing: { bg: '#DCFCE7', border: '#86EFAC', text: '#166534', label: 'Đang diễn ra', dot: '#22C55E' },
+        };
+}
 
 function getEventStatus(ev: ScheduleEvent, now: Date): EventStatus {
     const start = new Date(ev.startTime);
@@ -128,16 +137,16 @@ function SkeletonEvent() {
 }
 
 /* ── Tooltip Component ── */
-function EventTooltip({ event, x, y, now }: { event: ScheduleEvent; x: number; y: number; now: Date }) {
+function EventTooltip({ event, x, y, now, isDark }: { event: ScheduleEvent; x: number; y: number; now: Date; isDark: boolean }) {
     const status = getEventStatus(event, now);
-    const style = STATUS_STYLES[status];
+    const style = getStatusStyles(isDark)[status];
 
     return (
         <div
             className="fixed z-[100] pointer-events-none animate-[tooltipIn_0.15s_ease-out]"
             style={{ left: x + 14, top: y - 12 }}
         >
-            <div className="bg-[#1A1A1A] text-white rounded-xl px-4 py-3 text-xs shadow-2xl max-w-[280px] border border-white/10">
+            <div className={`text-white rounded-xl px-4 py-3 text-xs shadow-2xl max-w-[280px] border ${isDark ? 'bg-[#0f1218] border-white/15' : 'bg-[#1A1A1A] border-white/10'}`}>
                 {/* Status badge */}
                 <div className="flex items-center gap-2 mb-2">
                     <span className="w-2 h-2 rounded-full" style={{ backgroundColor: style.dot }} />
@@ -186,19 +195,21 @@ function EventDetailPanel({
     onUpdateMeetLink,
     onOpenAttendance,
     now,
+    isDark,
 }: {
     event: ScheduleEvent;
     onClose: () => void;
     onUpdateMeetLink: (event: ScheduleEvent, meetLink: string) => Promise<void>;
     onOpenAttendance: () => void;
     now: Date;
+    isDark: boolean;
 }) {
     const [meetLink, setMeetLink] = useState(event.meetLink);
     const [isSaving, setIsSaving] = useState(false);
     const [saveMessage, setSaveMessage] = useState<string | null>(null);
 
     const status = getEventStatus(event, now);
-    const style = STATUS_STYLES[status];
+    const style = getStatusStyles(isDark)[status];
 
     useEffect(() => {
         setMeetLink(event.meetLink);
@@ -219,13 +230,13 @@ function EventDetailPanel({
     };
 
     return (
-        <div className="w-full xl:w-80 bg-white rounded-3xl border-2 border-[#1A1A1A] overflow-hidden shrink-0 animate-[slideInRight_0.3s_ease-out]">
-            <div className="px-6 py-4 border-b-2 border-[#1A1A1A] flex items-center justify-between" style={{ backgroundColor: style.bg }}>
+        <div className={`w-full xl:w-80 rounded-3xl border-2 overflow-hidden shrink-0 animate-[slideInRight_0.3s_ease-out] ${isDark ? 'bg-[#171b20] border-white/10' : 'bg-white border-[#1A1A1A]'}`}>
+            <div className={`px-6 py-4 border-b-2 flex items-center justify-between ${isDark ? 'border-white/10' : 'border-[#1A1A1A]'}`} style={{ backgroundColor: style.bg }}>
                 <div className="flex items-center gap-2">
                     <span className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: style.dot }} />
                     <h3 className="font-extrabold text-lg" style={{ color: style.text }}>Chi tiết buổi học</h3>
                 </div>
-                <button onClick={onClose} className="w-7 h-7 rounded-xl bg-[#1A1A1A]/10 hover:bg-[#1A1A1A]/20 flex items-center justify-center transition-colors">
+                <button onClick={onClose} className={`w-7 h-7 rounded-xl flex items-center justify-center transition-colors ${isDark ? 'bg-white/10 hover:bg-white/20 text-gray-100' : 'bg-[#1A1A1A]/10 hover:bg-[#1A1A1A]/20'}`}>
                     <X className="w-3.5 h-3.5" />
                 </button>
             </div>
@@ -237,8 +248,8 @@ function EventDetailPanel({
                             {event.title.substring(0, 2).toUpperCase()}
                         </div>
                         <div>
-                            <div className="text-[10px] font-extrabold text-[#1A1A1A]/50 uppercase tracking-widest mb-0.5">Môn học</div>
-                            <div className="font-extrabold text-[#1A1A1A]">{event.title}</div>
+                            <div className={`text-[10px] font-extrabold uppercase tracking-widest mb-0.5 ${isDark ? 'text-gray-400' : 'text-[#1A1A1A]/50'}`}>Môn học</div>
+                            <div className={`font-extrabold ${isDark ? 'text-gray-100' : 'text-[#1A1A1A]'}`}>{event.title}</div>
                         </div>
                     </div>
                     <div className="grid grid-cols-2 gap-3 pt-1">
@@ -249,8 +260,8 @@ function EventDetailPanel({
                             ['Ngày dạy', `${DAY_NAMES[event.dayOfWeek]}, ${event.date}`],
                         ].map(([l, v]) => (
                             <div key={l}>
-                                <div className="text-[10px] font-extrabold text-[#1A1A1A]/50 uppercase tracking-widest mb-0.5">{l}</div>
-                                <div className="font-extrabold text-[#1A1A1A] text-sm">{v}</div>
+                                <div className={`text-[10px] font-extrabold uppercase tracking-widest mb-0.5 ${isDark ? 'text-gray-400' : 'text-[#1A1A1A]/50'}`}>{l}</div>
+                                <div className={`font-extrabold text-sm ${isDark ? 'text-gray-100' : 'text-[#1A1A1A]'}`}>{v}</div>
                             </div>
                         ))}
                     </div>
@@ -259,13 +270,13 @@ function EventDetailPanel({
                 <div className="space-y-2">
                     <div className="flex items-center gap-2">
                         <Video className="w-4 h-4 text-[#FF6B4A]" weight="fill" />
-                        <span className="font-extrabold text-sm text-[#1A1A1A]">Link Google Meet</span>
+                        <span className={`font-extrabold text-sm ${isDark ? 'text-gray-100' : 'text-[#1A1A1A]'}`}>Link Google Meet</span>
                     </div>
                     <Input
                         value={meetLink}
                         onChange={e => setMeetLink(e.target.value)}
                         placeholder="Dán link Google Meet..."
-                        className="rounded-2xl border-2 border-[#1A1A1A]/20 bg-[#F7F7F2] font-semibold focus:border-[#FF6B4A] transition-colors"
+                        className={`rounded-2xl border-2 font-semibold focus:border-[#FF6B4A] transition-colors ${isDark ? 'border-white/15 bg-[#20242b] text-gray-100' : 'border-[#1A1A1A]/20 bg-[#F7F7F2]'}`}
                     />
                     {!meetLink && (
                         <div className="flex items-center gap-1.5 text-xs text-[#FF6B4A] font-bold">
@@ -282,7 +293,7 @@ function EventDetailPanel({
                 </div>
             </div>
 
-            <div className="p-5 border-t-2 border-[#1A1A1A]/10 space-y-3">
+            <div className={`p-5 border-t-2 space-y-3 ${isDark ? 'border-white/10' : 'border-[#1A1A1A]/10'}`}>
                 <button
                     onClick={handleSave}
                     disabled={isSaving}
@@ -292,7 +303,7 @@ function EventDetailPanel({
                 </button>
                 <button
                     onClick={onOpenAttendance}
-                    className="w-full py-3 bg-[#1A1A1A]/5 hover:bg-[#1A1A1A]/10 text-[#1A1A1A] font-extrabold rounded-2xl active:scale-[0.98] transition-all flex items-center justify-center gap-2 border-2 border-[#1A1A1A]/10"
+                    className={`w-full py-3 font-extrabold rounded-2xl active:scale-[0.98] transition-all flex items-center justify-center gap-2 border-2 ${isDark ? 'bg-white/5 hover:bg-white/10 text-gray-100 border-white/10' : 'bg-[#1A1A1A]/5 hover:bg-[#1A1A1A]/10 text-[#1A1A1A] border-[#1A1A1A]/10'}`}
                 >
                     <Users className="w-4 h-4" weight="bold" /> Điểm danh học sinh
                 </button>
@@ -309,6 +320,9 @@ function EventDetailPanel({
 /* MAIN COMPONENT                                        */
 /* ══════════════════════════════════════════════════════ */
 export function TeacherSchedule() {
+    const { theme } = useSettings();
+    const isDark = theme === 'dark';
+
     const today = new Date();
     const [now, setNow] = useState(new Date());
 
@@ -496,10 +510,10 @@ export function TeacherSchedule() {
             <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4">
                 <div>
                     <p className="text-xs font-extrabold text-gray-400 uppercase tracking-widest mb-1">Thời khóa biểu dạy học</p>
-                    <h1 className="text-3xl font-extrabold text-[#1A1A1A]">Lịch dạy của tôi</h1>
+                    <h1 className={`text-3xl font-extrabold ${isDark ? 'text-gray-100' : 'text-[#1A1A1A]'}`}>Lịch dạy của tôi</h1>
                 </div>
                 <div className="flex items-center gap-3 flex-wrap">
-                    <div className="flex bg-[#1A1A1A]/5 rounded-2xl p-1 border-2 border-[#1A1A1A]/10">
+                    <div className={`flex rounded-2xl p-1 border-2 ${isDark ? 'bg-white/5 border-white/10' : 'bg-[#1A1A1A]/5 border-[#1A1A1A]/10'}`}>
                         {([
                             { mode: 'day' as ViewMode, icon: Rows, label: 'Ngày' },
                             { mode: 'week' as ViewMode, icon: SquaresFour, label: 'Tuần' },
@@ -509,8 +523,8 @@ export function TeacherSchedule() {
                                 key={v.mode}
                                 onClick={() => { setViewMode(v.mode); setSelectedEvent(null); }}
                                 className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-sm font-extrabold transition-all ${viewMode === v.mode
-                                        ? 'bg-white text-[#1A1A1A] shadow-sm'
-                                        : 'text-[#1A1A1A]/50 hover:text-[#1A1A1A]/70'
+                                        ? isDark ? 'bg-[#20242b] text-gray-100 shadow-sm' : 'bg-white text-[#1A1A1A] shadow-sm'
+                                        : isDark ? 'text-gray-400 hover:text-gray-200' : 'text-[#1A1A1A]/50 hover:text-[#1A1A1A]/70'
                                     }`}
                             >
                                 <v.icon className="w-4 h-4" weight={viewMode === v.mode ? 'fill' : 'regular'} />
@@ -519,13 +533,13 @@ export function TeacherSchedule() {
                         ))}
                     </div>
 
-                    <div className="flex items-center bg-white border-2 border-[#1A1A1A]/20 rounded-2xl p-1 gap-1">
-                        <button onClick={goPrev} className="p-2 hover:bg-[#1A1A1A]/5 rounded-xl transition-colors active:scale-95">
-                            <CaretLeft className="w-4 h-4 text-[#1A1A1A]" />
+                    <div className={`flex items-center border-2 rounded-2xl p-1 gap-1 ${isDark ? 'bg-[#20242b] border-white/15' : 'bg-white border-[#1A1A1A]/20'}`}>
+                        <button onClick={goPrev} className={`p-2 rounded-xl transition-colors active:scale-95 ${isDark ? 'hover:bg-white/10' : 'hover:bg-[#1A1A1A]/5'}`}>
+                            <CaretLeft className={`w-4 h-4 ${isDark ? 'text-gray-100' : 'text-[#1A1A1A]'}`} />
                         </button>
-                        <span className="px-3 font-extrabold text-sm text-[#1A1A1A] whitespace-nowrap">{headerText}</span>
-                        <button onClick={goNext} className="p-2 hover:bg-[#1A1A1A]/5 rounded-xl transition-colors active:scale-95">
-                            <CaretRight className="w-4 h-4 text-[#1A1A1A]" />
+                        <span className={`px-3 font-extrabold text-sm whitespace-nowrap ${isDark ? 'text-gray-100' : 'text-[#1A1A1A]'}`}>{headerText}</span>
+                        <button onClick={goNext} className={`p-2 rounded-xl transition-colors active:scale-95 ${isDark ? 'hover:bg-white/10' : 'hover:bg-[#1A1A1A]/5'}`}>
+                            <CaretRight className={`w-4 h-4 ${isDark ? 'text-gray-100' : 'text-[#1A1A1A]'}`} />
                         </button>
                     </div>
 
@@ -542,13 +556,13 @@ export function TeacherSchedule() {
                     { label: 'Có link Meet', value: stats.hasLinkSessions, bg: '#95E1D3', icon: Video },
                     { label: 'Chưa có link', value: stats.missingLinkSessions, bg: '#FFB5B5', icon: Warning },
                 ].map((s, i) => (
-                    <div key={i} className="rounded-2xl p-4 border-2 border-[#1A1A1A] flex items-center gap-4 hover:shadow-md hover:-translate-y-0.5 transition-all duration-200" style={{ backgroundColor: s.bg }}>
-                        <div className="w-10 h-10 bg-[#1A1A1A] rounded-xl flex items-center justify-center shrink-0">
+                    <div key={i} className={`rounded-2xl p-4 border-2 flex items-center gap-4 hover:shadow-md hover:-translate-y-0.5 transition-all duration-200 ${isDark ? 'border-white/10' : 'border-[#1A1A1A]'}`} style={{ backgroundColor: isDark ? (i === 0 ? '#2f2a1a' : i === 1 ? '#173434' : '#3a2025') : s.bg }}>
+                        <div className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 ${isDark ? 'bg-black/40' : 'bg-[#1A1A1A]'}`}>
                             <s.icon className="w-5 h-5 text-white" weight="fill" />
                         </div>
                         <div>
-                            <div className="text-[10px] font-extrabold text-[#1A1A1A]/50 uppercase tracking-widest">{s.label}</div>
-                            <div className="text-2xl font-extrabold text-[#1A1A1A]">{s.value}</div>
+                            <div className={`text-[10px] font-extrabold uppercase tracking-widest ${isDark ? 'text-gray-400' : 'text-[#1A1A1A]/50'}`}>{s.label}</div>
+                            <div className={`text-2xl font-extrabold ${isDark ? 'text-gray-100' : 'text-[#1A1A1A]'}`}>{s.value}</div>
                         </div>
                     </div>
                 ))}
@@ -565,14 +579,14 @@ export function TeacherSchedule() {
                 {/* WEEK VIEW                                       */}
                 {/* ═══════════════════════════════════════════════ */}
                 {viewMode === 'week' && (
-                    <div className="flex-1 bg-white rounded-3xl border-2 border-[#1A1A1A] overflow-hidden min-w-0">
+                    <div className={`flex-1 rounded-3xl border-2 overflow-hidden min-w-0 ${isDark ? 'bg-[#171b20] border-white/10' : 'bg-white border-[#1A1A1A]'}`}>
                         {/* Day headers */}
-                        <div className="grid grid-cols-[60px_repeat(7,1fr)] border-b-2 border-[#1A1A1A]">
-                            <div className="border-r-2 border-[#1A1A1A]/20" />
+                        <div className={`grid grid-cols-[60px_repeat(7,1fr)] border-b-2 ${isDark ? 'border-white/10' : 'border-[#1A1A1A]'}`}>
+                            <div className={isDark ? 'border-r-2 border-white/10' : 'border-r-2 border-[#1A1A1A]/20'} />
                             {weekDays.map((day, i) => (
                                 <div
                                     key={i}
-                                    className={`py-4 text-center border-r-2 border-[#1A1A1A]/20 last:border-r-0 transition-colors cursor-pointer hover:bg-[#1A1A1A]/5 ${day.isToday ? 'bg-[#FF6B4A]' : ''}`}
+                                    className={`py-4 text-center border-r-2 last:border-r-0 transition-colors cursor-pointer ${isDark ? 'border-white/10 hover:bg-white/5' : 'border-[#1A1A1A]/20 hover:bg-[#1A1A1A]/5'} ${day.isToday ? 'bg-[#FF6B4A]' : ''}`}
                                     onClick={() => { setCurrentDate(day.fullDate); setViewMode('day'); }}
                                 >
                                     <div className={`text-[11px] font-extrabold mb-1 ${day.isToday ? 'text-white/70' : 'text-gray-400'}`}>{day.name}</div>
@@ -586,13 +600,13 @@ export function TeacherSchedule() {
                             <div className="grid grid-cols-[60px_repeat(7,1fr)]">
                                 {HOURS.map(hour => (
                                     <div key={hour} className="contents">
-                                        <div className="h-16 border-r-2 border-b border-[#1A1A1A]/10 flex items-start justify-end pr-2 pt-1">
+                                        <div className={`h-16 border-r-2 border-b flex items-start justify-end pr-2 pt-1 ${isDark ? 'border-white/10' : 'border-[#1A1A1A]/10'}`}>
                                             <span className="text-[10px] font-extrabold text-gray-400">{pad(hour)}:00</span>
                                         </div>
                                         {weekDays.map((day, di) => (
                                             <div
                                                 key={di}
-                                                className={`h-16 border-r-2 border-b border-[#1A1A1A]/10 last:border-r-0 ${day.isToday ? 'bg-[#FF6B4A]/[0.03]' : ''}`}
+                                                className={`h-16 border-r-2 border-b last:border-r-0 ${isDark ? 'border-white/10' : 'border-[#1A1A1A]/10'} ${day.isToday ? isDark ? 'bg-[#FF6B4A]/[0.08]' : 'bg-[#FF6B4A]/[0.03]' : ''}`}
                                             />
                                         ))}
                                     </div>
@@ -609,7 +623,7 @@ export function TeacherSchedule() {
                                 const dayColumnWidth = 'calc((100% - 60px) / 7)';
                                 const leftOffset = `calc(60px + ${colIdx} * ${dayColumnWidth})`;
                                 const evStatus = getEventStatus(ev, now);
-                                const evStyle = STATUS_STYLES[evStatus];
+                                const evStyle = getStatusStyles(isDark)[evStatus];
 
                                 return (
                                     <div
@@ -642,11 +656,11 @@ export function TeacherSchedule() {
                                                     {evStyle.label}
                                                 </span>
                                                 {!ev.meetLink ? (
-                                                    <span className="inline-flex items-center gap-0.5 text-[8px] font-extrabold px-1.5 py-0.5 rounded-md bg-[#FFF7ED] text-[#C2410C]">
+                                                    <span className={`inline-flex items-center gap-0.5 text-[8px] font-extrabold px-1.5 py-0.5 rounded-md ${isDark ? 'bg-[#3a2025] text-[#fca5a5]' : 'bg-[#FFF7ED] text-[#C2410C]'}`}>
                                                         <Warning className="w-2.5 h-2.5" weight="fill" /> Chưa link
                                                     </span>
                                                 ) : (
-                                                    <span className="inline-flex items-center gap-0.5 text-[8px] font-extrabold px-1.5 py-0.5 rounded-md bg-[#ECFDF5] text-[#047857]">
+                                                    <span className={`inline-flex items-center gap-0.5 text-[8px] font-extrabold px-1.5 py-0.5 rounded-md ${isDark ? 'bg-[#13352c] text-[#6ee7b7]' : 'bg-[#ECFDF5] text-[#047857]'}`}>
                                                         <Video className="w-2.5 h-2.5" weight="fill" /> Meet
                                                     </span>
                                                 )}
@@ -674,13 +688,13 @@ export function TeacherSchedule() {
                 {/* DAY VIEW                                        */}
                 {/* ═══════════════════════════════════════════════ */}
                 {viewMode === 'day' && (
-                    <div className="flex-1 bg-white rounded-3xl border-2 border-[#1A1A1A] overflow-hidden">
-                        <div className="px-6 py-5 border-b-2 border-[#1A1A1A] flex items-center justify-between">
+                    <div className={`flex-1 rounded-3xl border-2 overflow-hidden ${isDark ? 'bg-[#171b20] border-white/10' : 'bg-white border-[#1A1A1A]'}`}>
+                        <div className={`px-6 py-5 border-b-2 flex items-center justify-between ${isDark ? 'border-white/10' : 'border-[#1A1A1A]'}`}>
                             <div>
                                 <div className="text-xs font-extrabold text-gray-400 uppercase tracking-widest mb-1">
                                     {DAY_NAMES_FULL[(currentDate.getDay() + 6) % 7]}
                                 </div>
-                                <div className="text-2xl font-extrabold text-[#1A1A1A]">
+                                <div className={`text-2xl font-extrabold ${isDark ? 'text-gray-100' : 'text-[#1A1A1A]'}`}>
                                     {currentDate.getDate()} {MONTH_NAMES[currentDate.getMonth()]}
                                 </div>
                             </div>
@@ -691,16 +705,16 @@ export function TeacherSchedule() {
 
                         <div className="relative">
                             {HOURS.map(hour => (
-                                <div key={hour} className="flex border-b border-[#1A1A1A]/10">
+                                <div key={hour} className={`flex border-b ${isDark ? 'border-white/10' : 'border-[#1A1A1A]/10'}`}>
                                     <div className="w-16 h-20 flex items-start justify-end pr-3 pt-2 shrink-0">
                                         <span className="text-[11px] font-extrabold text-gray-400">{pad(hour)}:00</span>
                                     </div>
-                                    <div className="flex-1 h-20 border-l-2 border-[#1A1A1A]/10 relative">
+                                    <div className={`flex-1 h-20 border-l-2 relative ${isDark ? 'border-white/10' : 'border-[#1A1A1A]/10'}`}>
                                         {!isLoading && dayEvents.filter(e => e.startHour === hour).map(ev => {
                                             const durationMins = (ev.endHour - ev.startHour) * 60 + (ev.endMin - ev.startMin);
                                             const heightPx = durationMins * (80 / 60);
                                             const evStatus = getEventStatus(ev, now);
-                                            const evStyle = STATUS_STYLES[evStatus];
+                                            const evStyle = getStatusStyles(isDark)[evStatus];
                                             return (
                                                 <div
                                                     key={ev.id}
@@ -717,7 +731,7 @@ export function TeacherSchedule() {
                                                     >
                                                         <div className="flex items-start justify-between">
                                                             <div>
-                                                                <h4 className="font-extrabold text-[#1A1A1A] text-sm">{ev.title}</h4>
+                                                                <h4 className={`font-extrabold text-sm ${isDark ? 'text-gray-100' : 'text-[#1A1A1A]'}`}>{ev.title}</h4>
                                                                 <p className="text-xs font-bold mt-0.5" style={{ color: evStyle.text }}>Lớp {ev.className}</p>
                                                             </div>
                                                         </div>
@@ -731,11 +745,11 @@ export function TeacherSchedule() {
                                                                 {evStyle.label}
                                                             </span>
                                                             {!ev.meetLink ? (
-                                                                <span className="inline-flex items-center gap-1 text-[10px] font-extrabold px-2 py-0.5 rounded-lg bg-[#FFF7ED] text-[#C2410C]">
+                                                                <span className={`inline-flex items-center gap-1 text-[10px] font-extrabold px-2 py-0.5 rounded-lg ${isDark ? 'bg-[#3a2025] text-[#fca5a5]' : 'bg-[#FFF7ED] text-[#C2410C]'}`}>
                                                                     <Warning className="w-3 h-3" weight="fill" /> Chưa có link
                                                                 </span>
                                                             ) : (
-                                                                <span className="inline-flex items-center gap-1 text-[10px] font-extrabold px-2 py-0.5 rounded-lg bg-[#ECFDF5] text-[#047857]">
+                                                                <span className={`inline-flex items-center gap-1 text-[10px] font-extrabold px-2 py-0.5 rounded-lg ${isDark ? 'bg-[#13352c] text-[#6ee7b7]' : 'bg-[#ECFDF5] text-[#047857]'}`}>
                                                                     <Video className="w-3 h-3" weight="fill" /> Có link
                                                                 </span>
                                                             )}
@@ -764,10 +778,10 @@ export function TeacherSchedule() {
                 {/* MONTH VIEW                                      */}
                 {/* ═══════════════════════════════════════════════ */}
                 {viewMode === 'month' && (
-                    <div className="flex-1 bg-white rounded-3xl border-2 border-[#1A1A1A] overflow-hidden">
-                        <div className="grid grid-cols-7 border-b-2 border-[#1A1A1A]">
+                    <div className={`flex-1 rounded-3xl border-2 overflow-hidden ${isDark ? 'bg-[#171b20] border-white/10' : 'bg-white border-[#1A1A1A]'}`}>
+                        <div className={`grid grid-cols-7 border-b-2 ${isDark ? 'border-white/10' : 'border-[#1A1A1A]'}`}>
                             {DAY_NAMES.map(name => (
-                                <div key={name} className="py-3 text-center text-xs font-extrabold text-gray-400 uppercase tracking-widest border-r-2 border-[#1A1A1A]/20 last:border-r-0">
+                                <div key={name} className={`py-3 text-center text-xs font-extrabold text-gray-400 uppercase tracking-widest border-r-2 last:border-r-0 ${isDark ? 'border-white/10' : 'border-[#1A1A1A]/20'}`}>
                                     {name}
                                 </div>
                             ))}
@@ -780,7 +794,7 @@ export function TeacherSchedule() {
                                 return (
                                     <div
                                         key={i}
-                                        className={`min-h-[90px] p-2 border-r-2 border-b-2 border-[#1A1A1A]/10 last:border-r-0 transition-colors cursor-pointer hover:bg-[#FF6B4A]/5 ${day.isToday ? 'bg-[#FF6B4A]/10' : ''
+                                        className={`min-h-[90px] p-2 border-r-2 border-b-2 last:border-r-0 transition-colors cursor-pointer ${isDark ? 'border-white/10 hover:bg-white/5' : 'border-[#1A1A1A]/10 hover:bg-[#FF6B4A]/5'} ${day.isToday ? 'bg-[#FF6B4A]/10' : ''
                                             } ${!day.isCurrentMonth ? 'opacity-30' : ''}`}
                                         onClick={() => {
                                             if (day.isCurrentMonth) {
@@ -803,7 +817,7 @@ export function TeacherSchedule() {
                                             <div className="space-y-1">
                                                 {dayEvs.slice(0, 2).map(ev => {
                                                     const evStatus = getEventStatus(ev, now);
-                                                    const evStyleM = STATUS_STYLES[evStatus];
+                                                    const evStyleM = getStatusStyles(isDark)[evStatus];
                                                     return (
                                                         <div
                                                             key={ev.id}
@@ -846,6 +860,7 @@ export function TeacherSchedule() {
                         onUpdateMeetLink={handleUpdateMeetLink}
                         onOpenAttendance={() => setIsAttendanceOpen(true)}
                         now={now}
+                        isDark={isDark}
                     />
                 )}
             </div>
@@ -859,13 +874,13 @@ export function TeacherSchedule() {
 
             {/* ═══ Tooltip ═══ */}
             {tooltipData && (
-                <EventTooltip event={tooltipData.event} x={tooltipData.x} y={tooltipData.y} now={now} />
+                <EventTooltip event={tooltipData.event} x={tooltipData.x} y={tooltipData.y} now={now} isDark={isDark} />
             )}
 
             {/* ═══ Legend ═══ */}
             <div className="flex flex-wrap gap-4 items-center">
                 <span className="text-xs font-extrabold text-gray-400 uppercase tracking-widest">Chú thích trạng thái:</span>
-                {Object.entries(STATUS_STYLES).map(([, s]) => (
+                {Object.entries(getStatusStyles(isDark)).map(([, s]) => (
                     <div key={s.label} className="flex items-center gap-2 px-2.5 py-1 rounded-lg border" style={{ backgroundColor: s.bg, borderColor: s.border }}>
                         <div className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: s.dot }} />
                         <span className="text-xs font-bold" style={{ color: s.text }}>{s.label}</span>

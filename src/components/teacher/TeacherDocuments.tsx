@@ -2,8 +2,12 @@ import { UploadSimple, FileText, List, SquaresFour, Info, CheckCircle, Trash } f
 import { useState, useEffect, useRef } from 'react';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
 import { Label } from '../ui/label';
+import { useSettings } from '../../context/SettingsContext';
 
 export function TeacherDocuments() {
+    const { theme } = useSettings();
+    const isDark = theme === 'dark';
+
     interface Book {
         id: number;
         book_name: string;
@@ -121,24 +125,27 @@ export function TeacherDocuments() {
             {/* Header */}
             <div>
                 <p className="text-xs font-extrabold text-gray-400 uppercase tracking-widest mb-1">Sinh học 101 / Tài liệu</p>
-                <h1 className="text-3xl font-extrabold text-[#1A1A1A]">Quản lý Tài liệu</h1>
+                <h1 className={`text-3xl font-extrabold ${isDark ? 'text-gray-100' : 'text-[#1A1A1A]'}`}>Quản lý Tài liệu</h1>
             </div>
 
             {/* Success banner */}
-            <div className="flex items-center gap-3 p-4 rounded-2xl border-2 border-[#1A1A1A]/20" style={{ backgroundColor: '#95E1D3' }}>
-                <CheckCircle className="w-5 h-5 text-[#1A1A1A]" weight="fill" />
-                <span className="font-extrabold text-[#1A1A1A] text-sm">Đã đồng bộ với kho lưu trữ trực tuyến thành công.</span>
+            <div className={`flex items-center gap-3 p-4 rounded-2xl border-2 ${isDark ? 'border-emerald-400/20 bg-emerald-500/15' : 'border-[#1A1A1A]/20'}`} style={{ backgroundColor: isDark ? undefined : '#95E1D3' }}>
+                <CheckCircle className={`w-5 h-5 ${isDark ? 'text-emerald-300' : 'text-[#1A1A1A]'}`} weight="fill" />
+                <span className={`font-extrabold text-sm ${isDark ? 'text-emerald-100' : 'text-[#1A1A1A]'}`}>Đã đồng bộ với kho lưu trữ trực tuyến thành công.</span>
             </div>
 
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
                 {/* Upload form */}
-                <div className="lg:col-span-2 bg-white rounded-3xl border-2 border-[#1A1A1A] p-6 space-y-5">
-                    <h2 className="font-extrabold text-lg text-[#1A1A1A]">Tải lên tài liệu mới</h2>
+                <div className={`lg:col-span-2 rounded-3xl border-2 p-6 space-y-5 ${isDark ? 'bg-[#171b20] border-white/10' : 'bg-white border-[#1A1A1A]'}`}>
+                    <h2 className={`font-extrabold text-lg ${isDark ? 'text-gray-100' : 'text-[#1A1A1A]'}`}>Tải lên tài liệu mới</h2>
 
                     {/* Dropzone */}
                     <div 
                         onClick={() => fileInputRef.current?.click()}
-                        className="border-2 border-dashed border-[#FF6B4A]/50 bg-[#FF6B4A]/5 rounded-2xl p-10 flex flex-col items-center justify-center text-center hover:bg-[#FF6B4A]/10 transition-colors cursor-pointer"
+                        className={`border-2 border-dashed rounded-2xl p-10 flex flex-col items-center justify-center text-center transition-colors cursor-pointer ${isDark
+                            ? 'border-[#FF6B4A]/40 bg-[#FF6B4A]/10 hover:bg-[#FF6B4A]/15'
+                            : 'border-[#FF6B4A]/50 bg-[#FF6B4A]/5 hover:bg-[#FF6B4A]/10'
+                            }`}
                     >
                         <input 
                             type="file" 
@@ -150,11 +157,11 @@ export function TeacherDocuments() {
                         <div className="w-14 h-14 bg-[#FF6B4A] rounded-2xl flex items-center justify-center mb-4">
                             <UploadSimple className="w-7 h-7 text-white" weight="fill" />
                         </div>
-                        <h3 className="font-extrabold text-[#1A1A1A] mb-1">
+                        <h3 className={`font-extrabold mb-1 ${isDark ? 'text-gray-100' : 'text-[#1A1A1A]'}`}>
                             {selectedFile ? selectedFile.name : 'Kéo và thả tệp vào đây'}
                         </h3>
-                        <p className="text-sm text-[#1A1A1A]/50 font-semibold mb-2">Hoặc nhấp để chọn (Tối đa 50MB)</p>
-                        <p className="text-xs text-[#1A1A1A]/40 font-extrabold uppercase tracking-widest mb-5">PDF ONLY</p>
+                        <p className={`text-sm font-semibold mb-2 ${isDark ? 'text-gray-300' : 'text-[#1A1A1A]/50'}`}>Hoặc nhấp để chọn (Tối đa 50MB)</p>
+                        <p className={`text-xs font-extrabold uppercase tracking-widest mb-5 ${isDark ? 'text-gray-500' : 'text-[#1A1A1A]/40'}`}>PDF ONLY</p>
                         <button className="bg-[#FF6B4A] hover:bg-[#ff5535] text-white font-extrabold px-8 h-10 rounded-2xl transition-colors">
                             {selectedFile ? 'Thay đổi tệp' : '+ Chọn tệp'}
                         </button>
@@ -164,7 +171,7 @@ export function TeacherDocuments() {
                         <div>
                             <Label className="text-xs font-extrabold text-gray-400 uppercase tracking-wider mb-1.5 block">Gán cho lớp học</Label>
                             <Select defaultValue="nhom1">
-                                <SelectTrigger className="bg-[#F7F7F2] rounded-2xl border-2 border-[#1A1A1A]/20 h-11 font-bold">
+                                <SelectTrigger className={`rounded-2xl border-2 h-11 font-bold ${isDark ? 'bg-[#20242b] border-white/15 text-gray-100' : 'bg-[#F7F7F2] border-[#1A1A1A]/20'}`}>
                                     <SelectValue />
                                 </SelectTrigger>
                                 <SelectContent>
@@ -175,7 +182,7 @@ export function TeacherDocuments() {
                         <div>
                             <Label className="text-xs font-extrabold text-gray-400 uppercase tracking-wider mb-1.5 block">Môn học</Label>
                             <Select onValueChange={setSubjectId} value={subjectId}>
-                                <SelectTrigger className="bg-[#F7F7F2] rounded-2xl border-2 border-[#1A1A1A]/20 h-11 font-bold">
+                                <SelectTrigger className={`rounded-2xl border-2 h-11 font-bold ${isDark ? 'bg-[#20242b] border-white/15 text-gray-100' : 'bg-[#F7F7F2] border-[#1A1A1A]/20'}`}>
                                     <SelectValue placeholder="Chọn môn học" />
                                 </SelectTrigger>
                                 <SelectContent>
@@ -190,7 +197,7 @@ export function TeacherDocuments() {
                         <div>
                             <Label className="text-xs font-extrabold text-gray-400 uppercase tracking-wider mb-1.5 block">Loại tài liệu</Label>
                             <Select onValueChange={setDocType} value={docType}>
-                                <SelectTrigger className="bg-[#F7F7F2] rounded-2xl border-2 border-[#1A1A1A]/20 h-11 font-bold">
+                                <SelectTrigger className={`rounded-2xl border-2 h-11 font-bold ${isDark ? 'bg-[#20242b] border-white/15 text-gray-100' : 'bg-[#F7F7F2] border-[#1A1A1A]/20'}`}>
                                     <SelectValue />
                                 </SelectTrigger>
                                 <SelectContent>
@@ -215,16 +222,16 @@ export function TeacherDocuments() {
 
 
                     {/* Tips */}
-                    <div className="bg-white rounded-3xl border-2 border-[#1A1A1A] p-5">
-                        <h3 className="font-extrabold text-[#1A1A1A] mb-4">Gợi ý quản lý</h3>
+                    <div className={`rounded-3xl border-2 p-5 ${isDark ? 'bg-[#171b20] border-white/10' : 'bg-white border-[#1A1A1A]'}`}>
+                        <h3 className={`font-extrabold mb-4 ${isDark ? 'text-gray-100' : 'text-[#1A1A1A]'}`}>Gợi ý quản lý</h3>
                         <div className="space-y-3">
                             {[
                                 'Đặt tên file theo định dạng: [MonHoc]_[TieuDe]',
                                 'Sử dụng tag để học sinh dễ tìm kiếm tài liệu',
                             ].map((tip, i) => (
-                                <div key={i} className="flex gap-3 items-start p-3 rounded-2xl border-2 border-[#1A1A1A]/15" style={{ backgroundColor: '#FCE38A' }}>
-                                    <Info className="w-4 h-4 text-[#1A1A1A]/70 shrink-0 mt-0.5" weight="fill" />
-                                    <p className="text-sm font-bold text-[#1A1A1A]/70">{tip}</p>
+                                <div key={i} className={`flex gap-3 items-start p-3 rounded-2xl border-2 ${isDark ? 'border-yellow-300/20 bg-yellow-200/10' : 'border-[#1A1A1A]/15'}`} style={{ backgroundColor: isDark ? undefined : '#FCE38A' }}>
+                                    <Info className={`w-4 h-4 shrink-0 mt-0.5 ${isDark ? 'text-yellow-200' : 'text-[#1A1A1A]/70'}`} weight="fill" />
+                                    <p className={`text-sm font-bold ${isDark ? 'text-yellow-100/90' : 'text-[#1A1A1A]/70'}`}>{tip}</p>
                                 </div>
                             ))}
                         </div>
@@ -233,27 +240,27 @@ export function TeacherDocuments() {
             </div>
 
             {/* Documents list */}
-            <div className="bg-white rounded-3xl border-2 border-[#1A1A1A] overflow-hidden">
-                <div className="px-6 py-4 border-b-2 border-[#1A1A1A] flex items-center justify-between">
-                    <h3 className="font-extrabold text-lg text-[#1A1A1A]">Tài liệu đã tải lên</h3>
+            <div className={`rounded-3xl border-2 overflow-hidden ${isDark ? 'bg-[#171b20] border-white/10' : 'bg-white border-[#1A1A1A]'}`}>
+                <div className={`px-6 py-4 border-b-2 flex items-center justify-between ${isDark ? 'border-white/10' : 'border-[#1A1A1A]'}`}>
+                    <h3 className={`font-extrabold text-lg ${isDark ? 'text-gray-100' : 'text-[#1A1A1A]'}`}>Tài liệu đã tải lên</h3>
                     <div className="flex gap-2">
-                        <button className="p-2 text-gray-400 hover:text-[#1A1A1A] hover:bg-[#1A1A1A]/5 rounded-xl transition-colors">
+                        <button className={`p-2 rounded-xl transition-colors ${isDark ? 'text-gray-400 hover:text-gray-100 hover:bg-white/10' : 'text-gray-400 hover:text-[#1A1A1A] hover:bg-[#1A1A1A]/5'}`}>
                             <List className="w-5 h-5" />
                         </button>
-                        <button className="p-2 bg-[#1A1A1A]/10 text-[#1A1A1A] rounded-xl">
+                        <button className={`p-2 rounded-xl ${isDark ? 'bg-white/10 text-gray-100' : 'bg-[#1A1A1A]/10 text-[#1A1A1A]'}`}>
                             <SquaresFour className="w-5 h-5" />
                         </button>
                     </div>
                 </div>
                 <table className="w-full text-left text-sm">
-                    <thead className="bg-[#1A1A1A]/5 border-b-2 border-[#1A1A1A]/20">
+                    <thead className={`border-b-2 ${isDark ? 'bg-white/5 border-white/10' : 'bg-[#1A1A1A]/5 border-[#1A1A1A]/20'}`}>
                         <tr>
                             {['Tên file', 'Ngày tải lên', 'Môn học', 'Thao tác'].map(h => (
-                                <th key={h} className="px-6 py-4 text-xs font-extrabold text-[#1A1A1A]/50 uppercase tracking-wider">{h}</th>
+                                <th key={h} className={`px-6 py-4 text-xs font-extrabold uppercase tracking-wider ${isDark ? 'text-gray-400' : 'text-[#1A1A1A]/50'}`}>{h}</th>
                             ))}
                         </tr>
                     </thead>
-                    <tbody className="divide-y divide-[#1A1A1A]/10">
+                    <tbody className={isDark ? 'divide-y divide-white/10' : 'divide-y divide-[#1A1A1A]/10'}>
                         {loading ? (
                             <tr>
                                 <td colSpan={4} className="px-6 py-10 text-center text-gray-400 font-bold">
@@ -267,23 +274,23 @@ export function TeacherDocuments() {
                                 </td>
                             </tr>
                         ) : books.map((book) => (
-                            <tr key={`${book.doc_type}-${book.id}`} className="hover:bg-[#1A1A1A]/3 transition-colors">
+                            <tr key={`${book.doc_type}-${book.id}`} className={isDark ? 'hover:bg-white/5 transition-colors' : 'hover:bg-[#1A1A1A]/3 transition-colors'}>
                                 <td className="px-6 py-4">
                                     <div className="flex items-center gap-4">
                                         <div className="w-10 h-10 rounded-2xl border-2 border-[#1A1A1A]/20 flex items-center justify-center shrink-0" style={{ backgroundColor: '#FCE38A' }}>
                                             <FileText className="w-5 h-5 text-[#1A1A1A]" weight="fill" />
                                         </div>
                                         <div>
-                                            <div className="font-extrabold text-[#1A1A1A]">{book.book_name}</div>
+                                            <div className={`font-extrabold ${isDark ? 'text-gray-100' : 'text-[#1A1A1A]'}`}>{book.book_name}</div>
                                             <div className="text-xs text-gray-400 font-semibold">{book.meta}</div>
                                         </div>
                                     </div>
                                 </td>
-                                <td className="px-6 py-4 font-bold text-[#1A1A1A]/60">
+                                <td className={`px-6 py-4 font-bold ${isDark ? 'text-gray-300' : 'text-[#1A1A1A]/60'}`}>
                                     {new Date(book.create_at).toLocaleDateString('vi-VN')}
                                 </td>
                                 <td className="px-6 py-4">
-                                    <div className="font-bold text-[#1A1A1A]/60">
+                                    <div className={`font-bold ${isDark ? 'text-gray-300' : 'text-[#1A1A1A]/60'}`}>
                                         {book.subject_name}
                                     </div>
                                 </td>
@@ -300,7 +307,7 @@ export function TeacherDocuments() {
                         ))}
                     </tbody>
                 </table>
-                <div className="p-4 border-t-2 border-[#1A1A1A]/10 text-center">
+                <div className={`p-4 border-t-2 text-center ${isDark ? 'border-white/10' : 'border-[#1A1A1A]/10'}`}>
                     <button className="text-sm font-extrabold text-[#FF6B4A] hover:text-[#ff5535]">Xem tất cả tài liệu →</button>
                 </div>
             </div>

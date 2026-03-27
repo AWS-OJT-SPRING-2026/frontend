@@ -302,3 +302,123 @@ html.dark .divide-gray-200 > :not([hidden]) ~ :not([hidden]) {
 html.dark hr {
   border-color: #333;
 }
+
+/* Admin-only dark mode tuning (includes portal dialogs) */
+body.admin-mode {
+  --admin-bg: #10141b;
+  --admin-surface: #1b212b;
+  --admin-surface-soft: #222a36;
+  --admin-border: #3b4657;
+  --admin-border-soft: rgba(148, 163, 184, 0.3);
+  --admin-text: #e8edf6;
+  --admin-text-muted: #b8c3d3;
+  --admin-accent: #ff7b5d;
+}
+
+html.dark body.admin-mode .bg-\[\#F7F7F2\],
+html.dark body.admin-mode .bg-\[\#FAF9F6\],
+html.dark body.admin-mode .bg-\[\#FAF9F6\]\/95,
+html.dark body.admin-mode .bg-gray-50,
+html.dark body.admin-mode .bg-gray-100,
+html.dark body.admin-mode .bg-white {
+  background-color: var(--admin-surface) !important;
+}
+
+html.dark body.admin-mode [role='dialog'],
+html.dark body.admin-mode .dialog-content,
+html.dark body.admin-mode [data-radix-portal] [data-state],
+html.dark body.admin-mode [data-radix-portal] > div > div {
+  background-color: var(--admin-surface) !important;
+  border-color: var(--admin-border-soft) !important;
+  color: var(--admin-text) !important;
+}
+
+html.dark body.admin-mode .text-\[\#1A1A1A\],
+html.dark body.admin-mode .text-gray-900,
+html.dark body.admin-mode .text-gray-800,
+html.dark body.admin-mode .text-black {
+  color: var(--admin-text) !important;
+}
+
+html.dark body.admin-mode .text-\[\#1A1A1A\]\/80,
+html.dark body.admin-mode .text-\[\#1A1A1A\]\/70,
+html.dark body.admin-mode .text-\[\#1A1A1A\]\/60,
+html.dark body.admin-mode .text-\[\#1A1A1A\]\/50,
+html.dark body.admin-mode .text-gray-700,
+html.dark body.admin-mode .text-gray-600,
+html.dark body.admin-mode .text-gray-500,
+html.dark body.admin-mode .text-gray-400 {
+  color: var(--admin-text-muted) !important;
+}
+
+html.dark body.admin-mode .border-\[\#1A1A1A\],
+html.dark body.admin-mode .border-\[\#1A1A1A\]\/20,
+html.dark body.admin-mode .border-\[\#1A1A1A\]\/10,
+html.dark body.admin-mode .border-\[\#1A1A1A\]\/5,
+html.dark body.admin-mode .border-gray-100,
+html.dark body.admin-mode .border-gray-200,
+html.dark body.admin-mode .border-gray-300 {
+  border-color: var(--admin-border-soft) !important;
+}
+
+html.dark body.admin-mode input,
+html.dark body.admin-mode select,
+html.dark body.admin-mode textarea,
+html.dark body.admin-mode [data-slot='select-trigger'] {
+  background-color: var(--admin-surface-soft) !important;
+  border-color: var(--admin-border-soft) !important;
+  color: var(--admin-text) !important;
+}
+
+html.dark body.admin-mode input::placeholder,
+html.dark body.admin-mode textarea::placeholder {
+  color: #8d99ab !important;
+}
+
+html.dark body.admin-mode input:focus,
+html.dark body.admin-mode select:focus,
+html.dark body.admin-mode textarea:focus,
+html.dark body.admin-mode [data-slot='select-trigger']:focus {
+  border-color: var(--admin-accent) !important;
+  box-shadow: 0 0 0 2px rgba(255, 123, 93, 0.22) !important;
+}
+
+html.dark body.admin-mode table,
+html.dark body.admin-mode th,
+html.dark body.admin-mode td {
+  color: var(--admin-text) !important;
+}
+
+html.dark body.admin-mode thead,
+html.dark body.admin-mode .bg-\[\#1A1A1A\]\/5 {
+  background-color: rgba(148, 163, 184, 0.12) !important;
+}
+
+html.dark body.admin-mode tbody tr:hover {
+  background-color: rgba(148, 163, 184, 0.08) !important;
+}
+
+/* Pastel stat cards -> dark-tinted in admin dark mode */
+html.dark body.admin-mode .bg-\[\#EDE8FF\] {
+  background-color: #2f2a48 !important;
+  border-color: #6f63b8 !important;
+}
+html.dark body.admin-mode .bg-\[\#DDF7F1\] {
+  background-color: #243f3a !important;
+  border-color: #3eb39b !important;
+}
+html.dark body.admin-mode .bg-\[\#FFF3C9\] {
+  background-color: #463b1e !important;
+  border-color: #b5943f !important;
+}
+html.dark body.admin-mode .bg-\[\#FFE5E5\] {
+  background-color: #4a2b2b !important;
+  border-color: #bd6a6a !important;
+}
+
+html.dark body.admin-mode .admin-logo {
+  background: #edf2ff;
+  border: 1px solid #5a6780;
+  box-shadow: 0 8px 18px rgba(0, 0, 0, 0.35);
+}
+

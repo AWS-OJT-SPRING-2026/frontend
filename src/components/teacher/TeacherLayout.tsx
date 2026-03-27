@@ -86,11 +86,21 @@ export function TeacherLayout() {
             </aside>
 
             {/* Dark canvas with floating content panel */}
-            <main className="flex-1 overflow-auto min-h-screen p-3">
-                <div className={cn(
-                    "min-h-full rounded-3xl overflow-auto shadow-2xl transition-colors duration-300",
-                    isDark ? "bg-[#1e1e1e] text-gray-200" : "bg-[#F7F7F2] text-[#1A1A1A]"
-                )}>
+            <main className="flex-1 h-screen overflow-hidden p-3 relative">
+                <div
+                    className={cn(
+                        "h-full rounded-3xl overflow-auto shadow-2xl relative flex flex-col transition-colors duration-300",
+                        isDark ? "text-gray-200" : "text-[#1A1A1A]"
+                    )}
+                    style={{
+                        backgroundColor: isDark ? '#1b1d22' : '#F7F7F2',
+                        backgroundImage: isDark
+                            ? 'linear-gradient(180deg, rgba(255,255,255,0.02), rgba(255,255,255,0))'
+                            : `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24' height='24'%3E%3Ctext x='50%25' y='55%25' dominant-baseline='middle' text-anchor='middle' font-size='10' fill='%231A1A1A' fill-opacity='0.12' font-family='sans-serif'%3E%C3%97%3C/text%3E%3C/svg%3E"),
+                                         radial-gradient(ellipse at center, transparent 20%, #F7F7F2 80%)`,
+                        backgroundBlendMode: 'normal',
+                    }}
+                >
                     <Outlet />
                 </div>
             </main>
