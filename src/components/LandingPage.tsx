@@ -1,6 +1,8 @@
 import { useNavigate } from 'react-router-dom';
 import { useSettings } from '../context/SettingsContext';
 import { LanguageSwitcher } from './LanguageSwitcher';
+import { ThemeSwitcher } from './ThemeSwitcher';
+import { cn } from '../lib/utils';
 import {
     BookOpen,
     Users,
@@ -16,12 +18,19 @@ import {
 
 export function LandingPage() {
     const navigate = useNavigate();
-    const { t } = useSettings();
+    const { t, theme } = useSettings();
+    const isDark = theme === 'dark';
 
     return (
-        <div className="min-h-screen bg-[#F7F7F2]" style={{ fontFamily: "'Nunito', sans-serif" }}>
+        <div
+            className={cn('min-h-screen transition-colors duration-300', isDark ? 'bg-[#0b0d12]' : 'bg-[#F7F7F2]')}
+            style={{ fontFamily: "'Nunito', sans-serif" }}
+        >
             {/* ── NAVBAR ── */}
-            <header className="sticky top-0 z-50 bg-white border-b-2 border-[#1A1A1A]/10">
+            <header className={cn(
+                'sticky top-0 z-50 border-b-2 transition-colors duration-300',
+                isDark ? 'bg-[#12161f] border-white/10' : 'bg-white border-[#1A1A1A]/10'
+            )}>
                 <div className="max-w-6xl mx-auto px-6 h-16 flex items-center justify-between">
                     <div className="flex items-center gap-3 select-none">
                         <img
@@ -29,19 +38,26 @@ export function LandingPage() {
                             alt="AntiEdu"
                             className="h-14 w-14 shrink-0 rounded-2xl shadow-lg block"
                         />
-                        <span className="text-xl font-extrabold text-[#1A1A1A] tracking-tight leading-none">
+                        <span className={cn('text-xl font-extrabold tracking-tight leading-none', isDark ? 'text-white' : 'text-[#1A1A1A]')}>
                             Anti<span className="text-[#FF6B4A]">Edu</span>
                         </span>
                     </div>
-                    <nav className="hidden md:flex items-center gap-8 text-sm font-extrabold text-[#1A1A1A]/60">
+                    <nav className={cn(
+                        'hidden md:flex items-center gap-8 text-sm font-extrabold',
+                        isDark ? 'text-gray-400' : 'text-[#1A1A1A]/60'
+                    )}>
                         <a href="#contact" className="hover:text-[#FF6B4A] transition-colors">{t.landing.contact}</a>
                         <a href="#highlights" className="hover:text-[#FF6B4A] transition-colors">{t.landing.highlights}</a>
                     </nav>
                     <div className="flex items-center gap-3">
                         <LanguageSwitcher />
+                        <ThemeSwitcher />
                         <button
                             onClick={() => navigate('/login')}
-                            className="text-sm font-extrabold text-[#1A1A1A]/60 hover:text-[#1A1A1A] transition-colors"
+                            className={cn(
+                                'text-sm font-extrabold transition-colors',
+                                isDark ? 'text-gray-300 hover:text-white' : 'text-[#1A1A1A]/60 hover:text-[#1A1A1A]'
+                            )}
                         >
                             {t.auth.login}
                         </button>
@@ -143,12 +159,12 @@ export function LandingPage() {
             </section>
 
             {/* ── HIGHLIGHTS ── */}
-            <section id="highlights" className="py-20 bg-white">
+            <section id="highlights" className={cn('py-20 transition-colors duration-300', isDark ? 'bg-[#111722]' : 'bg-white')}>
                 <div className="max-w-6xl mx-auto px-6">
                     <div className="text-center mb-14">
-                        <p className="text-xs font-extrabold text-gray-400 uppercase tracking-widest mb-2">{t.landing.highlightsSubtitle}</p>
-                        <h2 className="text-3xl font-extrabold text-[#1A1A1A]">{t.landing.highlightsTitle}</h2>
-                        <p className="text-[#1A1A1A]/50 mt-3 max-w-xl mx-auto font-semibold">
+                        <p className={cn('text-xs font-extrabold uppercase tracking-widest mb-2', isDark ? 'text-gray-500' : 'text-gray-400')}>{t.landing.highlightsSubtitle}</p>
+                        <h2 className={cn('text-3xl font-extrabold', isDark ? 'text-white' : 'text-[#1A1A1A]')}>{t.landing.highlightsTitle}</h2>
+                        <p className={cn('mt-3 max-w-xl mx-auto font-semibold', isDark ? 'text-gray-400' : 'text-[#1A1A1A]/50')}>
                             {t.landing.highlightsDesc}
                         </p>
                     </div>
@@ -176,15 +192,24 @@ export function LandingPage() {
                                 topBg: '#FFB5B5',
                             },
                         ].map(({ icon: Icon, badge, title, desc, topBg }) => (
-                            <div key={title} className="rounded-3xl overflow-hidden border-2 border-[#1A1A1A] group hover:shadow-lg transition-shadow">
+                            <div key={title} className={cn(
+                                'rounded-3xl overflow-hidden border-2 group hover:shadow-lg transition-shadow',
+                                isDark ? 'border-white/20 shadow-black/30' : 'border-[#1A1A1A]'
+                            )}>
                                 <div className="h-2" style={{ backgroundColor: topBg }} />
-                                <div className="p-8 bg-white">
-                                    <span className="text-xs font-extrabold text-[#1A1A1A] px-3 py-1 rounded-full border-2 border-[#1A1A1A]/20" style={{ backgroundColor: topBg }}>{badge}</span>
-                                    <div className="w-12 h-12 rounded-2xl border-2 border-[#1A1A1A]/20 flex items-center justify-center mt-5 mb-4 group-hover:scale-105 transition-transform" style={{ backgroundColor: topBg }}>
+                                <div className={cn('p-8 transition-colors duration-300', isDark ? 'bg-[#1a2130]' : 'bg-white')}>
+                                    <span className={cn(
+                                        'text-xs font-extrabold px-3 py-1 rounded-full border-2',
+                                        isDark ? 'text-white border-white/20' : 'text-[#1A1A1A] border-[#1A1A1A]/20'
+                                    )} style={{ backgroundColor: topBg }}>{badge}</span>
+                                    <div className={cn(
+                                        'w-12 h-12 rounded-2xl border-2 flex items-center justify-center mt-5 mb-4 group-hover:scale-105 transition-transform',
+                                        isDark ? 'border-white/20' : 'border-[#1A1A1A]/20'
+                                    )} style={{ backgroundColor: topBg }}>
                                         <Icon className="w-6 h-6 text-[#1A1A1A]" weight="fill" />
                                     </div>
-                                    <h3 className="text-lg font-extrabold text-[#1A1A1A] mb-3">{title}</h3>
-                                    <p className="text-sm text-[#1A1A1A]/50 leading-relaxed font-semibold">{desc}</p>
+                                    <h3 className={cn('text-lg font-extrabold mb-3', isDark ? 'text-white' : 'text-[#1A1A1A]')}>{title}</h3>
+                                    <p className={cn('text-sm leading-relaxed font-semibold', isDark ? 'text-gray-400' : 'text-[#1A1A1A]/50')}>{desc}</p>
                                 </div>
                             </div>
                         ))}
@@ -212,7 +237,7 @@ export function LandingPage() {
             </section>
 
             {/* ── CTA BANNER ── */}
-            <section id="contact" className="py-20 bg-[#F7F7F2]">
+            <section id="contact" className={cn('py-20 transition-colors duration-300', isDark ? 'bg-[#0b0d12]' : 'bg-[#F7F7F2]')}>
                 <div className="max-w-4xl mx-auto px-6">
                     <div className="bg-[#1A1A1A] rounded-3xl p-12 border-2 border-[#1A1A1A] text-center space-y-6 relative overflow-hidden">
                         {/* Geometric deco */}

@@ -3,7 +3,11 @@ import { User as UserIcon, Lock, AlertCircle, Eye, EyeOff, ShieldOff } from 'luc
 import { ArrowRight, ShieldCheck, Lightning, GraduationCap, Student as StudentIcon, Shield } from '@phosphor-icons/react';
 import { authService, type QuickLoginRole } from '../services/authService';
 import { useAuth } from '../context/AuthContext';
+import { useSettings } from '../context/SettingsContext';
 import { ApiError } from '../services/api';
+import { LanguageSwitcher } from './LanguageSwitcher';
+import { ThemeSwitcher } from './ThemeSwitcher';
+import { cn } from '../lib/utils';
 
 interface LoginProps {
   onSwitchToRegister: () => void;
@@ -19,6 +23,8 @@ export function Login({ onSwitchToRegister, onSwitchToForgotPassword }: LoginPro
   const [loading, setLoading] = useState(false);
   const [isVisible, setIsVisible] = useState(false);
   const { login } = useAuth();
+  const { theme } = useSettings();
+  const isDark = theme === 'dark';
 
   useEffect(() => {
     const timer = setTimeout(() => setIsVisible(true), 50);
@@ -71,13 +77,28 @@ export function Login({ onSwitchToRegister, onSwitchToForgotPassword }: LoginPro
 
   return (
     <div
-      className={`min-h-screen flex items-center justify-center bg-[#F7F7F2] p-4 transition-opacity duration-700 ${isVisible ? 'opacity-100' : 'opacity-0'}`}
+      className={cn(
+        'min-h-screen flex items-center justify-center p-4 transition-opacity duration-700 relative',
+        isDark ? 'bg-[#0b0d12]' : 'bg-[#F7F7F2]',
+        isVisible ? 'opacity-100' : 'opacity-0'
+      )}
       style={{ fontFamily: "'Nunito', sans-serif" }}
     >
-      <div className="w-full max-w-4xl rounded-[2rem] shadow-2xl overflow-hidden flex flex-col md:flex-row min-h-[580px]">
+      <div className="absolute top-5 right-5 md:top-7 md:right-8 z-20 flex items-center gap-2">
+        <LanguageSwitcher />
+        <ThemeSwitcher />
+      </div>
+
+      <div className={cn(
+        'w-full max-w-4xl rounded-[2rem] shadow-2xl overflow-hidden flex flex-col md:flex-row min-h-[580px] border transition-colors duration-300',
+        isDark ? 'border-white/10' : 'border-[#1A1A1A]/8'
+      )}>
 
         {/* ── LEFT PANEL – dark ── */}
-        <div className="relative flex flex-col justify-between p-10 md:w-5/12 bg-[#1A1A1A] overflow-hidden">
+        <div className={cn(
+          'relative flex flex-col justify-between p-10 md:w-5/12 overflow-hidden transition-colors duration-300',
+          isDark ? 'bg-[#141a24]' : 'bg-[#1A1A1A]'
+        )}>
           {/* Decorative shapes */}
           <div className="absolute -top-16 -left-16 w-64 h-64 rounded-full bg-white/5" />
           <div className="absolute top-48 -right-12 w-56 h-56 rounded-full bg-[#FF6B4A]/10" />
@@ -116,10 +137,13 @@ export function Login({ onSwitchToRegister, onSwitchToForgotPassword }: LoginPro
         </div>
 
         {/* ── RIGHT PANEL – white ── */}
-        <div className="flex-1 bg-white flex flex-col justify-center px-10 py-10">
+        <div className={cn(
+          'flex-1 flex flex-col justify-center px-10 py-10 transition-colors duration-300',
+          isDark ? 'bg-[#1b2230]' : 'bg-white'
+        )}>
           <div className="mb-8">
-            <h1 className="text-2xl font-extrabold text-[#1A1A1A]">Chào mừng trở lại</h1>
-            <p className="text-gray-400 text-sm mt-1 font-semibold">Vui lòng nhập thông tin để truy cập hệ thống</p>
+            <h1 className={cn('text-2xl font-extrabold', isDark ? 'text-white' : 'text-[#1A1A1A]')}>Chào mừng trở lại</h1>
+            <p className={cn('text-sm mt-1 font-semibold', isDark ? 'text-gray-400' : 'text-gray-400')}>Vui lòng nhập thông tin để truy cập hệ thống</p>
           </div>
 
           {isLocked && (
@@ -144,17 +168,22 @@ export function Login({ onSwitchToRegister, onSwitchToForgotPassword }: LoginPro
           <form onSubmit={handleSubmit} className="space-y-4">
             {/* Username */}
             <div>
-              <label htmlFor="username" className="block text-sm font-extrabold text-[#1A1A1A] mb-2">
+              <label htmlFor="username" className={cn('block text-sm font-extrabold mb-2', isDark ? 'text-gray-100' : 'text-[#1A1A1A]')}>
                 Email hoặc Tên đăng nhập
               </label>
               <div className="relative">
-                <UserIcon className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+                <UserIcon className={cn('absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4', isDark ? 'text-gray-500' : 'text-gray-400')} />
                 <input
                   id="username"
                   type="text"
                   value={username}
                   onChange={(e) => setUsername(e.target.value)}
-                  className="w-full pl-10 pr-4 py-3 border border-gray-200 rounded-2xl text-sm font-semibold text-[#1A1A1A] focus:outline-none focus:ring-2 focus:ring-[#FF6B4A]/30 focus:border-[#FF6B4A] bg-gray-50 focus:bg-white transition-all"
+                  className={cn(
+                    'w-full pl-10 pr-4 py-3 border rounded-2xl text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-[#FF6B4A]/30 focus:border-[#FF6B4A] transition-all',
+                    isDark
+                      ? 'border-white/15 text-white bg-[#111722] focus:bg-[#111722]'
+                      : 'border-gray-200 text-[#1A1A1A] bg-gray-50 focus:bg-white'
+                  )}
                   placeholder="username@school.edu.vn"
                   required
                   autoComplete="username"
@@ -164,17 +193,22 @@ export function Login({ onSwitchToRegister, onSwitchToForgotPassword }: LoginPro
 
             {/* Password */}
             <div>
-              <label htmlFor="password" className="block text-sm font-extrabold text-[#1A1A1A] mb-2">
+              <label htmlFor="password" className={cn('block text-sm font-extrabold mb-2', isDark ? 'text-gray-100' : 'text-[#1A1A1A]')}>
                 Mật khẩu
               </label>
               <div className="relative">
-                <Lock className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+                <Lock className={cn('absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4', isDark ? 'text-gray-500' : 'text-gray-400')} />
                 <input
                   id="password"
                   type={showPassword ? 'text' : 'password'}
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  className="w-full pl-10 pr-11 py-3 border border-gray-200 rounded-2xl text-sm font-semibold text-[#1A1A1A] focus:outline-none focus:ring-2 focus:ring-[#FF6B4A]/30 focus:border-[#FF6B4A] bg-gray-50 focus:bg-white transition-all"
+                  className={cn(
+                    'w-full pl-10 pr-11 py-3 border rounded-2xl text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-[#FF6B4A]/30 focus:border-[#FF6B4A] transition-all',
+                    isDark
+                      ? 'border-white/15 text-white bg-[#111722] focus:bg-[#111722]'
+                      : 'border-gray-200 text-[#1A1A1A] bg-gray-50 focus:bg-white'
+                  )}
                   placeholder="••••••••"
                   required
                   autoComplete="current-password"
@@ -182,7 +216,10 @@ export function Login({ onSwitchToRegister, onSwitchToForgotPassword }: LoginPro
                 <button
                   type="button"
                   onClick={() => setShowPassword((v) => !v)}
-                  className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 hover:text-[#FF6B4A] transition-colors"
+                  className={cn(
+                    'absolute right-4 top-1/2 -translate-y-1/2 hover:text-[#FF6B4A] transition-colors',
+                    isDark ? 'text-gray-500' : 'text-gray-400'
+                  )}
                 >
                   {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                 </button>
@@ -217,7 +254,7 @@ export function Login({ onSwitchToRegister, onSwitchToForgotPassword }: LoginPro
 
           {/* Quick role login */}
           <div className="mt-8">
-            <p className="text-center text-xs font-extrabold text-gray-400 uppercase tracking-widest mb-4">
+            <p className={cn('text-center text-xs font-extrabold uppercase tracking-widest mb-4', isDark ? 'text-gray-500' : 'text-gray-400')}>
               Hoặc chọn vai trò
             </p>
             <div className="grid grid-cols-3 gap-3">
@@ -231,7 +268,12 @@ export function Login({ onSwitchToRegister, onSwitchToForgotPassword }: LoginPro
                   type="button"
                   onClick={() => handleQuickRoleLogin(role.role)}
                   disabled={loading}
-                  className="flex flex-col items-center gap-1.5 py-3 px-2 border border-gray-100 bg-gray-50 hover:bg-gray-100 text-[#1A1A1A] rounded-2xl font-extrabold text-xs transition-all hover:scale-105 active:scale-95 disabled:opacity-60 disabled:cursor-not-allowed"
+                  className={cn(
+                    'flex flex-col items-center gap-1.5 py-3 px-2 border rounded-2xl font-extrabold text-xs transition-all hover:scale-105 active:scale-95 disabled:opacity-60 disabled:cursor-not-allowed',
+                    isDark
+                      ? 'border-white/10 bg-[#111722] hover:bg-[#151d2a] text-white'
+                      : 'border-gray-100 bg-gray-50 hover:bg-gray-100 text-[#1A1A1A]'
+                  )}
                 >
                   <span className="text-[#FF6B4A]">{role.icon}</span>
                   {role.label}
@@ -241,7 +283,7 @@ export function Login({ onSwitchToRegister, onSwitchToForgotPassword }: LoginPro
           </div>
 
           <div className="mt-6 text-center">
-            <p className="text-gray-400 text-sm font-semibold">
+            <p className={cn('text-sm font-semibold', isDark ? 'text-gray-400' : 'text-gray-400')}>
               Cần hỗ trợ kỹ thuật?{' '}
               <button onClick={onSwitchToRegister} className="text-[#FF6B4A] hover:text-[#ff5535] font-extrabold transition-colors">
                 Trung tâm trợ giúp

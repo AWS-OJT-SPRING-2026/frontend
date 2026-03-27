@@ -84,7 +84,7 @@ const EMPTY_STUDENT: StudentForm = {
 function Field({ label, required, children }: { label: string; required?: boolean; children: React.ReactNode }) {
     return (
         <div className="flex flex-col gap-1">
-            <label className="text-xs font-extrabold text-[#1A1A1A]/60 uppercase tracking-wider">
+            <label className="text-xs font-extrabold text-[#1A1A1A]/60 uppercase tracking-wider dark:text-[#94a3b8]">
                 {label}{required && <span className="text-[#FF6B4A] ml-0.5">*</span>}
             </label>
             {children}
@@ -92,7 +92,7 @@ function Field({ label, required, children }: { label: string; required?: boolea
     );
 }
 
-const inputCls = "w-full px-3 py-2 bg-white border-2 border-[#1A1A1A]/20 rounded-xl text-sm font-semibold focus:outline-none focus:border-[#FF6B4A] transition-colors placeholder:text-gray-300";
+const inputCls = "w-full px-3 py-2 bg-white border-2 border-[#1A1A1A]/20 rounded-xl text-sm font-semibold focus:outline-none focus:border-[#FF6B4A] transition-colors placeholder:text-gray-300 dark:bg-[#111827] dark:border-white/10 dark:text-slate-100 dark:placeholder:text-slate-400 dark:focus:border-[#f08a5d] dark:[color-scheme:dark] dark:[&::-webkit-calendar-picker-indicator]:invert dark:[&::-webkit-calendar-picker-indicator]:opacity-85";
 
 const AVATAR_MAX_SIZE_BYTES = 5 * 1024 * 1024;
 const AVATAR_ACCEPT = 'image/png,image/jpeg,image/webp,image/gif';
@@ -135,14 +135,14 @@ function AvatarPreview({
             <img
                 src={avatarUrl}
                 alt={fallbackName || 'Avatar'}
-                className={`${sizeClass} rounded-full border-2 border-[#1A1A1A] object-cover`}
+                className={`${sizeClass} rounded-full border-2 border-[#1A1A1A] object-cover dark:border-white/15`}
             />
         );
     }
 
     return (
         <div
-            className={`${sizeClass} rounded-full border-2 border-[#1A1A1A] flex items-center justify-center font-extrabold text-[#1A1A1A] ${textClass}`}
+            className={`${sizeClass} rounded-full border-2 border-[#1A1A1A] flex items-center justify-center font-extrabold text-[#1A1A1A] dark:border-white/15 dark:text-slate-100 ${textClass}`}
             style={{ backgroundColor: getAvatarColor(userId) }}
         >
             {getInitials(fallbackName)}
@@ -160,17 +160,17 @@ function AvatarZoomModal({
     title?: string;
 }) {
     return (
-        <div className="fixed inset-0 z-[70] flex items-center justify-center bg-black/70 backdrop-blur-sm p-4" onClick={onClose}>
+        <div className="fixed inset-0 z-[70] flex items-center justify-center bg-black/70 backdrop-blur-sm p-4 dark:bg-black/80" onClick={onClose}>
             <div className="relative max-w-3xl w-full" onClick={(e) => e.stopPropagation()}>
                 <button
                     onClick={onClose}
-                    className="absolute -top-3 -right-3 w-9 h-9 rounded-full bg-white border-2 border-[#1A1A1A] flex items-center justify-center shadow-xl"
+                    className="absolute -top-3 -right-3 w-9 h-9 rounded-full bg-white border-2 border-[#1A1A1A] flex items-center justify-center shadow-xl dark:bg-[#111827] dark:border-white/10"
                 >
-                    <X className="w-4 h-4 text-[#1A1A1A]" />
+                    <X className="w-4 h-4 text-[#1A1A1A] dark:text-slate-200" />
                 </button>
-                <div className="bg-white rounded-3xl border-2 border-[#1A1A1A] p-3 shadow-2xl">
-                    {title && <p className="px-2 pb-2 text-xs font-extrabold text-[#1A1A1A]/50 uppercase tracking-wider">{title}</p>}
-                    <img src={avatarUrl} alt={title || 'Avatar'} className="w-full max-h-[75vh] object-contain rounded-2xl bg-[#F7F7F2]" />
+                <div className="bg-white rounded-3xl border-2 border-[#1A1A1A] p-3 shadow-2xl dark:bg-[#1b2230] dark:border-white/10 dark:shadow-[0_20px_60px_rgba(0,0,0,0.65)]">
+                    {title && <p className="px-2 pb-2 text-xs font-extrabold text-[#1A1A1A]/50 uppercase tracking-wider dark:text-[#94a3b8]">{title}</p>}
+                    <img src={avatarUrl} alt={title || 'Avatar'} className="w-full max-h-[75vh] object-contain rounded-2xl bg-[#F7F7F2] dark:bg-[#111827]" />
                 </div>
             </div>
         </div>
@@ -273,21 +273,21 @@ function AddUserModal({ onClose, onSuccess }: { onClose: () => void; onSuccess: 
 
     return (
         /* Backdrop */
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4" onClick={onClose}>
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4 dark:bg-black/75" onClick={onClose}>
             {/* Modal — wider when student tab */}
             <div
-                className={`bg-[#FAF9F6] w-full rounded-3xl border-2 border-[#1A1A1A] shadow-2xl overflow-hidden transition-all ${tab === 'student' ? 'max-w-5xl' : 'max-w-xl'}`}
+                className={`bg-[#FAF9F6] w-full rounded-3xl border-2 border-[#1A1A1A] shadow-2xl overflow-hidden transition-all dark:bg-[#1b2230] dark:border-white/10 dark:shadow-[0_24px_70px_rgba(0,0,0,0.65)] ${tab === 'student' ? 'max-w-5xl' : 'max-w-xl'}`}
                 style={{ fontFamily: "'Nunito', sans-serif" }}
                 onClick={e => e.stopPropagation()}
             >
                 {/* Header */}
-                <div className="flex items-center justify-between px-6 pt-6 pb-4 border-b-2 border-[#1A1A1A]/10">
+                <div className="flex items-center justify-between px-6 pt-6 pb-4 border-b-2 border-[#1A1A1A]/10 dark:border-white/[0.08]">
                     <div>
-                        <p className="text-xs font-extrabold text-gray-400 uppercase tracking-widest mb-0.5">Quản lý người dùng</p>
-                        <h2 className="text-xl font-extrabold text-[#1A1A1A]">Thêm người dùng mới</h2>
+                        <p className="text-xs font-extrabold text-gray-400 uppercase tracking-widest mb-0.5 dark:text-[#94a3b8]">Quản lý người dùng</p>
+                        <h2 className="text-xl font-extrabold text-[#1A1A1A] dark:text-slate-50">Thêm người dùng mới</h2>
                     </div>
-                    <button onClick={onClose} className="w-8 h-8 rounded-xl bg-[#1A1A1A]/10 hover:bg-[#1A1A1A]/20 flex items-center justify-center transition-colors">
-                        <X className="w-4 h-4 text-[#1A1A1A]" />
+                    <button onClick={onClose} className="w-8 h-8 rounded-xl bg-[#1A1A1A]/10 hover:bg-[#1A1A1A]/20 flex items-center justify-center transition-colors dark:bg-white/5 dark:hover:bg-white/10">
+                        <X className="w-4 h-4 text-[#1A1A1A] dark:text-slate-200" />
                     </button>
                 </div>
 
@@ -302,8 +302,8 @@ function AddUserModal({ onClose, onSuccess }: { onClose: () => void; onSuccess: 
                             onClick={() => { setTab(t.key); setError(null); setSuccess(null); }}
                             className={`flex items-center gap-2 px-5 py-2 rounded-2xl font-extrabold text-sm transition-all border-2
                                 ${tab === t.key
-                                    ? 'bg-[#FF6B4A] text-white border-[#FF6B4A] shadow'
-                                    : 'bg-white text-[#1A1A1A]/60 border-[#1A1A1A]/20 hover:border-[#FF6B4A]/50'}`}
+                                    ? 'bg-[#FF6B4A] text-white border-[#FF6B4A] shadow dark:bg-[#d97757] dark:border-[#d97757]'
+                                    : 'bg-white text-[#1A1A1A]/60 border-[#1A1A1A]/20 hover:border-[#FF6B4A]/50 dark:bg-[#111827] dark:text-slate-300 dark:border-white/10 dark:hover:border-[#d97757]/60'}`}
                         >
                             {t.icon}{t.label}
                         </button>
@@ -321,7 +321,7 @@ function AddUserModal({ onClose, onSuccess }: { onClose: () => void; onSuccess: 
                                 <Field label="Mật khẩu" required>
                                     <div className="relative">
                                         <input type={showTeacherPassword ? 'text' : 'password'} className={inputCls + ' pr-10'} placeholder="Tối thiểu 6 ký tự" value={teacherForm.password} onChange={e => updateTeacher('password', e.target.value)} />
-                                        <button type="button" onClick={() => setShowTeacherPassword(p => !p)} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-[#FF6B4A] transition-colors">
+                                        <button type="button" onClick={() => setShowTeacherPassword(p => !p)} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-[#FF6B4A] transition-colors dark:text-slate-300 dark:hover:text-[#f0b09b]">
                                             {showTeacherPassword ? <EyeSlash className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                                         </button>
                                     </div>
@@ -362,7 +362,7 @@ function AddUserModal({ onClose, onSuccess }: { onClose: () => void; onSuccess: 
                                     </select>
                                 </Field>
                             </div>
-                            <div className="flex items-center gap-3 bg-white border-2 border-[#1A1A1A]/10 rounded-2xl px-4 py-3">
+                            <div className="flex items-center gap-3 bg-white border-2 border-[#1A1A1A]/10 rounded-2xl px-4 py-3 dark:bg-[#161b22] dark:border-white/10">
                                 <input
                                     id="homeroom"
                                     type="checkbox"
@@ -370,7 +370,7 @@ function AddUserModal({ onClose, onSuccess }: { onClose: () => void; onSuccess: 
                                     checked={teacherForm.isHomeroomTeacher}
                                     onChange={e => updateTeacher('isHomeroomTeacher', e.target.checked)}
                                 />
-                                <label htmlFor="homeroom" className="text-sm font-bold text-[#1A1A1A] cursor-pointer select-none">
+                                <label htmlFor="homeroom" className="text-sm font-bold text-[#1A1A1A] cursor-pointer select-none dark:text-slate-100">
                                     Là giáo viên chủ nhiệm
                                 </label>
                             </div>
@@ -378,10 +378,10 @@ function AddUserModal({ onClose, onSuccess }: { onClose: () => void; onSuccess: 
                     ) : (
                         <>
                             <div className="grid grid-cols-1 lg:grid-cols-5 gap-4">
-                                <div className="rounded-2xl border-2 border-[#1A1A1A]/10 overflow-hidden bg-white lg:col-span-3">
-                                    <div className="flex items-center gap-2 px-4 py-2.5 bg-[#B8B5FF]/20 border-b-2 border-[#1A1A1A]/10">
-                                        <span className="w-5 h-5 rounded-lg bg-[#B8B5FF] flex items-center justify-center text-[#1A1A1A] text-xs font-extrabold">1</span>
-                                        <p className="text-xs font-extrabold text-[#6C63FF] uppercase tracking-wider">Thông tin cá nhân</p>
+                                <div className="rounded-2xl border-2 border-[#1A1A1A]/10 overflow-hidden bg-white lg:col-span-3 dark:bg-[#161b22] dark:border-white/10">
+                                    <div className="flex items-center gap-2 px-4 py-2.5 bg-[#B8B5FF]/20 border-b-2 border-[#1A1A1A]/10 dark:bg-transparent dark:border-b-white/[0.08] dark:border-t-2 dark:border-t-[#7f87d7]">
+                                        <span className="w-5 h-5 rounded-lg bg-[#B8B5FF] flex items-center justify-center text-[#1A1A1A] text-xs font-extrabold dark:bg-[#7f87d7] dark:text-slate-50">1</span>
+                                        <p className="text-xs font-extrabold text-[#6C63FF] uppercase tracking-wider dark:text-[#aab4ff]">Thông tin cá nhân</p>
                                     </div>
                                     <div className="p-4 space-y-3">
                                         <input
@@ -394,7 +394,7 @@ function AddUserModal({ onClose, onSuccess }: { onClose: () => void; onSuccess: 
                                         <button
                                             type="button"
                                             onClick={openAddStudentAvatarPicker}
-                                            className="w-full rounded-2xl border-2 border-dashed border-[#1A1A1A]/15 bg-[#F7F7F2] p-4 hover:border-[#FF6B4A]/40 transition-colors"
+                                            className="w-full rounded-2xl border-2 border-dashed border-[#1A1A1A]/15 bg-[#F7F7F2] p-4 hover:border-[#FF6B4A]/40 transition-colors dark:bg-[#111827] dark:border-white/10 dark:hover:border-[#d97757]/60"
                                         >
                                             <div className="flex flex-col items-center text-center gap-2">
                                                 <AvatarPreview
@@ -404,8 +404,8 @@ function AddUserModal({ onClose, onSuccess }: { onClose: () => void; onSuccess: 
                                                     sizeClass="w-24 h-24"
                                                     textClass="text-3xl"
                                                 />
-                                                <p className="text-sm font-extrabold text-[#1A1A1A]">{studentAvatarFile ? 'Nhấn để đổi avatar' : 'Nhấn để thêm avatar'}</p>
-                                                <p className="text-[11px] font-bold text-[#1A1A1A]/50">PNG/JPG/WEBP/GIF, tối đa 5MB</p>
+                                                <p className="text-sm font-extrabold text-[#1A1A1A] dark:text-slate-100">{studentAvatarFile ? 'Nhấn để đổi avatar' : 'Nhấn để thêm avatar'}</p>
+                                                <p className="text-[11px] font-bold text-[#1A1A1A]/50 dark:text-[#94a3b8]">PNG/JPG/WEBP/GIF, tối đa 5MB</p>
                                             </div>
                                         </button>
                                         {studentAvatarError && <p className="text-xs font-extrabold text-[#c0392b]">{studentAvatarError}</p>}
@@ -432,10 +432,10 @@ function AddUserModal({ onClose, onSuccess }: { onClose: () => void; onSuccess: 
                                 </div>
 
                                 <div className="space-y-4 lg:col-span-2">
-                                    <div className="rounded-2xl border-2 border-[#1A1A1A]/10 overflow-hidden bg-white">
-                                        <div className="flex items-center gap-2 px-4 py-2.5 bg-[#FF6B4A]/8 border-b-2 border-[#1A1A1A]/10">
-                                            <span className="w-5 h-5 rounded-lg bg-[#FF6B4A] flex items-center justify-center text-white text-xs font-extrabold">2</span>
-                                            <p className="text-xs font-extrabold text-[#FF6B4A] uppercase tracking-wider">Thông tin tài khoản</p>
+                                    <div className="rounded-2xl border-2 border-[#1A1A1A]/10 overflow-hidden bg-white dark:bg-[#161b22] dark:border-white/10">
+                                        <div className="flex items-center gap-2 px-4 py-2.5 bg-[#FF6B4A]/8 border-b-2 border-[#1A1A1A]/10 dark:bg-transparent dark:border-b-white/[0.08] dark:border-t-2 dark:border-t-[#d97757]">
+                                            <span className="w-5 h-5 rounded-lg bg-[#FF6B4A] flex items-center justify-center text-white text-xs font-extrabold dark:bg-[#d97757]">2</span>
+                                            <p className="text-xs font-extrabold text-[#FF6B4A] uppercase tracking-wider dark:text-[#f0b09b]">Thông tin tài khoản</p>
                                         </div>
                                         <div className="p-4 space-y-3">
                                             <Field label="Tên đăng nhập" required>
@@ -444,7 +444,7 @@ function AddUserModal({ onClose, onSuccess }: { onClose: () => void; onSuccess: 
                                             <Field label="Mật khẩu" required>
                                                 <div className="relative">
                                                     <input type={showStudentPassword ? 'text' : 'password'} className={inputCls + ' pr-10'} placeholder="Tối thiểu 6 ký tự, có chữ + số" value={studentForm.password} onChange={e => updateStudent('password', e.target.value)} />
-                                                    <button type="button" onClick={() => setShowStudentPassword(p => !p)} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-[#FF6B4A] transition-colors">
+                                                    <button type="button" onClick={() => setShowStudentPassword(p => !p)} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-[#FF6B4A] transition-colors dark:text-slate-300 dark:hover:text-[#f0b09b]">
                                                         {showStudentPassword ? <EyeSlash className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                                                     </button>
                                                 </div>
@@ -460,10 +460,10 @@ function AddUserModal({ onClose, onSuccess }: { onClose: () => void; onSuccess: 
                                         </div>
                                     </div>
 
-                                    <div className="rounded-2xl border-2 border-[#1A1A1A]/10 overflow-hidden bg-white">
-                                        <div className="flex items-center gap-2 px-4 py-2.5 bg-[#95E1D3]/20 border-b-2 border-[#1A1A1A]/10">
-                                            <span className="w-5 h-5 rounded-lg bg-[#95E1D3] flex items-center justify-center text-[#1A1A1A] text-xs font-extrabold">3</span>
-                                            <p className="text-xs font-extrabold text-[#1A7A6E] uppercase tracking-wider">Thông tin phụ huynh</p>
+                                    <div className="rounded-2xl border-2 border-[#1A1A1A]/10 overflow-hidden bg-white dark:bg-[#161b22] dark:border-white/10">
+                                        <div className="flex items-center gap-2 px-4 py-2.5 bg-[#95E1D3]/20 border-b-2 border-[#1A1A1A]/10 dark:bg-transparent dark:border-b-white/[0.08] dark:border-t-2 dark:border-t-[#6ba79c]">
+                                            <span className="w-5 h-5 rounded-lg bg-[#95E1D3] flex items-center justify-center text-[#1A1A1A] text-xs font-extrabold dark:bg-[#6ba79c] dark:text-slate-50">3</span>
+                                            <p className="text-xs font-extrabold text-[#1A7A6E] uppercase tracking-wider dark:text-[#93c7bf]">Thông tin phụ huynh</p>
                                         </div>
                                         <div className="p-4 space-y-3">
                                             <Field label="Họ tên phụ huynh">
@@ -509,17 +509,17 @@ function AddUserModal({ onClose, onSuccess }: { onClose: () => void; onSuccess: 
                 </div>
 
                 {/* Footer */}
-                <div className="flex justify-end gap-3 px-6 pb-6 pt-3 border-t-2 border-[#1A1A1A]/10">
+                <div className="flex justify-end gap-3 px-6 pb-6 pt-3 border-t-2 border-[#1A1A1A]/10 dark:border-white/[0.08]">
                     <button
                         onClick={onClose}
-                        className="px-5 py-2.5 rounded-2xl border-2 border-[#1A1A1A]/20 font-extrabold text-sm text-[#1A1A1A]/60 hover:bg-[#1A1A1A]/5 transition-colors"
+                        className="px-5 py-2.5 rounded-2xl border-2 border-[#1A1A1A]/20 font-extrabold text-sm text-[#1A1A1A]/60 hover:bg-[#1A1A1A]/5 transition-colors dark:bg-[#111827] dark:border-white/10 dark:text-slate-300 dark:hover:bg-[#1f2937]"
                     >
                         Hủy
                     </button>
                     <button
                         onClick={handleSubmit}
                         disabled={loading}
-                        className="flex items-center gap-2 px-5 py-2.5 rounded-2xl bg-[#FF6B4A] hover:bg-[#ff5535] font-extrabold text-sm text-white transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
+                        className="flex items-center gap-2 px-5 py-2.5 rounded-2xl bg-[#FF6B4A] hover:bg-[#ff5535] font-extrabold text-sm text-white transition-colors disabled:opacity-60 disabled:cursor-not-allowed dark:bg-[#d97757] dark:hover:bg-[#c86c4f]"
                     >
                         {loading ? (
                             <svg className="animate-spin w-4 h-4" viewBox="0 0 24 24" fill="none">
@@ -537,7 +537,7 @@ function AddUserModal({ onClose, onSuccess }: { onClose: () => void; onSuccess: 
 }
 
 /* ─── Helpers ────────────────────────────────────────────────────────────── */
-const AVATAR_COLORS = ['#FCE38A', '#B8B5FF', '#FFB5B5', '#95E1D3', '#A8E6CF', '#FFD3B6', '#C9B1FF', '#B5EAD7'];
+const AVATAR_COLORS = ['#e6d78c', '#a8a5de', '#dca6a6', '#8bc6ba', '#9bcbbd', '#d9bca6', '#b4a2d8', '#9fc8ba'];
 
 function getInitials(name: string): string {
     if (!name) return '?';
@@ -561,9 +561,9 @@ function getRoleLabel(roleName: string): string {
 
 function getRoleBg(roleName: string): string {
     const r = roleName?.toUpperCase() ?? '';
-    if (r.includes('TEACHER')) return '#B8B5FF';
-    if (r.includes('STUDENT')) return '#FCE38A';
-    return '#D0D0D0';
+    if (r.includes('TEACHER')) return '#9f9ac7';
+    if (r.includes('STUDENT')) return '#c6b681';
+    return '#7d8798';
 }
 
 function formatDate(dateStr: string | null): string {
@@ -627,8 +627,8 @@ function renderClassPreview(classes: string[] | null) {
 function DetailItem({ label, value }: { label: string; value: string }) {
     return (
         <div className="py-2">
-            <p className="text-[11px] font-extrabold uppercase tracking-wider text-[#6B7280]">{label}</p>
-            <p className="mt-1 text-[18px] leading-6 font-bold text-[#1A1A1A] break-words">{value || '—'}</p>
+            <p className="text-[11px] font-extrabold uppercase tracking-wider text-[#6B7280] dark:text-[#94a3b8]">{label}</p>
+            <p className="mt-1 text-[18px] leading-6 font-bold text-[#1A1A1A] break-words dark:text-slate-100">{value || '—'}</p>
         </div>
     );
 }
@@ -885,23 +885,23 @@ function EditUserModal({ user, onClose, onSuccess }: { user: UserResponse; onClo
     }
 
     return (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4" onClick={onClose}>
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4 dark:bg-black/75" onClick={onClose}>
             <div
-                className={`bg-[#FAF9F6] w-full rounded-3xl border-2 border-[#1A1A1A] shadow-2xl overflow-hidden transition-all ${!isTeacher ? 'max-w-5xl' : 'max-w-xl'}`}
+                className={`bg-[#FAF9F6] w-full rounded-3xl border-2 border-[#1A1A1A] shadow-2xl overflow-hidden transition-all dark:bg-[#1b2230] dark:border-white/10 dark:shadow-[0_24px_70px_rgba(0,0,0,0.65)] ${!isTeacher ? 'max-w-5xl' : 'max-w-xl'}`}
                 style={{ fontFamily: "'Nunito', sans-serif" }}
                 onClick={e => e.stopPropagation()}
             >
                 {/* Header */}
-                <div className="flex items-center justify-between px-6 pt-6 pb-4 border-b-2 border-[#1A1A1A]/10">
+                <div className="flex items-center justify-between px-6 pt-6 pb-4 border-b-2 border-[#1A1A1A]/10 dark:border-white/[0.08]">
                     <div>
-                        <p className="text-xs font-extrabold text-gray-400 uppercase tracking-widest mb-0.5">Quản lý người dùng</p>
-                        <h2 className="text-xl font-extrabold text-[#1A1A1A]">
+                        <p className="text-xs font-extrabold text-gray-400 uppercase tracking-widest mb-0.5 dark:text-[#94a3b8]">Quản lý người dùng</p>
+                        <h2 className="text-xl font-extrabold text-[#1A1A1A] dark:text-slate-50">
                             Chỉnh sửa {isTeacher ? 'giáo viên' : 'học sinh'}
                         </h2>
-                        <p className="text-xs text-gray-400 font-semibold mt-0.5">{getUserCode(user)} — {user.username}</p>
+                        <p className="text-xs text-gray-400 font-semibold mt-0.5 dark:text-[#94a3b8]">{getUserCode(user)} — {user.username}</p>
                     </div>
-                    <button onClick={onClose} className="w-8 h-8 rounded-xl bg-[#1A1A1A]/10 hover:bg-[#1A1A1A]/20 flex items-center justify-center transition-colors">
-                        <X className="w-4 h-4 text-[#1A1A1A]" />
+                    <button onClick={onClose} className="w-8 h-8 rounded-xl bg-[#1A1A1A]/10 hover:bg-[#1A1A1A]/20 flex items-center justify-center transition-colors dark:bg-white/5 dark:hover:bg-white/10">
+                        <X className="w-4 h-4 text-[#1A1A1A] dark:text-slate-200" />
                     </button>
                 </div>
 
@@ -950,7 +950,7 @@ function EditUserModal({ user, onClose, onSuccess }: { user: UserResponse; onClo
                                     </select>
                                 </Field>
                             </div>
-                            <div className="flex items-center gap-3 bg-white border-2 border-[#1A1A1A]/10 rounded-2xl px-4 py-3">
+                            <div className="flex items-center gap-3 bg-white border-2 border-[#1A1A1A]/10 rounded-2xl px-4 py-3 dark:bg-[#161b22] dark:border-white/10">
                                 <input
                                     id="edit-homeroom"
                                     type="checkbox"
@@ -958,7 +958,7 @@ function EditUserModal({ user, onClose, onSuccess }: { user: UserResponse; onClo
                                     checked={teacherForm.isHomeroomTeacher}
                                     onChange={e => updateTeacher('isHomeroomTeacher', e.target.checked)}
                                 />
-                                <label htmlFor="edit-homeroom" className="text-sm font-bold text-[#1A1A1A] cursor-pointer select-none">
+                                <label htmlFor="edit-homeroom" className="text-sm font-bold text-[#1A1A1A] cursor-pointer select-none dark:text-slate-100">
                                     Là giáo viên chủ nhiệm
                                 </label>
                             </div>
@@ -966,10 +966,10 @@ function EditUserModal({ user, onClose, onSuccess }: { user: UserResponse; onClo
                     ) : (
                         <>
                             <div className="grid grid-cols-1 lg:grid-cols-5 gap-4">
-                                <div className="rounded-2xl border-2 border-[#1A1A1A]/10 overflow-hidden bg-white lg:col-span-3">
-                                    <div className="flex items-center gap-2 px-4 py-2.5 bg-[#B8B5FF]/20 border-b-2 border-[#1A1A1A]/10">
-                                        <span className="w-5 h-5 rounded-lg bg-[#B8B5FF] flex items-center justify-center text-[#1A1A1A] text-xs font-extrabold">1</span>
-                                        <p className="text-xs font-extrabold text-[#6C63FF] uppercase tracking-wider">Thông tin cá nhân</p>
+                                <div className="rounded-2xl border-2 border-[#1A1A1A]/10 overflow-hidden bg-white lg:col-span-3 dark:bg-[#161b22] dark:border-white/10">
+                                    <div className="flex items-center gap-2 px-4 py-2.5 bg-[#B8B5FF]/20 border-b-2 border-[#1A1A1A]/10 dark:bg-transparent dark:border-b-white/[0.08] dark:border-t-2 dark:border-t-[#7f87d7]">
+                                        <span className="w-5 h-5 rounded-lg bg-[#B8B5FF] flex items-center justify-center text-[#1A1A1A] text-xs font-extrabold dark:bg-[#7f87d7] dark:text-slate-50">1</span>
+                                        <p className="text-xs font-extrabold text-[#6C63FF] uppercase tracking-wider dark:text-[#aab4ff]">Thông tin cá nhân</p>
                                     </div>
                                     <div className="p-4 space-y-3">
                                         <input
@@ -983,7 +983,7 @@ function EditUserModal({ user, onClose, onSuccess }: { user: UserResponse; onClo
                                             <button
                                                 type="button"
                                                 onClick={() => setShowAvatarActions(v => !v)}
-                                                className="w-full rounded-2xl border-2 border-dashed border-[#1A1A1A]/15 bg-[#F7F7F2] p-4 hover:border-[#FF6B4A]/40 transition-colors"
+                                                className="w-full rounded-2xl border-2 border-dashed border-[#1A1A1A]/15 bg-[#F7F7F2] p-4 hover:border-[#FF6B4A]/40 transition-colors dark:bg-[#111827] dark:border-white/10 dark:hover:border-[#d97757]/60"
                                             >
                                                 <div className="flex flex-col items-center text-center gap-2">
                                                     <AvatarPreview
@@ -993,12 +993,12 @@ function EditUserModal({ user, onClose, onSuccess }: { user: UserResponse; onClo
                                                         sizeClass="w-24 h-24"
                                                         textClass="text-3xl"
                                                     />
-                                                    <p className="text-sm font-extrabold text-[#1A1A1A]">Nhấn để thao tác avatar</p>
-                                                    <p className="text-[11px] font-bold text-[#1A1A1A]/50">Xem hoặc thay đổi ảnh đại diện</p>
+                                                    <p className="text-sm font-extrabold text-[#1A1A1A] dark:text-slate-100">Nhấn để thao tác avatar</p>
+                                                    <p className="text-[11px] font-bold text-[#1A1A1A]/50 dark:text-[#94a3b8]">Xem hoặc thay đổi ảnh đại diện</p>
                                                 </div>
                                             </button>
                                             {showAvatarActions && (
-                                                <div className="absolute left-1/2 top-full z-10 mt-2 w-52 -translate-x-1/2 rounded-2xl border-2 border-[#1A1A1A]/15 bg-white p-2 shadow-xl">
+                                                <div className="absolute left-1/2 top-full z-10 mt-2 w-52 -translate-x-1/2 rounded-2xl border-2 border-[#1A1A1A]/15 bg-white p-2 shadow-xl dark:bg-[#1b2230] dark:border-white/10 dark:shadow-[0_16px_40px_rgba(0,0,0,0.55)]">
                                                     <button
                                                         type="button"
                                                         disabled={!(studentAvatarPreviewUrl ?? studentAvatarCurrentUrl)}
@@ -1007,14 +1007,14 @@ function EditUserModal({ user, onClose, onSuccess }: { user: UserResponse; onClo
                                                             if (current) setAvatarZoomUrl(current);
                                                             setShowAvatarActions(false);
                                                         }}
-                                                        className="w-full rounded-xl px-3 py-2 text-left text-sm font-extrabold text-[#1A1A1A] hover:bg-[#1A1A1A]/5 disabled:opacity-40 disabled:cursor-not-allowed"
+                                                        className="w-full rounded-xl px-3 py-2 text-left text-sm font-extrabold text-[#1A1A1A] hover:bg-[#1A1A1A]/5 disabled:opacity-40 disabled:cursor-not-allowed dark:text-slate-100 dark:hover:bg-white/10"
                                                     >
                                                         Xem avatar
                                                     </button>
                                                     <button
                                                         type="button"
                                                         onClick={openEditStudentAvatarPicker}
-                                                        className="w-full rounded-xl px-3 py-2 text-left text-sm font-extrabold text-[#FF6B4A] hover:bg-[#FF6B4A]/10"
+                                                        className="w-full rounded-xl px-3 py-2 text-left text-sm font-extrabold text-[#FF6B4A] hover:bg-[#FF6B4A]/10 dark:text-[#f0b09b] dark:hover:bg-[#d97757]/15"
                                                     >
                                                         {studentAvatarFile ? 'Đổi ảnh khác' : 'Thay đổi avatar'}
                                                     </button>
@@ -1025,7 +1025,7 @@ function EditUserModal({ user, onClose, onSuccess }: { user: UserResponse; onClo
                                             <button
                                                 type="button"
                                                 onClick={() => handleStudentAvatarChange(undefined)}
-                                                className="text-xs font-extrabold text-[#FF6B4A] hover:text-[#ff5535]"
+                                                    className="text-xs font-extrabold text-[#FF6B4A] hover:text-[#ff5535] dark:text-[#f0b09b] dark:hover:text-[#ffc1ab]"
                                             >
                                                 Bỏ thay đổi ảnh
                                             </button>
@@ -1054,10 +1054,10 @@ function EditUserModal({ user, onClose, onSuccess }: { user: UserResponse; onClo
                                 </div>
 
                                 <div className="space-y-4 lg:col-span-2">
-                                    <div className="rounded-2xl border-2 border-[#1A1A1A]/10 overflow-hidden bg-white">
-                                        <div className="flex items-center gap-2 px-4 py-2.5 bg-[#FF6B4A]/8 border-b-2 border-[#1A1A1A]/10">
-                                            <span className="w-5 h-5 rounded-lg bg-[#FF6B4A] flex items-center justify-center text-white text-xs font-extrabold">2</span>
-                                            <p className="text-xs font-extrabold text-[#FF6B4A] uppercase tracking-wider">Thông tin tài khoản</p>
+                                    <div className="rounded-2xl border-2 border-[#1A1A1A]/10 overflow-hidden bg-white dark:bg-[#161b22] dark:border-white/10">
+                                        <div className="flex items-center gap-2 px-4 py-2.5 bg-[#FF6B4A]/8 border-b-2 border-[#1A1A1A]/10 dark:bg-transparent dark:border-b-white/[0.08] dark:border-t-2 dark:border-t-[#d97757]">
+                                            <span className="w-5 h-5 rounded-lg bg-[#FF6B4A] flex items-center justify-center text-white text-xs font-extrabold dark:bg-[#d97757]">2</span>
+                                            <p className="text-xs font-extrabold text-[#FF6B4A] uppercase tracking-wider dark:text-[#f0b09b]">Thông tin tài khoản</p>
                                         </div>
                                         <div className="p-4 space-y-3">
                                             <div className="grid grid-cols-2 gap-3">
@@ -1077,10 +1077,10 @@ function EditUserModal({ user, onClose, onSuccess }: { user: UserResponse; onClo
                                         </div>
                                     </div>
 
-                                    <div className="rounded-2xl border-2 border-[#1A1A1A]/10 overflow-hidden bg-white">
-                                        <div className="flex items-center gap-2 px-4 py-2.5 bg-[#95E1D3]/20 border-b-2 border-[#1A1A1A]/10">
-                                            <span className="w-5 h-5 rounded-lg bg-[#95E1D3] flex items-center justify-center text-[#1A1A1A] text-xs font-extrabold">3</span>
-                                            <p className="text-xs font-extrabold text-[#1A7A6E] uppercase tracking-wider">Thông tin phụ huynh</p>
+                                    <div className="rounded-2xl border-2 border-[#1A1A1A]/10 overflow-hidden bg-white dark:bg-[#161b22] dark:border-white/10">
+                                        <div className="flex items-center gap-2 px-4 py-2.5 bg-[#95E1D3]/20 border-b-2 border-[#1A1A1A]/10 dark:bg-transparent dark:border-b-white/[0.08] dark:border-t-2 dark:border-t-[#6ba79c]">
+                                            <span className="w-5 h-5 rounded-lg bg-[#95E1D3] flex items-center justify-center text-[#1A1A1A] text-xs font-extrabold dark:bg-[#6ba79c] dark:text-slate-50">3</span>
+                                            <p className="text-xs font-extrabold text-[#1A7A6E] uppercase tracking-wider dark:text-[#93c7bf]">Thông tin phụ huynh</p>
                                         </div>
                                         <div className="p-4 space-y-3">
                                             <Field label="Họ tên phụ huynh">
@@ -1126,17 +1126,17 @@ function EditUserModal({ user, onClose, onSuccess }: { user: UserResponse; onClo
                 </div>
 
                 {/* Footer */}
-                <div className="flex justify-end gap-3 px-6 pb-6 pt-3 border-t-2 border-[#1A1A1A]/10">
+                <div className="flex justify-end gap-3 px-6 pb-6 pt-3 border-t-2 border-[#1A1A1A]/10 dark:border-white/[0.08]">
                     <button
                         onClick={onClose}
-                        className="px-5 py-2.5 rounded-2xl border-2 border-[#1A1A1A]/20 font-extrabold text-sm text-[#1A1A1A]/60 hover:bg-[#1A1A1A]/5 transition-colors"
+                        className="px-5 py-2.5 rounded-2xl border-2 border-[#1A1A1A]/20 font-extrabold text-sm text-[#1A1A1A]/60 hover:bg-[#1A1A1A]/5 transition-colors dark:bg-[#111827] dark:border-white/10 dark:text-slate-300 dark:hover:bg-[#1f2937]"
                     >
                         Hủy
                     </button>
                     <button
                         onClick={handleSubmit}
                         disabled={loading}
-                        className="flex items-center gap-2 px-5 py-2.5 rounded-2xl bg-[#FF6B4A] hover:bg-[#ff5535] font-extrabold text-sm text-white transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
+                        className="flex items-center gap-2 px-5 py-2.5 rounded-2xl bg-[#FF6B4A] hover:bg-[#ff5535] font-extrabold text-sm text-white transition-colors disabled:opacity-60 disabled:cursor-not-allowed dark:bg-[#d97757] dark:hover:bg-[#c86c4f]"
                     >
                         {loading ? (
                             <svg className="animate-spin w-4 h-4" viewBox="0 0 24 24" fill="none">
@@ -1203,15 +1203,15 @@ function UserDetailModal({ user, onClose }: { user: UserResponse; onClose: () =>
     ];
 
     return (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4" onClick={onClose}>
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4 dark:bg-black/75" onClick={onClose}>
             <div
-                className="bg-[#FAF9F6] w-full max-w-4xl rounded-3xl border-2 border-[#1A1A1A] shadow-2xl overflow-hidden"
+                className="bg-[#FAF9F6] w-full max-w-4xl rounded-3xl border-2 border-[#1A1A1A] shadow-2xl overflow-hidden dark:bg-[#1b2230] dark:border-white/10 dark:shadow-[0_24px_70px_rgba(0,0,0,0.65)]"
                 style={{ fontFamily: "'Nunito', sans-serif" }}
                 onClick={(e) => e.stopPropagation()}
             >
-                <div className="relative bg-gradient-to-r from-[#FF6B4A]/10 via-white to-[#B8B5FF]/20 px-5 sm:px-6 pt-5 sm:pt-6 pb-4 sm:pb-5 border-b border-gray-200">
-                    <button onClick={onClose} className="absolute right-4 top-4 sm:right-6 sm:top-6 w-8 h-8 rounded-xl bg-[#1A1A1A]/10 hover:bg-[#1A1A1A]/20 flex items-center justify-center transition-colors">
-                        <X className="w-4 h-4 text-[#1A1A1A]" />
+                <div className="relative bg-gradient-to-r from-[#FF6B4A]/10 via-white to-[#B8B5FF]/20 px-5 sm:px-6 pt-5 sm:pt-6 pb-4 sm:pb-5 border-b border-gray-200 dark:bg-gradient-to-r dark:from-[#1b2230] dark:via-[#1f2634] dark:to-[#222938] dark:border-white/[0.06]">
+                    <button onClick={onClose} className="absolute right-4 top-4 sm:right-6 sm:top-6 w-8 h-8 rounded-xl bg-[#1A1A1A]/10 hover:bg-[#1A1A1A]/20 flex items-center justify-center transition-colors dark:bg-white/5 dark:hover:bg-white/10">
+                        <X className="w-4 h-4 text-[#1A1A1A] dark:text-slate-200" />
                     </button>
                     <div className="flex flex-col sm:flex-row sm:items-center gap-4 sm:gap-6 pt-1 pr-10 sm:pr-12">
                         <button
@@ -1230,18 +1230,18 @@ function UserDetailModal({ user, onClose }: { user: UserResponse; onClose: () =>
                         </button>
 
                         <div className="flex-1 text-center sm:text-left">
-                            <p className="text-xs font-extrabold text-gray-400 uppercase tracking-widest">Chi tiết người dùng</p>
-                            <h2 className="text-3xl sm:text-4xl font-extrabold text-[#1A1A1A] leading-tight mt-1">{fullName}</h2>
-                            <p className="text-sm sm:text-base text-gray-500 font-bold mt-1 tracking-wide">{getUserCode(user)}</p>
-                            {avatarUrl && <p className="text-[10px] sm:text-[11px] font-bold text-[#1A1A1A]/50 mt-1">Nhấn vào avatar để phóng to</p>}
+                            <p className="text-xs font-extrabold text-gray-400 uppercase tracking-widest dark:text-[#94a3b8]">Chi tiết người dùng</p>
+                            <h2 className="text-3xl sm:text-4xl font-extrabold text-[#1A1A1A] leading-tight mt-1 dark:text-slate-50">{fullName}</h2>
+                            <p className="text-sm sm:text-base text-gray-500 font-bold mt-1 tracking-wide dark:text-slate-300">{getUserCode(user)}</p>
+                            {avatarUrl && <p className="text-[10px] sm:text-[11px] font-bold text-[#1A1A1A]/50 mt-1 dark:text-[#94a3b8]">Nhấn vào avatar để phóng to</p>}
                             <div className="mt-2 flex flex-wrap gap-2 justify-center sm:justify-start">
                                 <span
-                                    className="inline-flex px-3 py-1 rounded-full border-2 border-[#1A1A1A]/20 text-xs font-extrabold"
-                                    style={{ backgroundColor: getRoleBg(user.role?.roleName ?? ''), color: '#1A1A1A' }}
+                                    className="inline-flex px-3 py-1 rounded-full border-2 border-[#1A1A1A]/20 text-xs font-extrabold dark:border-white/10 dark:text-slate-100"
+                                    style={{ backgroundColor: getRoleBg(user.role?.roleName ?? '') }}
                                 >
                                     {getRoleLabel(user.role?.roleName ?? '')}
                                 </span>
-                                <span className={`inline-flex px-3 py-1 rounded-full border-2 border-[#1A1A1A]/20 text-xs font-extrabold ${user.status === 'ACTIVE' ? 'bg-[#95E1D3]' : 'bg-[#FFB5B5]'}`}>
+                                <span className={`inline-flex px-3 py-1 rounded-full border-2 border-[#1A1A1A]/20 text-xs font-extrabold dark:border-white/10 dark:text-slate-100 ${user.status === 'ACTIVE' ? 'bg-[#7be3d4] text-[#0f3d38] dark:bg-[#2f9d90] dark:text-[#dcfdf8]' : 'bg-[#FFB5B5] text-[#7f1d1d] dark:bg-[#8a4f57] dark:text-[#ffe4e8] dark:border-[#c77f89]/35'}`}>
                                     {statusLabel}
                                 </span>
                             </div>
@@ -1249,7 +1249,7 @@ function UserDetailModal({ user, onClose }: { user: UserResponse; onClose: () =>
                     </div>
                 </div>
 
-                <div className="px-6 py-5 space-y-4 max-h-[70vh] overflow-y-auto bg-[#FAF9F6]">
+                <div className="px-6 py-5 space-y-4 max-h-[70vh] overflow-y-auto bg-[#FAF9F6] dark:bg-[#1b2230]">
                     {loading ? (
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-3 py-1">
                             {[1, 2, 3, 4, 5, 6].map((i) => (
@@ -1274,8 +1274,8 @@ function UserDetailModal({ user, onClose }: { user: UserResponse; onClose: () =>
                             )}
 
                             {!isTeacher && (
-                                <div className="pt-4 border-t border-gray-200">
-                                    <p className="text-sm font-extrabold text-[#1A7A6E] uppercase tracking-wider mb-2">Thông tin phụ huynh</p>
+                                <div className="pt-4 border-t border-gray-200 dark:border-white/[0.06]">
+                                    <p className="text-sm font-extrabold text-[#1A7A6E] uppercase tracking-wider mb-2 dark:text-[#93c7bf]">Thông tin phụ huynh</p>
                                     <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-1">
                                         <DetailItem label="Họ tên phụ huynh" value={studentDetail?.parentName || '—'} />
                                         <DetailItem label="Quan hệ" value={getParentRelationshipLabel(studentDetail?.parentRelationship)} />
@@ -1285,18 +1285,18 @@ function UserDetailModal({ user, onClose }: { user: UserResponse; onClose: () =>
                                 </div>
                             )}
 
-                            <div className="pt-4 border-t border-gray-200">
+                            <div className="pt-4 border-t border-gray-200 dark:border-white/[0.06]">
                                 <p className="text-sm font-extrabold uppercase tracking-wider text-[#FF6B4A] mb-2">Danh sách lớp học</p>
-                                <p className="text-sm font-bold text-[#1A1A1A]/80 leading-7">{classes.length > 0 ? classes.join(', ') : '—'}</p>
+                                <p className="text-sm font-bold text-[#1A1A1A]/80 leading-7 dark:text-slate-100/90">{classes.length > 0 ? classes.join(', ') : '—'}</p>
                             </div>
                         </>
                     )}
                 </div>
 
-                <div className="px-6 pb-6 pt-1 border-t border-gray-200 flex justify-end bg-[#FAF9F6]">
+                <div className="px-6 pb-6 pt-1 border-t border-gray-200 flex justify-end bg-[#FAF9F6] dark:border-white/[0.06] dark:bg-[#1b2230]">
                     <button
                         onClick={onClose}
-                        className="px-5 py-2.5 rounded-2xl border-2 border-[#1A1A1A]/20 font-extrabold text-sm text-[#1A1A1A]/70 hover:bg-[#1A1A1A]/5 transition-colors"
+                        className="px-5 py-2.5 rounded-2xl border-2 border-[#1A1A1A]/20 font-extrabold text-sm text-[#1A1A1A]/70 hover:bg-[#1A1A1A]/5 transition-colors dark:bg-[#111827] dark:border-white/10 dark:text-slate-300 dark:hover:bg-[#1f2937]"
                     >
                         Đóng
                     </button>
@@ -1605,7 +1605,7 @@ export function UserManage() {
                                             setLockConfirmUser(user);
                                         }}
                                         title={user.status === 'ACTIVE' ? 'Bấm để khóa tài khoản' : 'Tài khoản đang bị khóa'}
-                                        className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-extrabold border-2 transition-all hover:opacity-80 active:scale-95 ${user.status === 'ACTIVE' ? 'bg-[#95E1D3] border-[#1A1A1A]/20 text-[#1A1A1A]' : 'bg-[#FFB5B5] border-[#1A1A1A]/20 text-[#1A1A1A]'}`}
+                                        className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-extrabold border-2 transition-all hover:opacity-90 active:scale-95 ${user.status === 'ACTIVE' ? 'bg-[#7be3d4] border-[#38b2a6]/40 text-[#0f3d38] dark:bg-[#2f9d90] dark:border-[#56c0b4]/40 dark:text-[#dcfdf8]' : 'bg-[#FFB5B5] border-[#d38a95]/35 text-[#7f1d1d] dark:bg-[#8a4f57] dark:border-[#c77f89]/35 dark:text-[#ffe4e8]'}`}
                                     >
                                         {user.status === 'ACTIVE'
                                             ? <><LockOpen className="w-3 h-3" weight="fill" /> Hoạt động</>
@@ -1703,9 +1703,9 @@ export function UserManage() {
 
             {/* Lock / Unlock Confirm Modal */}
             {lockConfirmUser && (
-                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4" onClick={() => !lockLoading && setLockConfirmUser(null)}>
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4 dark:bg-black/75" onClick={() => !lockLoading && setLockConfirmUser(null)}>
                     <div
-                        className="bg-[#FAF9F6] w-full max-w-sm rounded-3xl border-2 border-[#1A1A1A] shadow-2xl overflow-hidden"
+                        className="bg-[#FAF9F6] w-full max-w-sm rounded-3xl border-2 border-[#1A1A1A] shadow-2xl overflow-hidden dark:bg-[#1b2230] dark:border-white/10 dark:shadow-[0_24px_70px_rgba(0,0,0,0.65)]"
                         style={{ fontFamily: "'Nunito', sans-serif" }}
                         onClick={e => e.stopPropagation()}
                     >
@@ -1713,34 +1713,34 @@ export function UserManage() {
                             const isActive = lockConfirmUser.status === 'ACTIVE';
                             return (
                                 <>
-                                    <div className="flex items-center justify-between px-6 pt-6 pb-4 border-b-2 border-[#1A1A1A]/10">
+                                    <div className="flex items-center justify-between px-6 pt-6 pb-4 border-b-2 border-[#1A1A1A]/10 dark:border-white/[0.08]">
                                         <div className="flex items-center gap-3">
-                                            <div className={`w-10 h-10 rounded-2xl flex items-center justify-center ${isActive ? 'bg-[#FFB5B5]' : 'bg-[#95E1D3]'}`}>
+                                            <div className={`w-10 h-10 rounded-2xl flex items-center justify-center ${isActive ? 'bg-[#FFB5B5] dark:bg-[#aa7878]' : 'bg-[#95E1D3] dark:bg-[#6ca89b]'}`}>
                                                 {isActive
                                                     ? <Lock className="w-5 h-5 text-red-600" weight="fill" />
                                                     : <LockOpen className="w-5 h-5 text-[#1A7A6E]" weight="fill" />
                                                 }
                                             </div>
                                             <div>
-                                                <h2 className="text-base font-extrabold text-[#1A1A1A]">
+                                                <h2 className="text-base font-extrabold text-[#1A1A1A] dark:text-slate-50">
                                                     {isActive ? 'Khóa tài khoản' : 'Mở khóa tài khoản'}
                                                 </h2>
-                                                <p className="text-xs text-gray-400 font-semibold">{getUserCode(lockConfirmUser)}</p>
+                                                <p className="text-xs text-gray-400 font-semibold dark:text-[#94a3b8]">{getUserCode(lockConfirmUser)}</p>
                                             </div>
                                         </div>
-                                        <button onClick={() => !lockLoading && setLockConfirmUser(null)} className="w-8 h-8 rounded-xl bg-[#1A1A1A]/10 hover:bg-[#1A1A1A]/20 flex items-center justify-center transition-colors">
-                                            <X className="w-4 h-4 text-[#1A1A1A]" />
+                                        <button onClick={() => !lockLoading && setLockConfirmUser(null)} className="w-8 h-8 rounded-xl bg-[#1A1A1A]/10 hover:bg-[#1A1A1A]/20 flex items-center justify-center transition-colors dark:bg-white/5 dark:hover:bg-white/10">
+                                            <X className="w-4 h-4 text-[#1A1A1A] dark:text-slate-200" />
                                         </button>
                                     </div>
                                     <div className="px-6 py-5">
-                                        <p className="text-sm font-bold text-[#1A1A1A]">
+                                        <p className="text-sm font-bold text-[#1A1A1A] dark:text-slate-100">
                                             Bạn có chắc muốn{' '}
                                             <span className={isActive ? 'text-red-500' : 'text-[#1A7A6E]'}>
                                                 {isActive ? 'khóa tài khoản' : 'mở khóa tài khoản'}
                                             </span>{' '}
                                             của <span className="font-extrabold">{lockConfirmUser.fullName || lockConfirmUser.username}</span> không?
                                         </p>
-                                        <p className="text-xs text-gray-400 font-semibold mt-1">
+                                        <p className="text-xs text-gray-400 font-semibold mt-1 dark:text-[#94a3b8]">
                                             {isActive
                                                 ? 'Tài khoản bị khóa sẽ không thể đăng nhập vào hệ thống.'
                                                 : 'Tài khoản được mở khóa sẽ có thể đăng nhập lại bình thường.'
@@ -1751,7 +1751,7 @@ export function UserManage() {
                                         <button
                                             onClick={() => setLockConfirmUser(null)}
                                             disabled={lockLoading}
-                                            className="px-5 py-2.5 rounded-2xl border-2 border-[#1A1A1A]/20 font-extrabold text-sm text-[#1A1A1A]/60 hover:bg-[#1A1A1A]/5 transition-colors disabled:opacity-50"
+                                            className="px-5 py-2.5 rounded-2xl border-2 border-[#1A1A1A]/20 font-extrabold text-sm text-[#1A1A1A]/60 hover:bg-[#1A1A1A]/5 transition-colors disabled:opacity-50 dark:bg-[#111827] dark:border-white/10 dark:text-slate-300 dark:hover:bg-[#1f2937]"
                                         >
                                             Hủy
                                         </button>
@@ -1784,38 +1784,38 @@ export function UserManage() {
 
             {/* Delete Confirm Modal */}
             {deleteConfirmUser && (
-                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4" onClick={() => !deleteLoading && setDeleteConfirmUser(null)}>
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4 dark:bg-black/75" onClick={() => !deleteLoading && setDeleteConfirmUser(null)}>
                     <div
-                        className="bg-[#FAF9F6] w-full max-w-sm rounded-3xl border-2 border-[#1A1A1A] shadow-2xl overflow-hidden"
+                        className="bg-[#FAF9F6] w-full max-w-sm rounded-3xl border-2 border-[#1A1A1A] shadow-2xl overflow-hidden dark:bg-[#1b2230] dark:border-white/10 dark:shadow-[0_24px_70px_rgba(0,0,0,0.65)]"
                         style={{ fontFamily: "'Nunito', sans-serif" }}
                         onClick={e => e.stopPropagation()}
                     >
-                        <div className="flex items-center justify-between px-6 pt-6 pb-4 border-b-2 border-[#1A1A1A]/10">
+                        <div className="flex items-center justify-between px-6 pt-6 pb-4 border-b-2 border-[#1A1A1A]/10 dark:border-white/[0.08]">
                             <div className="flex items-center gap-3">
-                                <div className="w-10 h-10 rounded-2xl bg-red-100 flex items-center justify-center">
+                                <div className="w-10 h-10 rounded-2xl bg-red-100 flex items-center justify-center dark:bg-[#aa7878]">
                                     <Trash className="w-5 h-5 text-red-600" weight="fill" />
                                 </div>
                                 <div>
-                                    <h2 className="text-base font-extrabold text-[#1A1A1A]">Xóa người dùng</h2>
-                                    <p className="text-xs text-gray-400 font-semibold">{getUserCode(deleteConfirmUser)}</p>
+                                    <h2 className="text-base font-extrabold text-[#1A1A1A] dark:text-slate-50">Xóa người dùng</h2>
+                                    <p className="text-xs text-gray-400 font-semibold dark:text-[#94a3b8]">{getUserCode(deleteConfirmUser)}</p>
                                 </div>
                             </div>
-                            <button onClick={() => !deleteLoading && setDeleteConfirmUser(null)} className="w-8 h-8 rounded-xl bg-[#1A1A1A]/10 hover:bg-[#1A1A1A]/20 flex items-center justify-center transition-colors">
-                                <X className="w-4 h-4 text-[#1A1A1A]" />
+                            <button onClick={() => !deleteLoading && setDeleteConfirmUser(null)} className="w-8 h-8 rounded-xl bg-[#1A1A1A]/10 hover:bg-[#1A1A1A]/20 flex items-center justify-center transition-colors dark:bg-white/5 dark:hover:bg-white/10">
+                                <X className="w-4 h-4 text-[#1A1A1A] dark:text-slate-200" />
                             </button>
                         </div>
                         <div className="px-6 py-5">
-                            <p className="text-sm font-bold text-[#1A1A1A]">
+                            <p className="text-sm font-bold text-[#1A1A1A] dark:text-slate-100">
                                 Bạn có chắc muốn <span className="text-red-500">xóa vĩnh viễn</span> tài khoản của{' '}
                                 <span className="font-extrabold">{deleteConfirmUser.fullName || deleteConfirmUser.username}</span> không?
                             </p>
-                            <p className="text-xs text-gray-400 font-semibold mt-1">Hành động này không thể hoàn tác.</p>
+                            <p className="text-xs text-gray-400 font-semibold mt-1 dark:text-[#94a3b8]">Hành động này không thể hoàn tác.</p>
                         </div>
                         <div className="flex justify-end gap-3 px-6 pb-6">
                             <button
                                 onClick={() => setDeleteConfirmUser(null)}
                                 disabled={deleteLoading}
-                                className="px-5 py-2.5 rounded-2xl border-2 border-[#1A1A1A]/20 font-extrabold text-sm text-[#1A1A1A]/60 hover:bg-[#1A1A1A]/5 transition-colors disabled:opacity-50"
+                                className="px-5 py-2.5 rounded-2xl border-2 border-[#1A1A1A]/20 font-extrabold text-sm text-[#1A1A1A]/60 hover:bg-[#1A1A1A]/5 transition-colors disabled:opacity-50 dark:bg-[#111827] dark:border-white/10 dark:text-slate-300 dark:hover:bg-[#1f2937]"
                             >
                                 Hủy
                             </button>

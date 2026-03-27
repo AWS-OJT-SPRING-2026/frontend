@@ -71,7 +71,7 @@ export function TeacherLayout() {
                 </nav>
 
                 <div className="flex flex-col gap-2 w-full px-2 mt-auto">
-                    <UserMenu role="teacher" />
+                    <UserMenu role="teacher" labelsVisible={isExpanded} labelClassName={labelClass} />
                     <SettingsPanel labelsVisible={isExpanded} labelClassName={labelClass} />
                     <button
                         onClick={logout}

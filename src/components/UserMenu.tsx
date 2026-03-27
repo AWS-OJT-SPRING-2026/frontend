@@ -10,9 +10,11 @@ import { formatDisplayId } from '../lib/profileMappings';
 
 interface UserMenuProps {
     role: 'student' | 'teacher';
+    labelsVisible?: boolean;
+    labelClassName?: string;
 }
 
-export function UserMenu({ role }: UserMenuProps) {
+export function UserMenu({ role, labelsVisible = false, labelClassName }: UserMenuProps) {
     const { user } = useAuth();
     const { t } = useSettings();
     const navigate = useNavigate();
@@ -93,6 +95,10 @@ export function UserMenu({ role }: UserMenuProps) {
         };
     }, []);
 
+    const fallbackLabelClass = labelsVisible
+        ? 'opacity-100'
+        : 'opacity-0 group-hover/sidebar:opacity-100 transition-opacity duration-200 delay-100';
+
     return (
         <div ref={menuRef} className="relative">
             {/* User Trigger */}
@@ -114,9 +120,12 @@ export function UserMenu({ role }: UserMenuProps) {
                         {user?.name?.[0]?.toUpperCase() || 'U'}
                     </div>
                 )}
-                <div className="opacity-0 group-hover/sidebar:opacity-100 transition-opacity duration-200 delay-100 overflow-hidden text-left">
-                    <p className="text-white text-xs font-extrabold whitespace-nowrap">{user?.name || 'User'}</p>
-                    <p className="text-gray-500 text-[10px] whitespace-nowrap">{displayId}</p>
+                <div className={cn(
+                    'overflow-hidden text-left min-w-0',
+                    labelClassName ?? fallbackLabelClass
+                )}>
+                    <p className="text-white text-xs font-extrabold whitespace-nowrap truncate">{user?.name || 'User'}</p>
+                    <p className="text-gray-500 text-[10px] whitespace-nowrap truncate">{displayId}</p>
                 </div>
             </div>
 
