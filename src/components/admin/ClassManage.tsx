@@ -110,15 +110,24 @@ function getAccent(subjectName: string): string {
 const SEMESTERS = ['Học kỳ 1', 'Học kỳ 2', 'Học kỳ hè'];
 const ACADEMIC_YEARS = ['2024-2025', '2025-2026', '2026-2027'];
 
+function formatGenderVi(gender?: string | null): string {
+    if (!gender) return 'Chưa cập nhật';
+    const normalized = gender.toLowerCase();
+    if (normalized === 'male' || normalized === 'nam') return 'Nam';
+    if (normalized === 'female' || normalized === 'nu' || normalized === 'nữ') return 'Nữ';
+    if (normalized === 'other' || normalized === 'khac' || normalized === 'khác') return 'Khác';
+    return gender;
+}
+
 // ─── Reusable Modal Wrapper ───────────────────────────────────────────────────
 function Modal({ title, onClose, children }: { title: string; onClose: () => void; children: React.ReactNode }) {
     return (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4" style={{ backgroundColor: 'rgba(0,0,0,0.45)', backdropFilter: 'blur(4px)' }}>
-            <div className="bg-white rounded-3xl border-2 border-[#1A1A1A] shadow-2xl w-full max-w-lg animate-fadeIn">
-                <div className="flex items-center justify-between px-6 py-5 border-b-2 border-[#1A1A1A]/10">
-                    <h2 className="text-xl font-extrabold text-[#1A1A1A]">{title}</h2>
-                    <button onClick={onClose} className="w-9 h-9 flex items-center justify-center rounded-2xl hover:bg-gray-100 transition-colors">
-                        <X className="w-5 h-5 text-[#1A1A1A]" weight="bold" />
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/45 backdrop-blur-[4px] dark:bg-black/70">
+            <div className="bg-white dark:bg-[#111827] rounded-3xl border-2 border-[#1A1A1A] dark:border-white/15 shadow-2xl w-full max-w-lg animate-fadeIn">
+                <div className="flex items-center justify-between px-6 py-5 border-b-2 border-[#1A1A1A]/10 dark:border-white/10">
+                    <h2 className="text-xl font-extrabold text-[#1A1A1A] dark:text-slate-100">{title}</h2>
+                    <button onClick={onClose} className="w-9 h-9 flex items-center justify-center rounded-2xl hover:bg-gray-100 dark:hover:bg-white/10 transition-colors">
+                        <X className="w-5 h-5 text-[#1A1A1A] dark:text-slate-200" weight="bold" />
                     </button>
                 </div>
                 <div className="px-6 py-5">{children}</div>
@@ -130,13 +139,13 @@ function Modal({ title, onClose, children }: { title: string; onClose: () => voi
 function Field({ label, children }: { label: string; children: React.ReactNode }) {
     return (
         <div className="flex flex-col gap-1.5">
-            <label className="text-xs font-extrabold text-[#1A1A1A]/60 uppercase tracking-wider">{label}</label>
+            <label className="text-xs font-extrabold text-[#1A1A1A]/60 dark:text-slate-400 uppercase tracking-wider">{label}</label>
             {children}
         </div>
     );
 }
 
-const inputCls = "w-full px-4 py-2.5 rounded-2xl border-2 border-[#1A1A1A]/20 text-sm font-semibold focus:outline-none focus:border-[#FF6B4A] transition-colors bg-gray-50";
+const inputCls = "w-full px-4 py-2.5 rounded-2xl border-2 border-[#1A1A1A]/20 text-sm font-semibold focus:outline-none focus:border-[#FF6B4A] transition-colors bg-gray-50 dark:bg-[#0f172a] dark:border-white/15 dark:text-slate-100 dark:placeholder:text-slate-400 dark:focus:border-[#ff8a66] dark:[color-scheme:dark] dark:[&::-webkit-calendar-picker-indicator]:invert dark:[&::-webkit-calendar-picker-indicator]:opacity-85";
 
 // ─── Create Class Modal ───────────────────────────────────────────────────────
 function CreateClassModal({ onClose, onSuccess }: { onClose: () => void; onSuccess: () => void }) {
@@ -651,21 +660,20 @@ function StudentDetailModal({
     };
 
     return (
-        <div className="fixed inset-0 z-[70] flex items-center justify-center p-4"
-            style={{ backgroundColor: 'rgba(0,0,0,0.55)', backdropFilter: 'blur(6px)' }}>
-            <div className={`bg-white rounded-3xl border-2 shadow-2xl w-full max-w-md animate-fadeIn ${isMemberActive ? 'border-[#1A1A1A]/10' : 'border-orange-200'}`}>
+        <div className="fixed inset-0 z-[70] flex items-center justify-center p-4 bg-black/55 backdrop-blur-[6px] dark:bg-black/80">
+            <div className={`bg-white dark:bg-[#111827] rounded-3xl border-2 shadow-2xl w-full max-w-md animate-fadeIn ${isMemberActive ? 'border-[#1A1A1A]/10 dark:border-white/15' : 'border-orange-200 dark:border-orange-400/50'}`}>
                 {/* Header */}
-                <div className="flex items-center justify-between px-6 py-5 border-b border-gray-100">
+                <div className="flex items-center justify-between px-6 py-5 border-b border-gray-100 dark:border-white/10">
                     <div className="flex items-center gap-2">
-                        <h2 className="text-lg font-extrabold text-[#1A1A1A]">Thông tin học sinh</h2>
+                        <h2 className="text-lg font-extrabold text-[#1A1A1A] dark:text-slate-100">Thông tin học sinh</h2>
                         {!isMemberActive && (
-                            <span className="text-[10px] font-extrabold text-orange-600 bg-orange-100 border border-orange-300 px-2 py-0.5 rounded-full">
+                            <span className="text-[10px] font-extrabold text-orange-600 bg-orange-100 border border-orange-300 px-2 py-0.5 rounded-full dark:text-orange-200 dark:bg-orange-500/20 dark:border-orange-300/50">
                                 Đang tạm ngưng
                             </span>
                         )}
                     </div>
-                    <button onClick={onClose} className="w-8 h-8 flex items-center justify-center rounded-2xl hover:bg-gray-100 transition-colors">
-                        <X className="w-4 h-4 text-[#1A1A1A]" weight="bold" />
+                    <button onClick={onClose} className="w-8 h-8 flex items-center justify-center rounded-2xl hover:bg-gray-100 dark:hover:bg-white/10 transition-colors">
+                        <X className="w-4 h-4 text-[#1A1A1A] dark:text-slate-200" weight="bold" />
                     </button>
                 </div>
 
@@ -680,18 +688,18 @@ function StudentDetailModal({
                             {error && <div className="text-sm font-bold text-red-600 bg-red-50 px-4 py-2.5 rounded-2xl border border-red-200">{error}</div>}
 
                             {/* Avatar + name */}
-                            <div className={`flex items-center gap-4 rounded-2xl p-4 border ${isMemberActive ? 'bg-gray-50 border-gray-100' : 'bg-orange-50 border-orange-200'}`}>
+                            <div className={`flex items-center gap-4 rounded-2xl p-4 border ${isMemberActive ? 'bg-gray-50 border-gray-100 dark:bg-slate-800/70 dark:border-white/10' : 'bg-orange-50 border-orange-200 dark:bg-orange-500/10 dark:border-orange-300/40'}`}>
                                 <div className="w-14 h-14 rounded-2xl flex items-center justify-center text-white font-extrabold text-2xl flex-shrink-0"
                                     style={{ backgroundColor: accent }}>
                                     {detail.fullName?.charAt(0)}
                                 </div>
                                 <div className="flex-1 min-w-0">
-                                    <p className="font-extrabold text-lg text-[#1A1A1A] leading-tight">{detail.fullName}</p>
-                                    <p className="text-xs font-bold text-gray-400 mt-0.5">{detail.email}</p>
+                                    <p className="font-extrabold text-lg text-[#1A1A1A] dark:text-slate-100 leading-tight">{detail.fullName}</p>
+                                    <p className="text-xs font-bold text-gray-400 dark:text-slate-400 mt-0.5">{detail.email}</p>
                                     <span className={`inline-flex items-center gap-1 mt-1 text-[10px] font-extrabold px-2 py-0.5 rounded-full border ${
                                         isMemberActive
-                                            ? 'text-emerald-600 bg-emerald-50 border-emerald-200'
-                                            : 'text-orange-600 bg-orange-100 border-orange-300'
+                                            ? 'text-emerald-600 bg-emerald-50 border-emerald-200 dark:text-emerald-200 dark:bg-emerald-500/20 dark:border-emerald-300/40'
+                                            : 'text-orange-600 bg-orange-100 border-orange-300 dark:text-orange-200 dark:bg-orange-500/20 dark:border-orange-300/40'
                                     }`}>
                                         {isMemberActive ? '● Đang học' : '⏸ Đang tạm ngưng trong lớp'}
                                     </span>
@@ -703,43 +711,43 @@ function StudentDetailModal({
                                 {[
                                     { label: 'Tên đăng nhập', value: detail.username },
                                     { label: 'Số điện thoại', value: detail.phone || '—' },
-                                    { label: 'Giới tính', value: detail.gender || '—' },
+                                    { label: 'Giới tính', value: formatGenderVi(detail.gender) },
                                     { label: 'Ngày sinh', value: formatDate(detail.dateOfBirth) },
                                     { label: 'Địa chỉ', value: detail.address || '—' },
                                     { label: 'Ngày tạo', value: formatDate(detail.createdAt) },
                                 ].map(({ label, value }) => (
-                                    <div key={label} className="bg-gray-50 rounded-2xl p-3 border border-gray-100">
-                                        <p className="text-[10px] font-extrabold text-gray-400 uppercase tracking-wider mb-1">{label}</p>
-                                        <p className="text-sm font-extrabold text-[#1A1A1A] truncate">{value}</p>
+                                    <div key={label} className="bg-gray-50 rounded-2xl p-3 border border-gray-100 dark:bg-slate-800/70 dark:border-white/10">
+                                        <p className="text-[10px] font-extrabold text-gray-400 dark:text-slate-400 uppercase tracking-wider mb-1">{label}</p>
+                                        <p className="text-sm font-extrabold text-[#1A1A1A] dark:text-slate-100 truncate">{value}</p>
                                     </div>
                                 ))}
                             </div>
 
                             {/* Parent info */}
                             {(detail.parentName || detail.parentPhone) && (
-                                <div className="bg-blue-50 rounded-2xl p-4 border border-blue-100">
-                                    <p className="text-xs font-extrabold text-blue-400 uppercase tracking-wider mb-2">Thông tin phụ huynh</p>
+                                <div className="bg-blue-50 rounded-2xl p-4 border border-blue-100 dark:bg-blue-500/10 dark:border-blue-300/35">
+                                    <p className="text-xs font-extrabold text-blue-500 dark:text-blue-200 uppercase tracking-wider mb-2">Thông tin phụ huynh</p>
                                     <div className="space-y-1">
-                                        {detail.parentName && <p className="text-sm font-extrabold text-[#1A1A1A]">{detail.parentName} {detail.parentRelationship ? `(${detail.parentRelationship})` : ''}</p>}
-                                        {detail.parentPhone && <p className="text-xs font-bold text-gray-500">📞 {detail.parentPhone}</p>}
-                                        {detail.parentEmail && <p className="text-xs font-bold text-gray-500">✉️ {detail.parentEmail}</p>}
+                                        {detail.parentName && <p className="text-sm font-extrabold text-[#1A1A1A] dark:text-slate-100">{detail.parentName} {detail.parentRelationship ? `(${detail.parentRelationship})` : ''}</p>}
+                                        {detail.parentPhone && <p className="text-xs font-bold text-gray-600 dark:text-slate-300">So dien thoai: {detail.parentPhone}</p>}
+                                        {detail.parentEmail && <p className="text-xs font-bold text-gray-600 dark:text-slate-300">Email: {detail.parentEmail}</p>}
                                     </div>
                                 </div>
                             )}
                         </div>
                     ) : (
-                        <p className="text-center text-gray-400 font-bold py-8">Không thể tải thông tin học sinh.</p>
+                        <p className="text-center text-gray-400 dark:text-slate-400 font-bold py-8">Không thể tải thông tin học sinh.</p>
                     )}
                 </div>
 
                 {/* Footer actions */}
                 {!loading && detail && (
-                    <div className="px-6 py-4 border-t border-gray-100 bg-gray-50 rounded-b-3xl space-y-2">
+                    <div className="px-6 py-4 border-t border-gray-100 dark:border-white/10 bg-gray-50 dark:bg-slate-900/70 rounded-b-3xl space-y-2">
                         {confirmRemove ? (
                             <div className="space-y-2">
                                 <p className="text-sm font-bold text-red-600 text-center">Xác nhận xóa <span className="font-extrabold">{detail.fullName}</span> khỏi lớp?</p>
                                 <div className="flex gap-2">
-                                    <button onClick={() => setConfirmRemove(false)} className="flex-1 py-2.5 rounded-2xl border-2 border-gray-200 font-extrabold text-sm hover:bg-gray-100 transition-colors">Không</button>
+                                    <button onClick={() => setConfirmRemove(false)} className="flex-1 py-2.5 rounded-2xl border-2 border-gray-200 dark:border-white/15 text-[#1A1A1A] dark:text-slate-100 font-extrabold text-sm hover:bg-gray-100 dark:hover:bg-white/10 transition-colors">Không</button>
                                     <button onClick={handleRemove} disabled={actionLoading}
                                         className="flex-1 py-2.5 rounded-2xl bg-red-500 hover:bg-red-600 text-white font-extrabold text-sm transition-colors disabled:opacity-50">
                                         {actionLoading ? 'Đang xóa...' : 'Xác nhận xóa'}
@@ -766,11 +774,11 @@ function StudentDetailModal({
                                 <button
                                     onClick={() => setConfirmRemove(true)}
                                     disabled={actionLoading}
-                                    className="flex-1 py-2.5 rounded-2xl border-2 border-red-200 text-red-500 hover:bg-red-50 font-extrabold text-sm transition-colors disabled:opacity-50 flex items-center justify-center gap-1.5"
+                                    className="flex-1 py-2.5 rounded-2xl border-2 border-red-200 dark:border-red-300/40 text-red-500 dark:text-red-300 hover:bg-red-50 dark:hover:bg-red-500/10 font-extrabold text-sm transition-colors disabled:opacity-50 flex items-center justify-center gap-1.5"
                                 >
                                     <X className="w-3.5 h-3.5" weight="bold" /> Xóa khỏi lớp
                                 </button>
-                                <button onClick={onClose} className="px-4 py-2.5 rounded-2xl bg-[#1A1A1A] text-white font-extrabold text-sm hover:bg-[#333] transition-colors">
+                                <button onClick={onClose} className="px-4 py-2.5 rounded-2xl bg-[#1A1A1A] dark:bg-slate-700 text-white font-extrabold text-sm hover:bg-[#333] dark:hover:bg-slate-600 transition-colors">
                                     Đóng
                                 </button>
                             </div>
@@ -778,8 +786,8 @@ function StudentDetailModal({
                     </div>
                 )}
                 {!loading && !detail && (
-                    <div className="px-6 py-4 border-t border-gray-100 bg-gray-50 rounded-b-3xl">
-                        <button onClick={onClose} className="w-full py-2.5 rounded-2xl bg-[#1A1A1A] text-white font-extrabold text-sm hover:bg-[#333] transition-colors">Đóng</button>
+                    <div className="px-6 py-4 border-t border-gray-100 dark:border-white/10 bg-gray-50 dark:bg-slate-900/70 rounded-b-3xl">
+                        <button onClick={onClose} className="w-full py-2.5 rounded-2xl bg-[#1A1A1A] dark:bg-slate-700 text-white font-extrabold text-sm hover:bg-[#333] dark:hover:bg-slate-600 transition-colors">Đóng</button>
                     </div>
                 )}
             </div>
@@ -853,42 +861,41 @@ function ClassDetailModal({ cls, onClose, onEdit, onToggleStatus }: {
 
     return (
         <>
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4"
-            style={{ backgroundColor: 'rgba(0,0,0,0.5)', backdropFilter: 'blur(6px)' }}>
-            <div className="bg-white rounded-3xl border-2 border-[#1A1A1A]/10 shadow-2xl w-full max-w-3xl flex flex-col"
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-[6px] dark:bg-black/75">
+            <div className="bg-white dark:bg-[#111827] rounded-3xl border-2 border-[#1A1A1A]/10 dark:border-white/15 shadow-2xl w-full max-w-3xl flex flex-col"
                 style={{ maxHeight: '90vh' }}>
 
                 {/* ── Header ── */}
-                <div className="flex items-start gap-4 px-7 py-6 border-b border-gray-100">
+                <div className="flex items-start gap-4 px-7 py-6 border-b border-gray-100 dark:border-white/10">
                     <div className="w-14 h-14 rounded-2xl flex items-center justify-center text-white font-extrabold text-xl flex-shrink-0"
                         style={{ backgroundColor: accent }}>
                         {data.subjectName?.charAt(0)}
                     </div>
                     <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-2 flex-wrap mb-0.5">
-                            <h2 className="text-2xl font-extrabold text-[#1A1A1A] leading-tight">{data.className}</h2>
+                            <h2 className="text-2xl font-extrabold text-[#1A1A1A] dark:text-slate-100 leading-tight">{data.className}</h2>
                             <span className={`text-xs font-extrabold px-2.5 py-0.5 rounded-full border ${statusColor}`}>
                                 {statusLabel}
                             </span>
                         </div>
-                        <p className="text-sm font-bold text-gray-400">#{data.classID} · Môn: {data.subjectName}</p>
+                        <p className="text-sm font-bold text-gray-400 dark:text-slate-400">#{data.classID} · Môn: {data.subjectName}</p>
                     </div>
-                    <button onClick={onClose} className="w-9 h-9 flex-shrink-0 flex items-center justify-center rounded-2xl hover:bg-gray-100 transition-colors">
-                        <X className="w-5 h-5 text-[#1A1A1A]" weight="bold" />
+                    <button onClick={onClose} className="w-9 h-9 flex-shrink-0 flex items-center justify-center rounded-2xl hover:bg-gray-100 dark:hover:bg-white/10 transition-colors">
+                        <X className="w-5 h-5 text-[#1A1A1A] dark:text-slate-200" weight="bold" />
                     </button>
                 </div>
 
                 {/* ── Tabs ── */}
-                <div className="flex gap-1 px-7 pt-4 pb-0">
+                <div className="flex gap-1 px-7 pt-4 pb-0 border-b border-gray-100 dark:border-white/10">
                     {(['info', 'students'] as const).map(t => (
                         <button key={t} onClick={() => setTab(t)}
-                            className={`px-5 py-2 rounded-t-2xl text-sm font-extrabold border-2 border-b-0 transition-colors ${tab === t ? 'bg-white border-[#1A1A1A]/15 text-[#FF6B4A]' : 'bg-gray-50 border-transparent text-gray-400 hover:text-gray-600'}`}>
+                            className={`px-5 py-2 rounded-t-2xl text-sm font-extrabold border-2 border-b-0 transition-colors ${tab === t ? 'bg-white dark:bg-[#111827] border-[#1A1A1A]/15 dark:border-white/20 text-[#FF6B4A]' : 'bg-gray-50 dark:bg-slate-800/60 border-transparent text-gray-400 dark:text-slate-400 hover:text-gray-600 dark:hover:text-slate-200'}`}>
                             {t === 'info' ? (
                                 <span className="flex items-center gap-1.5"><Info className="w-4 h-4" weight="bold" />Thông tin lớp</span>
                             ) : (
                                 <span className="flex items-center gap-1.5">
                                     <Student className="w-4 h-4" weight="bold" />Học sinh
-                                    <span className="ml-1 bg-gray-200 text-gray-600 text-[10px] px-1.5 py-0.5 rounded-full font-extrabold">{data.currentStudents}</span>
+                                    <span className="ml-1 bg-gray-200 dark:bg-slate-700 text-gray-600 dark:text-slate-200 text-[10px] px-1.5 py-0.5 rounded-full font-extrabold">{data.currentStudents}</span>
                                 </span>
                             )}
                         </button>
@@ -905,19 +912,19 @@ function ClassDetailModal({ cls, onClose, onEdit, onToggleStatus }: {
                         <>
                             {tab === 'info' && (
                                 <div className="space-y-5">
-                                    <div className="bg-gray-50 rounded-2xl p-5 border border-gray-100">
+                                    <div className="bg-gray-50 dark:bg-slate-800/70 rounded-2xl p-5 border border-gray-100 dark:border-white/10">
                                         <div className="flex justify-between items-center mb-2">
                                             <span className="text-sm font-extrabold text-[#1A1A1A]">Sĩ số</span>
-                                            <span className="text-sm font-extrabold" style={{ color: isFull ? '#F87171' : '#4ADE80' }}>
+                                            <span className="text-sm font-extrabold" style={{ color: isFull ? '#F87171' : '#22C55E' }}>
                                                 {data.currentStudents} / {data.maxStudents}
                                                 {isFull && <span className="ml-2 text-[10px] bg-red-100 text-red-500 px-2 py-0.5 rounded-full">Đầy</span>}
                                             </span>
                                         </div>
-                                        <div className="h-3 bg-gray-200 rounded-full overflow-hidden">
+                                        <div className="h-3 bg-gray-200 dark:bg-slate-700 rounded-full overflow-hidden">
                                             <div className="h-full rounded-full transition-all duration-500"
                                                 style={{ width: `${pct}%`, backgroundColor: isFull ? '#F87171' : '#4ADE80' }} />
                                         </div>
-                                        <p className="text-xs text-gray-400 font-semibold mt-1.5">Còn {data.maxStudents - data.currentStudents} chỗ trống</p>
+                                        <p className="text-xs text-gray-400 dark:text-slate-400 font-semibold mt-1.5">Còn {data.maxStudents - data.currentStudents} chỗ trống</p>
                                     </div>
                                     <div className="grid grid-cols-2 gap-4">
                                         {Object.entries({
@@ -926,54 +933,54 @@ function ClassDetailModal({ cls, onClose, onEdit, onToggleStatus }: {
                                             'Học kỳ': data.semester,
                                             'Năm học': data.academicYear,
                                         }).map(([label, value], i) => (
-                                            <div key={i} className="flex items-start gap-3 bg-gray-50 rounded-2xl p-4 border border-gray-100">
+                                            <div key={i} className="flex items-start gap-3 bg-gray-50 dark:bg-slate-800/70 rounded-2xl p-4 border border-gray-100 dark:border-white/10">
                                                 <div className="w-8 h-8 rounded-xl flex items-center justify-center flex-shrink-0"
                                                     style={{ backgroundColor: `${accent}18`, color: accent }}>
                                                     {label === 'Giáo viên' ? <GraduationCap className="w-4 h-4" weight="fill" /> : <BookOpen className="w-4 h-4" weight="fill" />}
                                                 </div>
                                                 <div>
-                                                    <p className="text-[10px] font-extrabold text-gray-400 uppercase tracking-wider mb-0.5">{label}</p>
-                                                    <p className={`text-sm font-extrabold ${label === 'Giáo viên' && !data.teacherName ? 'text-[#FF6B4A] italic' : 'text-[#1A1A1A]'}`}>{value}</p>
+                                                    <p className="text-[10px] font-extrabold text-gray-400 dark:text-slate-400 uppercase tracking-wider mb-0.5">{label}</p>
+                                                    <p className={`text-sm font-extrabold ${label === 'Giáo viên' && !data.teacherName ? 'text-[#FF6B4A] italic' : 'text-[#1A1A1A] dark:text-slate-100'}`}>{value}</p>
                                                 </div>
                                             </div>
                                         ))}
                                     </div>
                                     <div className="flex items-stretch gap-4">
-                                        <div className="flex-1 flex items-start gap-3 bg-gray-50 rounded-2xl p-4 border border-gray-100">
+                                        <div className="flex-1 flex items-start gap-3 bg-gray-50 dark:bg-slate-800/70 rounded-2xl p-4 border border-gray-100 dark:border-white/10">
                                             <div className="w-8 h-8 rounded-xl flex items-center justify-center flex-shrink-0" style={{ backgroundColor: `${accent}18`, color: accent }}>
                                                 <CalendarBlank className="w-4 h-4" weight="fill" />
                                             </div>
                                             <div>
-                                                <p className="text-[10px] font-extrabold text-gray-400 uppercase tracking-wider mb-0.5">Ngày bắt đầu</p>
-                                                <p className="text-sm font-extrabold text-[#1A1A1A]">{formatDate(data.startDate)}</p>
+                                                <p className="text-[10px] font-extrabold text-gray-400 dark:text-slate-400 uppercase tracking-wider mb-0.5">Ngày bắt đầu</p>
+                                                <p className="text-sm font-extrabold text-[#1A1A1A] dark:text-slate-100">{formatDate(data.startDate)}</p>
                                             </div>
                                         </div>
-                                        <div className="flex items-center text-gray-300 font-extrabold text-lg select-none">→</div>
-                                        <div className="flex-1 flex items-start gap-3 bg-gray-50 rounded-2xl p-4 border border-gray-100">
+                                        <div className="flex items-center text-gray-300 dark:text-slate-600 font-extrabold text-lg select-none">→</div>
+                                        <div className="flex-1 flex items-start gap-3 bg-gray-50 dark:bg-slate-800/70 rounded-2xl p-4 border border-gray-100 dark:border-white/10">
                                             <div className="w-8 h-8 rounded-xl flex items-center justify-center flex-shrink-0" style={{ backgroundColor: `${accent}18`, color: accent }}>
                                                 <CalendarBlank className="w-4 h-4" weight="fill" />
                                             </div>
                                             <div>
-                                                <p className="text-[10px] font-extrabold text-gray-400 uppercase tracking-wider mb-0.5">Ngày kết thúc</p>
-                                                <p className="text-sm font-extrabold text-[#1A1A1A]">{formatDate(data.endDate)}</p>
+                                                <p className="text-[10px] font-extrabold text-gray-400 dark:text-slate-400 uppercase tracking-wider mb-0.5">Ngày kết thúc</p>
+                                                <p className="text-sm font-extrabold text-[#1A1A1A] dark:text-slate-100">{formatDate(data.endDate)}</p>
                                             </div>
                                         </div>
                                     </div>
                                     {data.teacherName ? (
-                                        <div className="flex items-center gap-4 bg-gray-50 rounded-2xl p-4 border border-gray-100">
+                                        <div className="flex items-center gap-4 bg-gray-50 dark:bg-slate-800/70 rounded-2xl p-4 border border-gray-100 dark:border-white/10">
                                             <div className="w-12 h-12 rounded-2xl flex items-center justify-center text-white font-extrabold text-lg flex-shrink-0" style={{ backgroundColor: accent }}>
                                                 {data.teacherName.charAt(0)}
                                             </div>
                                             <div>
-                                                <p className="text-[10px] font-extrabold text-gray-400 uppercase tracking-wider mb-0.5">Giáo viên phụ trách</p>
-                                                <p className="text-base font-extrabold text-[#1A1A1A]">{data.teacherName}</p>
-                                                <p className="text-xs text-gray-400 font-semibold">Môn {data.subjectName}</p>
+                                                <p className="text-[10px] font-extrabold text-gray-400 dark:text-slate-400 uppercase tracking-wider mb-0.5">Giáo viên phụ trách</p>
+                                                <p className="text-base font-extrabold text-[#1A1A1A] dark:text-slate-100">{data.teacherName}</p>
+                                                <p className="text-xs text-gray-400 dark:text-slate-400 font-semibold">Môn {data.subjectName}</p>
                                             </div>
                                         </div>
                                     ) : (
-                                        <div className="flex items-center gap-3 bg-orange-50 rounded-2xl p-4 border border-orange-200">
-                                            <GraduationCap className="w-5 h-5 text-[#FF6B4A]" weight="fill" />
-                                            <p className="text-sm font-bold text-[#FF6B4A]">Lớp chưa có giáo viên phụ trách</p>
+                                        <div className="flex items-center gap-3 bg-orange-50 dark:bg-orange-500/10 rounded-2xl p-4 border border-orange-200 dark:border-orange-300/40">
+                                            <GraduationCap className="w-5 h-5 text-[#FF6B4A] dark:text-orange-300" weight="fill" />
+                                            <p className="text-sm font-bold text-[#FF6B4A] dark:text-orange-200">Lớp chưa có giáo viên phụ trách</p>
                                         </div>
                                     )}
                                 </div>
@@ -982,7 +989,7 @@ function ClassDetailModal({ cls, onClose, onEdit, onToggleStatus }: {
                                 <div>
                                     {detail?.students && detail.students.length > 0 ? (
                                         <div className="space-y-2">
-                                            <p className="text-xs font-bold text-gray-400 mb-1">Nhấn vào học sinh để xem chi tiết</p>
+                                            <p className="text-xs font-bold text-gray-400 dark:text-slate-400 mb-1">Nhấn vào học sinh để xem chi tiết</p>
                                             {detail.students.map(s => {
                                                 const isSuspended = s.memberStatus === 'INACTIVE';
                                                 return (
@@ -991,29 +998,34 @@ function ClassDetailModal({ cls, onClose, onEdit, onToggleStatus }: {
                                                         onClick={() => setSelectedStudent(s)}
                                                         className={`flex items-center gap-3 p-3 rounded-2xl border-2 cursor-pointer transition-colors group ${
                                                             isSuspended
-                                                                ? 'border-orange-200 bg-orange-50 hover:border-orange-300'
-                                                                : 'border-gray-100 bg-gray-50 hover:bg-[#FF6B4A]/5 hover:border-[#FF6B4A]/30'
+                                                                ? 'border-orange-200 bg-orange-50 hover:border-orange-300 dark:border-orange-300/40 dark:bg-orange-500/10 dark:hover:border-orange-200'
+                                                                : 'border-gray-100 bg-gray-50 hover:bg-[#FF6B4A]/5 hover:border-[#FF6B4A]/30 dark:border-white/10 dark:bg-slate-800/70 dark:hover:bg-[#FF6B4A]/12 dark:hover:border-[#FF6B4A]/50'
                                                         }`}
                                                     >
-                                                        <div className={`w-9 h-9 rounded-xl flex items-center justify-center text-white text-xs font-extrabold flex-shrink-0 ${isSuspended ? 'bg-orange-400' : 'bg-[#1A1A1A]'}`}>
+                                                        <div className={`w-9 h-9 rounded-xl flex items-center justify-center text-white text-xs font-extrabold flex-shrink-0 ${isSuspended ? 'bg-orange-400' : 'bg-[#1A1A1A] dark:bg-slate-600'}`}>
                                                             {s.fullName?.charAt(0)}
                                                         </div>
                                                         <div className="flex-1 min-w-0">
                                                             <div className="flex items-center gap-2">
-                                                                <p className={`font-extrabold text-sm truncate transition-colors ${isSuspended ? 'text-orange-700' : 'text-[#1A1A1A] group-hover:text-[#FF6B4A]'}`}>
+                                                                <p className={`font-extrabold text-sm truncate transition-colors ${isSuspended ? 'text-orange-700 dark:text-orange-200' : 'text-[#1A1A1A] dark:text-slate-100 group-hover:text-[#FF6B4A]'}`}>
                                                                     {s.fullName}
                                                                 </p>
+                                                                {!isSuspended && (
+                                                                    <span className="flex-shrink-0 text-[10px] font-extrabold text-emerald-700 bg-emerald-100 border border-emerald-300 px-1.5 py-0.5 rounded-full dark:text-emerald-200 dark:bg-emerald-500/20 dark:border-emerald-300/40">
+                                                                        Trong lớp
+                                                                    </span>
+                                                                )}
                                                                 {isSuspended && (
-                                                                    <span className="flex-shrink-0 text-[10px] font-extrabold text-orange-600 bg-orange-100 border border-orange-300 px-1.5 py-0.5 rounded-full">
+                                                                    <span className="flex-shrink-0 text-[10px] font-extrabold text-orange-600 bg-orange-100 border border-orange-300 px-1.5 py-0.5 rounded-full dark:text-orange-200 dark:bg-orange-500/20 dark:border-orange-300/40">
                                                                         Tạm ngưng
                                                                     </span>
                                                                 )}
                                                             </div>
-                                                            <p className="text-xs font-semibold text-gray-400 truncate">{s.email}{s.phone ? ` · ${s.phone}` : ''}</p>
+                                                            <p className="text-xs font-semibold text-gray-500 dark:text-slate-400 truncate">{s.email}{s.phone ? ` · ${s.phone}` : ''}</p>
                                                         </div>
                                                         <div className="flex items-center gap-2 flex-shrink-0">
-                                                            <span className={`text-[11px] font-bold px-2 py-0.5 rounded-lg ${isSuspended ? 'text-orange-500 bg-orange-100' : 'text-gray-400 bg-gray-200'}`}>
-                                                                {s.gender || '—'}
+                                                            <span className={`text-[11px] font-bold px-2 py-0.5 rounded-lg ${isSuspended ? 'text-orange-500 bg-orange-100 dark:text-orange-200 dark:bg-orange-500/20' : 'text-slate-600 bg-gray-200 dark:text-slate-200 dark:bg-slate-700'}`}>
+                                                                {formatGenderVi(s.gender)}
                                                             </span>
                                                             <span className={`font-bold text-sm transition-colors ${isSuspended ? 'text-orange-400' : 'text-gray-300 group-hover:text-[#FF6B4A]'}`}></span>
                                                         </div>
@@ -1022,7 +1034,7 @@ function ClassDetailModal({ cls, onClose, onEdit, onToggleStatus }: {
                                             })}
                                         </div>
                                     ) : (
-                                        <div className="flex flex-col items-center justify-center py-10 text-gray-400">
+                                        <div className="flex flex-col items-center justify-center py-10 text-gray-400 dark:text-slate-400">
                                             <Users className="w-10 h-10 mb-2 opacity-40" weight="fill" />
                                             <p className="font-bold text-sm">Chưa có học sinh nào</p>
                                         </div>
@@ -1034,7 +1046,7 @@ function ClassDetailModal({ cls, onClose, onEdit, onToggleStatus }: {
                 </div>
 
                 {/* ── Footer ── */}
-                <div className="flex items-center justify-between px-7 py-4 border-t border-gray-100 bg-gray-50 rounded-b-3xl">
+                <div className="flex items-center justify-between px-7 py-4 border-t border-gray-100 dark:border-white/10 bg-gray-50 dark:bg-slate-900/70 rounded-b-3xl">
                     <div className="flex gap-2">
                         <button
                             onClick={() => onToggleStatus(detail ?? (cls as ClassroomDetail))}
@@ -1058,7 +1070,7 @@ function ClassDetailModal({ cls, onClose, onEdit, onToggleStatus }: {
                             <PencilSimple className="w-4 h-4" weight="bold" /> Chỉnh sửa
                         </button>
                     </div>
-                    <button onClick={onClose} className="px-6 py-2.5 rounded-2xl bg-[#1A1A1A] text-white font-extrabold text-sm hover:bg-[#333] transition-colors">
+                    <button onClick={onClose} className="px-6 py-2.5 rounded-2xl bg-[#1A1A1A] dark:bg-slate-700 text-white font-extrabold text-sm hover:bg-[#333] dark:hover:bg-slate-600 transition-colors">
                         Đóng
                     </button>
                 </div>
@@ -1431,10 +1443,30 @@ export function ClassManage() {
     const openToggleStatus = (detail: ClassroomDetail) => { setActiveDetail(detail); setModal('toggleStatus'); };
 
     const statsCards = [
-        { label: 'Tổng số lớp', value: stats?.totalClasses ?? '—', bg: '#FCE38A' },
-        { label: 'Đang hoạt động', value: stats?.activeClasses ?? '—', bg: '#95E1D3' },
-        { label: 'Chưa có giáo viên', value: stats?.unassignedClasses ?? '—', bg: '#FFB5B5' },
-        { label: 'Sĩ số trung bình', value: stats?.averageClassSize ?? '—', bg: '#B8B5FF' },
+        {
+            label: 'Tổng số lớp',
+            value: stats?.totalClasses ?? '—',
+            lightBgClass: 'bg-[#FCE38A]',
+            darkBgClass: 'dark:bg-[#3b3213]',
+        },
+        {
+            label: 'Đang hoạt động',
+            value: stats?.activeClasses ?? '—',
+            lightBgClass: 'bg-[#95E1D3]',
+            darkBgClass: 'dark:bg-[#123a35]',
+        },
+        {
+            label: 'Chưa có giáo viên',
+            value: stats?.unassignedClasses ?? '—',
+            lightBgClass: 'bg-[#FFB5B5]',
+            darkBgClass: 'dark:bg-[#4a2222]',
+        },
+        {
+            label: 'Sĩ số trung bình',
+            value: stats?.averageClassSize ?? '—',
+            lightBgClass: 'bg-[#B8B5FF]',
+            darkBgClass: 'dark:bg-[#2c2b53]',
+        },
     ];
 
     return (
@@ -1442,17 +1474,17 @@ export function ClassManage() {
             {/* Header */}
             <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
                 <div>
-                    <p className="text-xs font-extrabold text-gray-400 uppercase tracking-widest mb-1">Quản trị hệ thống</p>
-                    <h1 className="text-3xl font-extrabold text-[#1A1A1A]">Quản lý Lớp học</h1>
+                    <p className="text-xs font-extrabold text-gray-400 dark:text-slate-400 uppercase tracking-widest mb-1">Quản trị hệ thống</p>
+                    <h1 className="text-3xl font-extrabold text-[#1A1A1A] dark:text-slate-100">Quản lý Lớp học</h1>
                 </div>
                 <div className="flex gap-3">
                     <div className="relative">
-                        <MagnifyingGlass className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+                        <MagnifyingGlass className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 dark:text-slate-400" />
                         <input
                             placeholder="Tìm kiếm lớp học..."
                             value={search}
                             onChange={e => setSearch(e.target.value)}
-                            className="pl-10 pr-4 py-2.5 bg-white border-2 border-[#1A1A1A]/20 rounded-2xl text-sm font-semibold focus:outline-none focus:border-[#FF6B4A] transition-colors w-56"
+                            className="pl-10 pr-4 py-2.5 bg-white dark:bg-[#0f172a] border-2 border-[#1A1A1A]/20 dark:border-white/15 rounded-2xl text-sm font-semibold text-[#1A1A1A] dark:text-slate-100 focus:outline-none focus:border-[#FF6B4A] transition-colors w-56"
                         />
                     </div>
                     <button
@@ -1467,9 +1499,9 @@ export function ClassManage() {
             {/* Stats */}
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                 {statsCards.map((s, i) => (
-                    <div key={i} className="rounded-3xl p-5 border-2 border-[#1A1A1A]" style={{ backgroundColor: s.bg }}>
-                        <p className="text-xs font-extrabold text-[#1A1A1A]/60 uppercase tracking-wider mb-2">{s.label}</p>
-                        <h3 className="text-3xl font-extrabold text-[#1A1A1A]">{s.value}</h3>
+                    <div key={i} className={`rounded-3xl p-5 border-2 border-[#1A1A1A] dark:border-white/15 ${s.lightBgClass} ${s.darkBgClass}`}>
+                        <p className="text-xs font-extrabold text-[#1A1A1A]/60 dark:text-slate-300 uppercase tracking-wider mb-2">{s.label}</p>
+                        <h3 className="text-3xl font-extrabold text-[#1A1A1A] dark:text-white">{s.value}</h3>
                     </div>
                 ))}
             </div>
@@ -1500,7 +1532,7 @@ export function ClassManage() {
                             : 'text-emerald-600';
 
                         return (
-                            <div key={cls.classID} className={`rounded-3xl border-2 overflow-hidden flex flex-col shadow-sm transition-shadow relative ${isLocked ? 'border-gray-300 bg-gray-50' : 'border-[#1A1A1A]/15 bg-white hover:shadow-md'}`}>
+                            <div key={cls.classID} className={`rounded-3xl border-2 overflow-hidden flex flex-col shadow-sm transition-shadow relative ${isLocked ? 'border-gray-300 bg-gray-50 dark:border-white/20 dark:bg-slate-800/70' : 'border-[#1A1A1A]/15 bg-white hover:shadow-md dark:border-white/15 dark:bg-[#111827]'}`}>
                                 {/* Locked overlay banner */}
                                 {isLocked && (
                                     <div className="absolute top-3 left-0 right-0 flex justify-center z-10 pointer-events-none">
@@ -1514,47 +1546,47 @@ export function ClassManage() {
                                         <div className="w-11 h-11 rounded-2xl flex items-center justify-center text-white font-extrabold text-base" style={{ backgroundColor: accent }}>
                                             {cls.subjectName?.charAt(0)}
                                         </div>
-                                        <span className="bg-gray-100 text-gray-500 text-[10px] px-2 py-1 rounded-xl font-extrabold border border-gray-200">
+                                        <span className="bg-gray-100 dark:bg-slate-800 text-gray-500 dark:text-slate-300 text-[10px] px-2 py-1 rounded-xl font-extrabold border border-gray-200 dark:border-white/15">
                                             #{cls.classID}
                                         </span>
                                     </div>
 
-                                    <h3 className="font-extrabold text-lg text-[#1A1A1A] mb-0.5 leading-snug">{cls.className}</h3>
-                                    <p className="text-sm font-bold text-[#1A1A1A]/50 mb-3">Môn học: {cls.subjectName}</p>
+                                    <h3 className="font-extrabold text-lg text-[#1A1A1A] dark:text-slate-100 mb-0.5 leading-snug">{cls.className}</h3>
+                                    <p className="text-sm font-bold text-[#1A1A1A]/50 dark:text-slate-400 mb-3">Môn học: {cls.subjectName}</p>
 
                                     <div className="flex flex-wrap gap-1.5 mb-3">
-                                        <span className="inline-flex items-center gap-1 bg-gray-100 text-gray-600 text-[11px] font-extrabold px-2 py-0.5 rounded-lg">
+                                        <span className="inline-flex items-center gap-1 bg-gray-100 dark:bg-slate-700/90 text-gray-600 dark:text-slate-100 text-[11px] font-extrabold px-2 py-0.5 rounded-lg border border-transparent dark:border-white/15">
                                             {cls.semester}
                                         </span>
-                                        <span className="inline-flex items-center gap-1 bg-gray-100 text-gray-600 text-[11px] font-extrabold px-2 py-0.5 rounded-lg">
+                                        <span className="inline-flex items-center gap-1 bg-gray-100 dark:bg-slate-700/90 text-gray-600 dark:text-slate-100 text-[11px] font-extrabold px-2 py-0.5 rounded-lg border border-transparent dark:border-white/15">
                                             {cls.academicYear}
                                         </span>
                                     </div>
 
                                     {(cls.startDate || cls.endDate) && (
-                                        <div className="flex items-center gap-1.5 text-[11px] font-bold text-[#1A1A1A]/50 mb-3">
-                                            <CalendarBlank className="w-3.5 h-3.5 flex-shrink-0" weight="fill" />
+                                        <div className="flex items-center gap-1.5 text-[11px] font-bold text-[#1A1A1A]/50 dark:text-slate-400 mb-3">
+                                            <CalendarBlank className="w-3.5 h-3.5 flex-shrink-0 text-[#1A1A1A]/60 dark:text-[#ffb199]" weight="fill" />
                                             <span>{cls.startDate ? cls.startDate.substring(0, 10) : '—'} → {cls.endDate ? cls.endDate.substring(0, 10) : '—'}</span>
                                         </div>
                                     )}
 
                                     <div className="space-y-2 mb-4 flex-1">
                                         <div className="flex items-center gap-2 text-sm">
-                                            <GraduationCap className={`w-4 h-4 ${noTeacher ? 'text-[#FF6B4A]' : 'text-gray-400'}`} weight="fill" />
-                                            <span className={`font-bold ${noTeacher ? 'text-[#FF6B4A] italic' : 'text-[#1A1A1A]/70'}`}>
+                                            <GraduationCap className={`w-4 h-4 ${noTeacher ? 'text-[#FF6B4A]' : 'text-gray-400 dark:text-slate-400'}`} weight="fill" />
+                                            <span className={`font-bold ${noTeacher ? 'text-[#FF6B4A] italic dark:text-[#ff9f82]' : 'text-[#1A1A1A]/70 dark:text-slate-300'}`}>
                                                 {cls.teacherName || 'Chưa có giáo viên'}
                                             </span>
                                         </div>
                                         <div className="flex items-center gap-2 text-sm">
-                                            <Users className="w-4 h-4 text-gray-400" weight="fill" />
-                                            <span className="font-bold text-[#1A1A1A]/70">
+                                            <Users className="w-4 h-4 text-gray-400 dark:text-slate-400" weight="fill" />
+                                            <span className="font-bold text-[#1A1A1A]/70 dark:text-slate-300">
                                                 {cls.currentStudents} / {cls.maxStudents} học sinh
                                             </span>
                                             {isFull && <span className="text-[10px] bg-red-100 text-red-600 px-1.5 py-0.5 rounded-lg font-extrabold">Đầy</span>}
                                         </div>
                                     </div>
 
-                                    <div className="h-2.5 bg-gray-100 rounded-full overflow-hidden mb-4 border border-gray-200">
+                                    <div className="h-2.5 bg-gray-100 dark:bg-slate-800 rounded-full overflow-hidden mb-4 border border-gray-200 dark:border-white/15">
                                         <div
                                             className="h-full rounded-full transition-all duration-500"
                                             style={{ width: `${pct}%`, backgroundColor: isFull ? '#F87171' : '#4ADE80' }}
@@ -1581,19 +1613,19 @@ export function ClassManage() {
                                         <button
                                             onClick={() => !isLocked && openAddStudent(cls)}
                                             disabled={isLocked}
-                                            className="flex-1 py-2.5 rounded-2xl text-xs font-extrabold bg-[#1A1A1A] text-white border-2 border-[#1A1A1A] hover:bg-[#333] transition-colors flex items-center justify-center gap-1 disabled:opacity-40 disabled:cursor-not-allowed"
+                                            className="flex-1 py-2.5 rounded-2xl text-xs font-extrabold bg-[#1A1A1A] dark:bg-slate-700 text-white border-2 border-[#1A1A1A] dark:border-slate-700 hover:bg-[#333] dark:hover:bg-slate-600 transition-colors flex items-center justify-center gap-1 disabled:opacity-40 disabled:cursor-not-allowed"
                                         >
                                             <UserPlus className="w-3.5 h-3.5" weight="bold" /> Thêm HS
                                         </button>
                                     </div>
                                 </div>
 
-                                <div className={`border-t px-5 py-3 flex justify-between items-center ${isLocked ? 'bg-gray-100 border-gray-200' : 'bg-gray-50 border-gray-100'}`}>
+                                <div className={`border-t px-5 py-3 flex justify-between items-center ${isLocked ? 'bg-gray-100 border-gray-200 dark:bg-slate-900/80 dark:border-white/15' : 'bg-gray-50 border-gray-100 dark:bg-slate-900/60 dark:border-white/10'}`}>
                                     <span className={`text-xs font-extrabold flex items-center gap-1 ${statusColor}`}>
                                         {isLocked && <Lock className="w-3 h-3" weight="fill" />}
                                         {statusLabel}
                                     </span>
-                                    <button onClick={() => openDetail(cls)} className="text-xs font-extrabold text-[#1A1A1A] hover:text-[#FF6B4A] transition-colors">
+                                    <button onClick={() => openDetail(cls)} className="text-xs font-extrabold text-[#1A1A1A] dark:text-slate-100 hover:text-[#FF6B4A] transition-colors">
                                         Chi tiết →
                                     </button>
                                 </div>
@@ -1604,38 +1636,38 @@ export function ClassManage() {
                     {/* Add new card */}
                     <div
                         onClick={() => setModal('createClass')}
-                        className="rounded-3xl border-2 border-dashed border-[#1A1A1A]/20 bg-white flex flex-col items-center justify-center p-8 text-center cursor-pointer hover:border-[#FF6B4A] hover:bg-[#FF6B4A]/5 transition-colors min-h-[300px] group"
+                        className="rounded-3xl border-2 border-dashed border-[#1A1A1A]/20 dark:border-white/25 bg-white dark:bg-[#111827] flex flex-col items-center justify-center p-8 text-center cursor-pointer hover:border-[#FF6B4A] hover:bg-[#FF6B4A]/5 dark:hover:bg-[#FF6B4A]/10 transition-colors min-h-[300px] group"
                     >
-                        <div className="w-14 h-14 rounded-full bg-gray-100 border-2 border-gray-200 group-hover:bg-[#FF6B4A]/10 group-hover:border-[#FF6B4A]/30 flex items-center justify-center text-gray-400 group-hover:text-[#FF6B4A] mb-4 transition-colors">
+                        <div className="w-14 h-14 rounded-full bg-gray-100 dark:bg-slate-800 border-2 border-gray-200 dark:border-white/15 group-hover:bg-[#FF6B4A]/10 group-hover:border-[#FF6B4A]/30 flex items-center justify-center text-gray-400 dark:text-slate-300 group-hover:text-[#FF6B4A] mb-4 transition-colors">
                             <Plus className="w-7 h-7" weight="bold" />
                         </div>
-                        <h3 className="font-extrabold text-[#1A1A1A] mb-2 group-hover:text-[#FF6B4A] transition-colors">Thêm lớp học mới</h3>
-                        <p className="text-sm text-[#1A1A1A]/40 font-semibold max-w-[180px]">Tạo lớp mới cho học kỳ tới</p>
+                        <h3 className="font-extrabold text-[#1A1A1A] dark:text-slate-100 mb-2 group-hover:text-[#FF6B4A] transition-colors">Thêm lớp học mới</h3>
+                        <p className="text-sm text-[#1A1A1A]/40 dark:text-slate-400 font-semibold max-w-[180px]">Tạo lớp mới cho học kỳ tới</p>
                     </div>
                 </div>
             )}
 
             {/* Pagination */}
             {!pageLoading && totalPages > 1 && (
-                <div className="flex justify-between items-center text-sm font-bold text-gray-400 pt-2">
+                <div className="flex justify-between items-center text-sm font-bold text-gray-400 dark:text-slate-400 pt-2">
                     <span>Hiển thị {classes.length} trên {totalElements} lớp học</span>
                     <div className="flex gap-2">
                         <button
                             disabled={currentPage <= 1}
                             onClick={() => fetchClasses(currentPage - 1)}
-                            className="w-8 h-8 rounded-xl font-extrabold text-sm border-2 border-[#1A1A1A]/20 bg-white text-[#1A1A1A] hover:bg-gray-50 disabled:opacity-40"
+                            className="w-8 h-8 rounded-xl font-extrabold text-sm border-2 border-[#1A1A1A]/20 dark:border-white/15 bg-white dark:bg-[#0f172a] text-[#1A1A1A] dark:text-slate-100 hover:bg-gray-50 dark:hover:bg-slate-800 disabled:opacity-40"
                         >&lt;</button>
                         {Array.from({ length: totalPages }, (_, i) => i + 1).map(p => (
                             <button
                                 key={p}
                                 onClick={() => fetchClasses(p)}
-                                className={`w-8 h-8 rounded-xl font-extrabold text-sm border-2 ${p === currentPage ? 'bg-[#FF6B4A] text-white border-[#FF6B4A]' : 'border-[#1A1A1A]/20 bg-white text-[#1A1A1A] hover:bg-gray-50'}`}
+                                className={`w-8 h-8 rounded-xl font-extrabold text-sm border-2 ${p === currentPage ? 'bg-[#FF6B4A] text-white border-[#FF6B4A]' : 'border-[#1A1A1A]/20 dark:border-white/15 bg-white dark:bg-[#0f172a] text-[#1A1A1A] dark:text-slate-100 hover:bg-gray-50 dark:hover:bg-slate-800'}`}
                             >{p}</button>
                         ))}
                         <button
                             disabled={currentPage >= totalPages}
                             onClick={() => fetchClasses(currentPage + 1)}
-                            className="w-8 h-8 rounded-xl font-extrabold text-sm border-2 border-[#1A1A1A]/20 bg-white text-[#1A1A1A] hover:bg-gray-50 disabled:opacity-40"
+                            className="w-8 h-8 rounded-xl font-extrabold text-sm border-2 border-[#1A1A1A]/20 dark:border-white/15 bg-white dark:bg-[#0f172a] text-[#1A1A1A] dark:text-slate-100 hover:bg-gray-50 dark:hover:bg-slate-800 disabled:opacity-40"
                         >&gt;</button>
                     </div>
                 </div>
