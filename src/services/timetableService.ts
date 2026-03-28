@@ -1,3 +1,4 @@
+import axios, { AxiosError } from 'axios';
 import { api } from './api';
 
 export interface ApiResponse<T> {
@@ -87,6 +88,64 @@ export interface AttendanceStudentResponse {
   note: string;
 }
 
+export interface StudentClassmate {
+  studentID: number;
+  fullName: string;
+  avatarUrl: string | null;
+}
+
+export interface StudentScheduleItem {
+  timetableID: number;
+  classID: number;
+  subjectName: string;
+  className: string;
+  teacherName: string;
+  startTime: string;
+  endTime: string;
+  room: string | null;
+  topic: string | null;
+  meetUrl: string | null;
+  studentCount: number;
+  attendanceStatus: 'PRESENT' | 'ABSENT' | 'LATE' | 'NOT_YET' | null;
+  classmates: StudentClassmate[];
+}
+
+export interface StudentWeeklyStats {
+  totalClassesThisWeek: number;
+  totalHoursStudied: number;
+  totalSubjects: number;
+  totalExams: number;
+}
+
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080/api';
+const SESSION_EXPIRED_EVENT = 'educare:session-expired';
+
+function getAxiosErrorMessage(error: unknown): string {
+  if (error instanceof AxiosError) {
+    return (
+      error.response?.data?.message ??
+      error.response?.data?.error ??
+      error.message ??
+      'Không thể tải dữ liệu lịch học.'
+    );
+  }
+
+  if (error instanceof Error) {
+    return error.message;
+  }
+
+  return 'Không thể tải dữ liệu lịch học.';
+}
+
+function handleAxios401(error: unknown): void {
+  if (error instanceof AxiosError && error.response?.status === 401) {
+    const isQuickDemoSession = localStorage.getItem('educare_quick_demo_session') === '1';
+    if (!isQuickDemoSession) {
+      window.dispatchEvent(new CustomEvent(SESSION_EXPIRED_EVENT));
+    }
+  }
+}
+
 function toLocalDateTime(date: Date): string {
   const yyyy = date.getFullYear();
   const mm = String(date.getMonth() + 1).padStart(2, '0');
@@ -164,6 +223,44 @@ export const timetableService = {
   async updateMeetLink(timetableId: number, googleMeetLink: string, token: string): Promise<TimetableItem> {
     const response = await api.authPatch<ApiResponse<TimetableItem>>(`/timetables/${timetableId}/meet-link`, { googleMeetLink }, token);
     return response.result;
+  },
+
+  async getStudentSchedule(start: Date, end: Date, token: string): Promise<StudentScheduleItem[]> {
+    try {
+      const response = await axios.get<ApiResponse<StudentScheduleItem[]>>(`${API_BASE_URL}/timetables/my-schedule/student`, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+        params: {
+          start: toLocalDateTime(start),
+          end: toLocalDateTime(end),
+        },
+      });
+
+      return response.data.result ?? [];
+    } catch (error) {
+      handleAxios401(error);
+      throw new Error(getAxiosErrorMessage(error));
+    }
+  },
+
+  async getStudentScheduleStats(start: Date, end: Date, token: string): Promise<StudentWeeklyStats> {
+    try {
+      const response = await axios.get<ApiResponse<StudentWeeklyStats>>(`${API_BASE_URL}/timetables/my-schedule/student/stats`, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+        params: {
+          start: toLocalDateTime(start),
+          end: toLocalDateTime(end),
+        },
+      });
+
+      return response.data.result;
+    } catch (error) {
+      handleAxios401(error);
+      throw new Error(getAxiosErrorMessage(error));
+    }
   },
 };
 

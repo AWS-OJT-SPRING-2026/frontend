@@ -517,8 +517,18 @@ function AddStudentModal({ cls, onClose, onSuccess }: { cls: ClassroomResponse; 
 
                 <div className="space-y-2 max-h-64 overflow-y-auto pr-1">
                     {fetchLoading ? (
-                        <div className="flex justify-center items-center py-8">
-                            <div className="w-6 h-6 border-4 border-[#FF6B4A] border-t-transparent rounded-full animate-spin" />
+                        <div className="space-y-2 py-1">
+                            <p className="text-xs font-bold text-gray-400 px-1">Đang tải danh sách học sinh...</p>
+                            {Array.from({ length: 5 }).map((_, idx) => (
+                                <div key={idx} className="flex items-center gap-3 p-3 rounded-2xl border-2 border-[#1A1A1A]/10 bg-gray-50 animate-pulse">
+                                    <div className="w-4 h-4 rounded bg-gray-200" />
+                                    <div className="w-8 h-8 rounded-xl bg-gray-200" />
+                                    <div className="flex-1 min-w-0 space-y-1.5">
+                                        <div className="h-3.5 w-36 bg-gray-200 rounded" />
+                                        <div className="h-3 w-52 bg-gray-100 rounded" />
+                                    </div>
+                                </div>
+                            ))}
                         </div>
                     ) : filtered.map(s => {
                         const isSelected = selected.includes(s.studentID);
@@ -565,7 +575,11 @@ function AddStudentModal({ cls, onClose, onSuccess }: { cls: ClassroomResponse; 
                             </label>
                         );
                     })}
-                    {!fetchLoading && filtered.length === 0 && <p className="text-sm text-center text-gray-400 py-4">Không tìm thấy học sinh</p>}
+                    {!fetchLoading && filtered.length === 0 && (
+                        <p className="text-sm text-center text-gray-400 py-4">
+                            {students.length === 0 ? 'Chưa tải được dữ liệu học sinh, vui lòng thử lại sau.' : 'Không tìm thấy học sinh'}
+                        </p>
+                    )}
                 </div>
 
                 <div className="flex gap-3 pt-2">

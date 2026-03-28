@@ -8,6 +8,10 @@ import {
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '../ui/dialog';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuTrigger } from '../ui/dropdown-menu';
 import { useSettings } from '../../context/SettingsContext';
+import { authService } from '../../services/authService';
+import { StudentClassmate, StudentScheduleItem, StudentWeeklyStats, timetableService } from '../../services/timetableService';
+
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080/api';
 
 const DAYS = ['T2', 'T3', 'T4', 'T5', 'T6', 'T7', 'CN'];
 const DAY_NAMES_FULL = ['Thứ 2', 'Thứ 3', 'Thứ 4', 'Thứ 5', 'Thứ 6', 'Thứ 7', 'Chủ nhật'];
@@ -64,19 +68,15 @@ interface ScheduleEntry {
     attendanceStatus?: 'present' | 'absent' | 'none';
     materials?: { name: string; url: string; type: 'pdf' | 'slide' }[];
     studentsCount?: number;
+    classmates?: StudentClassmate[];
 }
 
-const BASE_EVENTS = [
-    { dayOfWeek: 0, time: '08:00-09:30', subject: 'Toán học', teacher: 'Thầy Nguyễn Văn Bình', initials: 'NB', bg: '#FCE38A', meet: 'https://meet.google.com', topic: 'Đại số tổ hợp', className: '11C1', hasHomework: true, homeworkCount: 2, attendanceStatus: 'present', materials: [{name: 'BT_Dai_So_11.pdf', url: '#', type: 'pdf'}], studentsCount: 45 },
-    { dayOfWeek: 0, time: '13:30-15:00', subject: 'Tiếng Anh', teacher: 'Ms. Emily Wilson', initials: 'EW', bg: '#B8B5FF', topic: 'Grammar and Vocabulary', className: '11C1', room: 'P.302', attendanceStatus: 'absent', studentsCount: 45 },
-    { dayOfWeek: 1, time: '08:00-09:30', subject: 'Ngữ văn', teacher: 'Cô Trần Thị Lan', initials: 'TL', bg: '#95E1D3', meet: 'https://meet.google.com', topic: 'Phân tích tác phẩm', className: '11C1', attendanceStatus: 'present', studentsCount: 45 },
-    { dayOfWeek: 1, time: '10:00-11:30', subject: 'Vật lý', teacher: 'Thầy Lê Văn Hùng', initials: 'LH', bg: '#FFB5B5', topic: 'Động lực học', className: '11C1', hasHomework: true, homeworkCount: 1, room: 'Lab Lý 1', studentsCount: 45 },
-    { dayOfWeek: 2, time: '07:30-09:00', subject: 'Hóa học', teacher: 'Cô Phạm Ngọc Bích', initials: 'PB', bg: '#FFD9A0', meet: 'https://meet.google.com', topic: 'Phản ứng hóa học', className: '11C1', materials: [{name: 'Slide_Phan_Ung.pdf', url: '#', type: 'slide'}], studentsCount: 45 },
-    { dayOfWeek: 2, time: '14:00-15:30', subject: 'Toán học', teacher: 'Thầy Nguyễn Văn Bình', initials: 'NB', bg: '#FCE38A', topic: 'Xác suất', className: '11C1', studentsCount: 45 },
-    { dayOfWeek: 3, time: '08:00-09:30', subject: 'Lịch sử', teacher: 'Thầy Đặng Minh Tuấn', initials: 'DT', bg: '#C8F7C5', meet: 'https://meet.google.com', topic: 'Chiến tranh thế giới', className: '11C1', hasHomework: true, homeworkCount: 1, materials: [{name: 'The_Chien_II.pdf', url: '#', type: 'pdf'}], studentsCount: 45 },
-    { dayOfWeek: 4, time: '07:30-09:00', subject: 'Tiếng Anh', teacher: 'Ms. Emily Wilson', initials: 'EW', bg: '#B8B5FF', meet: 'https://meet.google.com', topic: 'Reading Comprehension', className: '11C1', studentsCount: 45 },
-    { dayOfWeek: 4, time: '10:00-11:30', subject: 'Sinh học', teacher: 'Cô Hoàng Thu Hà', initials: 'HH', bg: '#95E1D3', topic: 'Di truyền học', className: '11C1', room: 'Lab Sinh', studentsCount: 45 },
-];
+const STATS_META = [
+    { key: 'totalClassesThisWeek', label: 'Tiết học tuần này', icon: BookOpen, bg: '#FCE38A' },
+    { key: 'totalHoursStudied', label: 'Giờ học', icon: Clock, bg: '#B8B5FF' },
+    { key: 'totalSubjects', label: 'Môn học', icon: ChalkboardTeacher, bg: '#95E1D3' },
+    { key: 'totalExams', label: 'Bài kiểm tra', icon: CalendarBlank, bg: '#FFB5B5' },
+] as const;
 
 const UPCOMING = [
     { subject: 'Kiểm tra Toán giữa kỳ', dateOffset: 0, time: '10:00', type: 'test', bg: '#FF6B4A', color: '#fff', isUrgent: true },
@@ -84,13 +84,6 @@ const UPCOMING = [
     { subject: 'Seminar Vật lý', dateOffset: 2, time: '14:00', type: 'event', bg: '#95E1D3', color: '#1A1A1A' },
     { subject: 'Kiểm tra Hóa học', dateOffset: 4, time: '09:00', type: 'test', bg: '#FFB5B5', color: '#1A1A1A' },
     { subject: 'Nộp bài Tiếng Anh', dateOffset: 5, time: '23:59', type: 'hw', bg: '#B8B5FF', color: '#1A1A1A', progress: 30 },
-];
-
-const STATS = [
-    { label: 'Tiết học tuần này', value: '9', icon: BookOpen, bg: '#FCE38A' },
-    { label: 'Giờ học', value: '13.5h', icon: Clock, bg: '#B8B5FF' },
-    { label: 'Môn học', value: '7', icon: ChalkboardTeacher, bg: '#95E1D3' },
-    { label: 'Bài kiểm tra', value: '2', icon: CalendarBlank, bg: '#FFB5B5' },
 ];
 
 const NOTIFICATIONS: NotificationItem[] = [
@@ -130,6 +123,78 @@ function getEventStatusInfo(startHour: number, startMin: number, endHour: number
     }
 
     return { status, isJoinable };
+}
+
+function toDateKey(date: Date): string {
+    return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`;
+}
+
+function toInitials(fullName: string): string {
+    const parts = fullName.trim().split(/\s+/).filter(Boolean);
+    if (parts.length === 0) return 'NA';
+    if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase();
+    return `${parts[0][0]}${parts[parts.length - 1][0]}`.toUpperCase();
+}
+
+function mapAttendanceStatus(status: StudentScheduleItem['attendanceStatus']): ScheduleEntry['attendanceStatus'] {
+    if (status === 'PRESENT') return 'present';
+    if (status === 'ABSENT') return 'absent';
+    return 'none';
+}
+
+function formatStudentId(studentID: number): string {
+    return `HS-${String(studentID).padStart(4, '0')}`;
+}
+
+function normalizeAvatarUrl(rawUrl: string | null | undefined): string | null {
+    if (!rawUrl || !rawUrl.trim()) return null;
+
+    const trimmed = rawUrl.trim();
+
+    // Absolute URL from backend (S3/public domain).
+    if (/^https?:\/\//i.test(trimmed)) {
+        return encodeURI(trimmed);
+    }
+
+    // Relative path/object key -> resolve against API host.
+    try {
+        const baseOrigin = new URL(API_BASE_URL).origin;
+        const normalizedPath = trimmed.startsWith('/') ? trimmed : `/${trimmed}`;
+        return `${baseOrigin}${encodeURI(normalizedPath)}`;
+    } catch {
+        return encodeURI(trimmed);
+    }
+}
+
+function getScheduleColor(index: number): string {
+    const palette = ['#FCE38A', '#B8B5FF', '#95E1D3', '#FFB5B5', '#FFD9A0', '#C8F7C5'];
+    return palette[index % palette.length];
+}
+
+function mapStudentScheduleToEntry(item: StudentScheduleItem, index: number): ScheduleEntry {
+    const start = new Date(item.startTime);
+    const end = new Date(item.endTime);
+
+    return {
+        id: `evt-${item.timetableID}-${item.startTime}`,
+        dateKey: toDateKey(start),
+        dayOfWeek: (start.getDay() + 6) % 7,
+        startHour: start.getHours(),
+        startMin: start.getMinutes(),
+        endHour: end.getHours(),
+        endMin: end.getMinutes(),
+        subject: item.subjectName,
+        teacher: item.teacherName || 'Chưa cập nhật',
+        initials: toInitials(item.teacherName || item.subjectName),
+        bg: getScheduleColor(index),
+        meet: item.meetUrl || undefined,
+        topic: item.topic || undefined,
+        className: item.className,
+        room: item.room || undefined,
+        studentsCount: item.studentCount,
+        attendanceStatus: mapAttendanceStatus(item.attendanceStatus),
+        classmates: item.classmates ?? [],
+    };
 }
 
 function EventTooltip({ event, x, y, now }: { event: ScheduleEntry; x: number; y: number; now: Date }) {
@@ -305,7 +370,17 @@ export function StudentSchedule() {
     const [hoveredEventId, setHoveredEventId] = useState<string | null>(null);
     const [tooltipData, setTooltipData] = useState<{ event: ScheduleEntry; x: number; y: number } | null>(null);
     const tooltipTimeout = useRef<ReturnType<typeof setTimeout>>();
-    
+
+    const [weeklyStats, setWeeklyStats] = useState<StudentWeeklyStats>({
+        totalClassesThisWeek: 0,
+        totalHoursStudied: 0,
+        totalSubjects: 0,
+        totalExams: 0,
+    });
+    const [scheduleEvents, setScheduleEvents] = useState<ScheduleEntry[]>([]);
+    const [scheduleError, setScheduleError] = useState<string | null>(null);
+    const [brokenAvatarIds, setBrokenAvatarIds] = useState<Set<number>>(new Set());
+
     const [showClassmates, setShowClassmates] = useState<ScheduleEntry | null>(null);
     const [isNotificationsOpen, setIsNotificationsOpen] = useState(false);
     const [selectedNotification, setSelectedNotification] = useState<NotificationItem | null>(null);
@@ -315,6 +390,11 @@ export function StudentSchedule() {
         window.addEventListener('openClassmates', handleOpenClassmates);
         return () => window.removeEventListener('openClassmates', handleOpenClassmates);
     }, []);
+
+    useEffect(() => {
+        // Reset avatar fail cache each time modal data changes.
+        setBrokenAvatarIds(new Set());
+    }, [showClassmates?.id]);
 
     const showTooltip = (ev: ScheduleEntry, e: React.MouseEvent) => {
         clearTimeout(tooltipTimeout.current);
@@ -327,7 +407,74 @@ export function StudentSchedule() {
 
     const unreadNotificationsCount = NOTIFICATIONS.filter(n => !n.read).length;
 
-    const monday = getMonday(currentDate);
+    const monday = useMemo(() => getMonday(currentDate), [currentDate]);
+
+    const weekRange = useMemo(() => {
+        const start = new Date(monday);
+        start.setHours(0, 0, 0, 0);
+
+        const end = new Date(monday);
+        end.setDate(end.getDate() + 6);
+        end.setHours(23, 59, 59, 0);
+
+        return { start, end };
+    }, [monday]);
+
+    const statsCards = useMemo(() => {
+        return STATS_META.map((item) => {
+            let value = '0';
+
+            if (item.key === 'totalClassesThisWeek') value = String(weeklyStats.totalClassesThisWeek);
+            if (item.key === 'totalHoursStudied') value = `${weeklyStats.totalHoursStudied}h`;
+            if (item.key === 'totalSubjects') value = String(weeklyStats.totalSubjects);
+            if (item.key === 'totalExams') value = String(weeklyStats.totalExams);
+
+            return { ...item, value };
+        });
+    }, [weeklyStats]);
+
+    useEffect(() => {
+        const token = authService.getToken();
+        if (!token) {
+            setScheduleEvents([]);
+            setWeeklyStats({
+                totalClassesThisWeek: 0,
+                totalHoursStudied: 0,
+                totalSubjects: 0,
+                totalExams: 0,
+            });
+            return;
+        }
+
+        let isMounted = true;
+
+        const fetchScheduleData = async () => {
+            try {
+                setScheduleError(null);
+
+                const [statsResult, scheduleResult] = await Promise.all([
+                    timetableService.getStudentScheduleStats(weekRange.start, weekRange.end, token),
+                    timetableService.getStudentSchedule(weekRange.start, weekRange.end, token),
+                ]);
+
+                if (!isMounted) return;
+
+                setWeeklyStats(statsResult);
+                setScheduleEvents(scheduleResult.map((item, index) => mapStudentScheduleToEntry(item, index)));
+            } catch (error) {
+                if (!isMounted) return;
+                const message = error instanceof Error ? error.message : 'Không thể tải dữ liệu lịch học.';
+                setScheduleError(message);
+                setScheduleEvents([]);
+            }
+        };
+
+        void fetchScheduleData();
+
+        return () => {
+            isMounted = false;
+        };
+    }, [weekRange.start, weekRange.end]);
 
     // Keep "now" fresh
     useEffect(() => {
@@ -421,31 +568,7 @@ export function StudentSchedule() {
         return days;
     }, [currentDate, today]);
 
-    const allEvents = useMemo(() => {
-        const events: ScheduleEntry[] = [];
-        monthDays.forEach(day => {
-            const dayOfWeek = (day.fullDate.getDay() + 6) % 7;
-            BASE_EVENTS.forEach((bev, i) => {
-                if(bev.dayOfWeek === dayOfWeek) {
-                    const [start, end] = bev.time.split('-');
-                    const [sh, sm] = start.split(':').map(Number);
-                    const [eh, em] = end.split(':').map(Number);
-                    events.push({
-                        ...bev,
-                        attendanceStatus: bev.attendanceStatus as ScheduleEntry['attendanceStatus'],
-                        materials: bev.materials as ScheduleEntry['materials'],
-                        id: `evt-${i}-${day.dateKey}`,
-                        dateKey: day.dateKey,
-                        startHour: sh,
-                        startMin: sm,
-                        endHour: eh,
-                        endMin: em,
-                    });
-                }
-            });
-        });
-        return events;
-    }, [monthDays]);
+    const allEvents = useMemo(() => scheduleEvents, [scheduleEvents]);
 
     const displayEvents = viewMode === 'day'
         ? allEvents.filter(e => e.dateKey === dayCols[0].dateKey)
@@ -518,7 +641,7 @@ export function StudentSchedule() {
                             </div>
                             <div className={`max-h-[320px] overflow-y-auto px-2 py-2 space-y-2 ${isDark ? 'bg-[#1b1b22]' : 'bg-white'}`}>
                                 {NOTIFICATIONS.map((notif, i) => (
-                                    <div key={i} className={`rounded-xl border p-3 ${notif.read ? (isDark ? 'border-white/10 bg-white/[0.02]' : 'border-[#1A1A1A]/10') : (isDark ? 'border-red-400/40 bg-red-500/10' : 'border-red-200 bg-red-50/50')}`}>
+                                    <div key={i} className={`rounded-xl border p-3 ${notif.read ? (isDark ? 'border-white/10 bg-white/[0.02]' : 'border-[#1A1A1A]/10') : (isDark ? 'border-red-400/40 bg-red-500/10' : 'border-2 border-red-200 bg-red-50/50')}`}>
                                         <div className="flex items-start justify-between gap-2">
                                             <div className="min-w-0">
                                                 <p className={`text-sm font-extrabold ${notif.read ? (isDark ? 'text-[#f3f4f6]' : 'text-[#1A1A1A]') : 'text-red-500'}`}>{notif.title}</p>
@@ -588,7 +711,7 @@ export function StudentSchedule() {
             </div>
 
             <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
-                {STATS.map((s, i) => (
+                {statsCards.map((s, i) => (
                     <div key={i} className={`rounded-3xl p-5 flex items-center gap-4 hover:-translate-y-0.5 transition-all shadow-sm ${isDark ? 'border border-white/10' : 'border-2 border-[#1A1A1A]'}`} style={{ backgroundColor: isDark ? `${s.bg}66` : s.bg }}>
                         <div className={`w-11 h-11 rounded-2xl flex items-center justify-center shrink-0 ${isDark ? 'bg-[#1b1b20]' : 'bg-[#1A1A1A]'}`}>
                             <s.icon className="w-5 h-5 text-white" weight="fill" />
@@ -619,6 +742,12 @@ export function StudentSchedule() {
                 <div className="flex items-center gap-2"><CheckCircle className="text-emerald-500 w-5 h-5" weight="fill" /> Có mặt</div>
                 <div className="flex items-center gap-2"><XCircle className="text-red-500 w-5 h-5" weight="fill" /> Vắng mặt</div>
             </div>
+
+            {scheduleError && (
+                <div className={`text-sm font-bold ${isDark ? 'text-[#fca5a5]' : 'text-red-500'}`}>
+                    {scheduleError}
+                </div>
+            )}
 
             <div className="flex flex-col xl:flex-row gap-6 items-start">
                 <div className="flex-1 overflow-hidden min-w-0">
@@ -659,8 +788,8 @@ export function StudentSchedule() {
                                                         >
                                                             <div className="flex justify-between items-center mb-0.5">
                                                                 <span className="truncate">{pad(ev.startHour)}:{pad(ev.startMin)}</span>
-                                                                {status === 'past' && ev.attendanceStatus === 'present' && <CheckCircle className="text-emerald-600 shrink-0 w-3 h-3" weight="fill" />}
-                                                                {status === 'past' && ev.attendanceStatus === 'absent' && <XCircle className="text-red-600 shrink-0 w-3 h-3" weight="fill" />}
+                                                                {ev.attendanceStatus === 'present' && <CheckCircle className="text-emerald-600 shrink-0 w-3 h-3" weight="fill" />}
+                                                                {ev.attendanceStatus === 'absent' && <XCircle className="text-red-600 shrink-0 w-3 h-3" weight="fill" />}
                                                             </div>
                                                             <span className={`truncate text-[11px] font-extrabold ${isDark ? 'text-white' : 'text-[#1A1A1A]'}`}>{ev.subject}</span>
                                                         </div>
@@ -754,12 +883,12 @@ export function StudentSchedule() {
                                             </span>
                                         )}
 
-                                        {status === 'past' && ev.attendanceStatus === 'present' && (
+                                        {ev.attendanceStatus === 'present' && (
                                             <div className="absolute top-2.5 right-2.5 flex" title="Đã điểm danh">
                                                 <CheckCircle className="text-emerald-500 w-4 h-4" weight="fill" />
                                             </div>
                                         )}
-                                        {status === 'past' && ev.attendanceStatus === 'absent' && (
+                                        {ev.attendanceStatus === 'absent' && (
                                             <div className="absolute top-2.5 right-2.5 flex" title="Vắng mặt">
                                                 <XCircle className="text-red-500 w-4 h-4" weight="fill" />
                                             </div>
@@ -930,21 +1059,38 @@ export function StudentSchedule() {
                             Danh sách Lớp {showClassmates?.className}
                         </DialogTitle>
                         <DialogDescription className="font-bold">
-                            Tổng số lượng: {showClassmates?.studentsCount || 45} học sinh
+                            Tổng số lượng: {showClassmates?.studentsCount || 0} học sinh
                         </DialogDescription>
                     </DialogHeader>
                     <div className="max-h-[300px] overflow-y-auto pr-2 space-y-2 py-2">
-                        {Array.from({ length: 15 }).map((_, i) => (
-                            <div key={i} className="flex items-center gap-3 p-2 bg-[#F7F7F2] rounded-xl border border-[#1A1A1A]/5">
-                                <div className="w-8 h-8 rounded-full bg-[#1A1A1A]/10 flex items-center justify-center font-extrabold text-xs text-[#1A1A1A]">
-                                    <Student className="w-4 h-4" />
-                                </div>
-                                <div className="flex-1">
-                                    <p className="text-sm font-extrabold text-[#1A1A1A]">Học sinh tên {i + 1}</p>
-                                    <p className="text-[10px] font-bold text-gray-400">ID: HS{2024000 + i}</p>
-                                </div>
+                        {(showClassmates?.classmates?.length ?? 0) === 0 ? (
+                            <div className="text-center py-8 bg-[#F7F7F2] rounded-xl border border-dashed border-[#1A1A1A]/10">
+                                <p className="text-sm font-extrabold text-gray-400">Chưa có dữ liệu bạn học</p>
                             </div>
-                        ))}
+                        ) : (
+                            showClassmates?.classmates?.map((classmate) => (
+                                <div key={classmate.studentID} className="flex items-center gap-3 p-2 bg-[#F7F7F2] rounded-xl border border-[#1A1A1A]/5">
+                                    <div className="w-8 h-8 rounded-full bg-[#1A1A1A]/10 flex items-center justify-center font-extrabold text-xs text-[#1A1A1A] overflow-hidden">
+                                        {classmate.avatarUrl && !brokenAvatarIds.has(classmate.studentID) ? (
+                                            <img
+                                                src={normalizeAvatarUrl(classmate.avatarUrl) ?? undefined}
+                                                alt={classmate.fullName}
+                                                className="w-full h-full object-cover"
+                                                onError={() => {
+                                                    setBrokenAvatarIds(prev => new Set(prev).add(classmate.studentID));
+                                                }}
+                                            />
+                                        ) : (
+                                            <Student className="w-4 h-4" />
+                                        )}
+                                    </div>
+                                    <div className="flex-1">
+                                        <p className="text-sm font-extrabold text-[#1A1A1A]">{classmate.fullName}</p>
+                                        <p className="text-[10px] font-bold text-gray-400">ID: {formatStudentId(classmate.studentID)}</p>
+                                    </div>
+                                </div>
+                            ))
+                        )}
                     </div>
                     <div className="pt-2">
                         <button onClick={() => setShowClassmates(null)} className="w-full bg-[#1A1A1A] text-white py-3 rounded-2xl font-extrabold text-sm active:scale-95 transition-transform">
