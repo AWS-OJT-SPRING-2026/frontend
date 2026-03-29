@@ -3,7 +3,7 @@ import { authService } from './authService';
 import type { ApiResponse } from './timetableService';
 
 // Uses Vite proxy: /agent -> http://localhost:8081
-const AGENT_BASE_URL = import.meta.env.VITE_AGENT_BASE_URL || '/agent';
+const AGENT_BASE_URL = import.meta.env.VITE_AGENT_BASE_URL;// || '/agent';
 
 export interface ChatMessagePayload {
   role: 'user' | 'assistant';
@@ -33,8 +33,8 @@ export interface ChatResponse {
  * @param onChunk - Callback for each token received
  */
 export async function streamChatMessage(
-  prompt: string, 
-  sessionId: string, 
+  prompt: string,
+  sessionId: string,
   onChunk: (chunk: string) => void
 ): Promise<void> {
   const response = await fetch(`${AGENT_BASE_URL}/invocations`, {
@@ -62,7 +62,7 @@ export async function streamChatMessage(
     if (done) break;
 
     buffer += decoder.decode(value, { stream: true });
-    
+
     // Process lines (SSE format: "data: { ... }\n\n")
     const lines = buffer.split('\n');
     buffer = lines.pop() || ''; // Keep the last incomplete line in buffer
@@ -70,7 +70,7 @@ export async function streamChatMessage(
     for (const line of lines) {
       const trimmed = line.trim();
       if (!trimmed || !trimmed.startsWith('data: ')) continue;
-      
+
       try {
         const jsonStr = trimmed.slice(6); // Remove "data: "
         const data = JSON.parse(jsonStr);
