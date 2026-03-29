@@ -22,13 +22,22 @@ export function TeacherDocuments() {
         subject_name: string;
     }
 
+    interface Classroom {
+        classid: number;
+        class_name: string;
+        subject_id: number;
+        teacherid: number;
+    }
+
     const [books, setBooks] = useState<Book[]>([]);
     const [subjects, setSubjects] = useState<Subject[]>([]);
+    const [classrooms, setClassrooms] = useState<Classroom[]>([]);
     const [loading, setLoading] = useState(true);
-    
+
     // Upload state
     const [selectedFile, setSelectedFile] = useState<File | null>(null);
     const [subjectId, setSubjectId] = useState<string>("");
+    const [classId, setClassId] = useState<string>("");
     const [docType, setDocType] = useState<string>("theory");
     const [uploading, setUploading] = useState(false);
     const fileInputRef = useRef<HTMLInputElement>(null);
@@ -36,9 +45,10 @@ export function TeacherDocuments() {
     const fetchData = async () => {
         setLoading(true);
         try {
-            const [booksRes, subjectsRes] = await Promise.all([
+            const [booksRes, subjectsRes, classroomsRes] = await Promise.all([
                 fetch(`${import.meta.env.VITE_FAST_API_URL}/books`),
-                fetch(`${import.meta.env.VITE_FAST_API_URL}/subjects`)
+                fetch(`${import.meta.env.VITE_FAST_API_URL}/subjects`),
+                fetch(`${import.meta.env.VITE_FAST_API_URL}/classrooms`)
             ]);
 
             if (booksRes.ok) {
@@ -49,6 +59,11 @@ export function TeacherDocuments() {
             if (subjectsRes.ok) {
                 const data = await subjectsRes.json();
                 setSubjects(data);
+            }
+
+            if (classroomsRes.ok) {
+                const data = await classroomsRes.json();
+                setClassrooms(data);
             }
         } catch (error) {
             console.error('Error fetching data:', error);
@@ -72,6 +87,7 @@ export function TeacherDocuments() {
         formData.append('subject_id', subjectId);
         formData.append('doc_type', docType);
         formData.append('userid', "1"); // Default teacher ID
+        if (classId) formData.append('classid', classId);
 
         setUploading(true);
         try {
@@ -170,12 +186,16 @@ export function TeacherDocuments() {
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                         <div>
                             <Label className="text-xs font-extrabold text-gray-400 uppercase tracking-wider mb-1.5 block">Gán cho lớp học</Label>
-                            <Select defaultValue="nhom1">
+                            <Select onValueChange={setClassId} value={classId}>
                                 <SelectTrigger className={`rounded-2xl border-2 h-11 font-bold ${isDark ? 'bg-[#20242b] border-white/15 text-gray-100' : 'bg-[#F7F7F2] border-[#1A1A1A]/20'}`}>
-                                    <SelectValue />
+                                    <SelectValue placeholder="Chọn lớp học" />
                                 </SelectTrigger>
                                 <SelectContent>
-                                    <SelectItem value="nhom1">BIO101 - Nhóm 01</SelectItem>
+                                    {classrooms.map(c => (
+                                        <SelectItem key={c.classid} value={c.classid.toString()}>
+                                            {c.class_name}
+                                        </SelectItem>
+                                    ))}
                                 </SelectContent>
                             </Select>
                         </div>

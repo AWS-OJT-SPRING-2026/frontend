@@ -1,6 +1,8 @@
-import { useState } from 'react';
-import { ArrowClockwise, Check, GraduationCap, Lock, Trophy, TrendUp, Question, ArrowRight, CaretRight, CaretDown, Clock, Sparkle } from '@phosphor-icons/react';
+import { useState, useEffect } from 'react';
+import { ArrowClockwise, Check, GraduationCap, Trophy, TrendUp, Question, ArrowRight, CaretRight, CaretDown, Clock, Sparkle } from '@phosphor-icons/react';
 import { useSettings } from '../../context/SettingsContext';
+
+const FAST_API_URL = import.meta.env.VITE_FAST_API_URL;
 
 const SKILLS = [
     { label: 'Tốc độ giải bài', val: 80, diff: '+12%', bg: '#95E1D3' },
@@ -17,10 +19,6 @@ const CHART_DATA = [
     { week: 'T6', val: 15, dashed: true },
 ];
 
-const SUBJECTS = [
-    'Toán học', 'Ngữ văn', 'Tiếng Anh', 'Vật lý', 'Hóa học', 'Sinh học', 'Lịch sử', 'Địa lý',
-];
-
 const TIME_OPTIONS = [
     { value: '2', label: '2 tuần' },
     { value: '4', label: '1 tháng' },
@@ -29,21 +27,82 @@ const TIME_OPTIONS = [
     { value: '24', label: '6 tháng' },
 ];
 
+interface RoadmapLesson {
+    lessonid: number;
+    title: string;
+    time: number;
+    explanation: string | null;
+    wrong_question_count: number;
+    priority_score: number;
+}
+
+interface RoadmapChapter {
+    id: number;
+    chapterid: number;
+    title: string;
+    order: number;
+    lessons: RoadmapLesson[];
+}
+
+interface RoadmapData {
+    roadmapid: number;
+    studentid: number;
+    subject_id: number;
+    subject_name: string;
+    total_time: number;
+    created_at: string;
+    chapters: RoadmapChapter[];
+}
+
 export function StudentRoadmap() {
     const { theme } = useSettings();
     const isDark = theme === 'dark';
     const [hasRoadmap, setHasRoadmap] = useState(false);
-    const [selectedSubject, setSelectedSubject] = useState('');
+    const [selectedSubjectId, setSelectedSubjectId] = useState('');
     const [studyTime, setStudyTime] = useState('');
     const [isGenerating, setIsGenerating] = useState(false);
+    const [apiSubjects, setApiSubjects] = useState<{ subject_id: number; subject_name: string }[]>([]);
+    const [roadmapData, setRoadmapData] = useState<RoadmapData | null>(null);
+
+    const selectedSubjectName = apiSubjects.find(s => s.subject_id.toString() === selectedSubjectId)?.subject_name || '';
+
+    useEffect(() => {
+        fetch(`${FAST_API_URL}/subjects`)
+            .then(res => res.ok ? res.json() : Promise.reject(res.status))
+            .then(data => { if (Array.isArray(data)) setApiSubjects(data); })
+            .catch(err => console.error('Error fetching subjects:', err));
+
+        fetch(`${FAST_API_URL}/roadmap/current/1`)
+            .then(res => res.ok ? res.json() : Promise.reject(res.status))
+            .then(data => {
+                if (data && data.roadmapid) { setRoadmapData(data); setHasRoadmap(true); }
+            })
+            .catch(err => console.error('Error fetching current roadmap:', err));
+    }, []);
 
     const handleGenerateRoadmap = async () => {
-        if (!selectedSubject || !studyTime) return;
+        if (!selectedSubjectId || !studyTime) return;
         setIsGenerating(true);
-        // Simulate AI generation
-        await new Promise(resolve => setTimeout(resolve, 2000));
-        setIsGenerating(false);
-        setHasRoadmap(true);
+        try {
+            const response = await fetch(`${FAST_API_URL}/roadmap/generate`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    userid: 1,
+                    subject_id: parseInt(selectedSubjectId),
+                    total_weeks: parseInt(studyTime)
+                })
+            });
+            if (!response.ok) throw new Error('Failed to generate roadmap');
+            const data = await response.json();
+            setRoadmapData(data);
+            setHasRoadmap(true);
+        } catch (err) {
+            console.error('Error generating roadmap:', err);
+            alert('Có lỗi khi tạo lộ trình. Vui lòng thử lại.');
+        } finally {
+            setIsGenerating(false);
+        }
     };
 
     // ── Initial Form (before roadmap is generated) ──
@@ -69,7 +128,7 @@ export function StudentRoadmap() {
                         </div>
                         <h2 className="text-2xl font-extrabold mb-3">Bắt đầu hành trình học tập</h2>
                         <p className="text-white/60 text-sm font-semibold leading-relaxed">
-                            AI sẽ phân tích năng lực và tạo lộ trình học tập tối ưu cho bạn. 
+                            AI sẽ phân tích năng lực và tạo lộ trình học tập tối ưu cho bạn.
                             Hãy cho chúng tôi biết bạn muốn học gì và trong bao lâu.
                         </p>
                     </div>
@@ -95,21 +154,21 @@ export function StudentRoadmap() {
                             </label>
                             <div className="relative">
                                 <select
-                                    value={selectedSubject}
-                                    onChange={(e) => setSelectedSubject(e.target.value)}
+                                    value={selectedSubjectId}
+                                    onChange={(e) => setSelectedSubjectId(e.target.value)}
                                     className={`w-full h-12 rounded-2xl px-4 appearance-none font-bold focus:outline-none transition-colors ${isDark ? 'bg-[#18181b] border border-white/10 text-white focus:border-[#ff7849]' : 'bg-[#F7F7F2] border-2 border-[#1A1A1A]/20 text-[#1A1A1A] focus:border-[#FF6B4A]'}`}
                                 >
                                     <option value="">Chọn môn học...</option>
-                                    {SUBJECTS.map(s => (
-                                        <option key={s} value={s}>{s}</option>
+                                    {apiSubjects.map(s => (
+                                        <option key={s.subject_id} value={s.subject_id.toString()}>{s.subject_name}</option>
                                     ))}
                                 </select>
                                 <CaretDown className="absolute right-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400 pointer-events-none" />
                             </div>
-                            {selectedSubject && (
+                            {selectedSubjectId && (
                                 <div className="flex items-center gap-2 text-xs font-bold text-emerald-600 mt-1">
                                     <Check className="w-3.5 h-3.5" weight="bold" />
-                                    Đã chọn: {selectedSubject}
+                                    Đã chọn: {selectedSubjectName}
                                 </div>
                             )}
                         </div>
@@ -142,14 +201,14 @@ export function StudentRoadmap() {
                     </div>
 
                     {/* Preview what AI will do */}
-                    {selectedSubject && studyTime && (
+                    {selectedSubjectId && studyTime && (
                         <div className={`${isDark ? 'bg-[#2b2941] border border-[#6f68a6]/50' : 'bg-[#B8B5FF]/20 border-2 border-[#B8B5FF]/40'} rounded-2xl p-5 animate-[slideUp_0.3s_ease-out]`}>
                             <div className="flex items-start gap-3">
                                 <div className="w-8 h-8 rounded-xl bg-[#B8B5FF] flex items-center justify-center shrink-0 text-sm">✨</div>
                                 <div>
                                     <h4 className={`font-extrabold mb-1 ${isDark ? 'text-white' : 'text-[#1A1A1A]'}`}>AI sẽ tạo lộ trình cho bạn</h4>
                                     <p className={`text-sm font-semibold ${isDark ? 'text-[#d0cde8]' : 'text-[#1A1A1A]/60'}`}>
-                                        Môn <strong className={isDark ? 'text-white' : 'text-[#1A1A1A]'}>{selectedSubject}</strong> trong <strong className={isDark ? 'text-white' : 'text-[#1A1A1A]'}>{TIME_OPTIONS.find(t => t.value === studyTime)?.label}</strong> — 
+                                        Môn <strong className={isDark ? 'text-white' : 'text-[#1A1A1A]'}>{selectedSubjectName}</strong> trong <strong className={isDark ? 'text-white' : 'text-[#1A1A1A]'}>{TIME_OPTIONS.find(t => t.value === studyTime)?.label}</strong> —
                                         bao gồm phân tích năng lực, lộ trình từng tuần, và mục tiêu điểm số.
                                     </p>
                                 </div>
@@ -160,7 +219,7 @@ export function StudentRoadmap() {
                     {/* Generate button */}
                     <button
                         onClick={handleGenerateRoadmap}
-                        disabled={!selectedSubject || !studyTime || isGenerating}
+                        disabled={!selectedSubjectId || !studyTime || isGenerating}
                         className="w-full h-14 bg-[#ff7849] hover:bg-[#ff8b63] disabled:opacity-50 disabled:cursor-not-allowed text-white font-extrabold text-lg rounded-2xl flex items-center justify-center gap-3 transition-all active:scale-[0.98] shadow-lg shadow-[#ff7849]/25"
                     >
                         {isGenerating ? (
@@ -199,7 +258,9 @@ export function StudentRoadmap() {
                         <span>Trang chủ</span><CaretRight className="w-4 h-4" /><span className="text-[#FF6B4A]">AI Roadmap</span>
                     </div>
                     <h1 className={`text-3xl font-extrabold ${isDark ? 'text-white' : 'text-[#1A1A1A]'}`}>Lộ trình Học tập AI</h1>
-                    <p className={`${isDark ? 'text-[#b3b3b3]' : 'text-[#1A1A1A]/50'} font-semibold mt-1`}>Lộ trình cá nhân hóa do AI thiết kế dựa trên năng lực thực tế.</p>
+                    <p className={`${isDark ? 'text-[#b3b3b3]' : 'text-[#1A1A1A]/50'} font-semibold mt-1`}>
+                        {roadmapData ? `Môn ${roadmapData.subject_name} · ${roadmapData.total_time} tuần` : 'Lộ trình cá nhân hóa do AI thiết kế dựa trên năng lực thực tế.'}
+                    </p>
                 </div>
                 <div className="flex gap-3">
                     <button
@@ -219,7 +280,10 @@ export function StudentRoadmap() {
                     <div>
                         <h2 className="text-xl font-extrabold mb-2">AI Gợi ý đặc biệt</h2>
                         <p className="text-white/60 text-sm font-semibold leading-relaxed max-w-lg">
-                            Tuần này nên tập trung vào <span className="font-extrabold text-[#FCE38A]">Chương 2: Hình học</span> vì tỉ lệ trả lời sai ở phần diện tích đang cao (65% lỗi sai).
+                            {roadmapData && roadmapData.chapters?.length > 0
+                                ? <>Hãy bắt đầu với <span className="font-extrabold text-[#FCE38A]">{roadmapData.chapters[0].title}</span> — {roadmapData.chapters[0].lessons?.length ?? 0} bài học đang chờ bạn.</>
+                                : 'Hãy bắt đầu từ chương đầu tiên và hoàn thành từng bài theo lộ trình AI đề xuất.'
+                            }
                         </p>
                     </div>
                 </div>
@@ -235,58 +299,44 @@ export function StudentRoadmap() {
                         <h2 className={`font-extrabold text-xl flex items-center gap-2 ${isDark ? 'text-white' : 'text-[#1A1A1A]'}`}>
                             <TrendUp className="w-5 h-5 text-[#FF6B4A]" weight="fill" /> Con đường chinh phục 9.5
                         </h2>
-                        <span className={`text-xs font-extrabold px-3 py-1.5 rounded-2xl ${isDark ? 'bg-[#fce38a]/85 text-[#2a2a2a] border border-[#fce38a]/40' : 'bg-[#FCE38A] border-2 border-[#1A1A1A]/20 text-[#1A1A1A]'}`}>Tuần 4 / 12</span>
+                        <span className={`text-xs font-extrabold px-3 py-1.5 rounded-2xl ${isDark ? 'bg-[#fce38a]/85 text-[#2a2a2a] border border-[#fce38a]/40' : 'bg-[#FCE38A] border-2 border-[#1A1A1A]/20 text-[#1A1A1A]'}`}>
+                            {roadmapData ? `${roadmapData.chapters?.length ?? 0} chương · ${roadmapData.total_time} tuần` : '-'}
+                        </span>
                     </div>
 
                     <div className="relative max-w-2xl mx-auto flex flex-col items-center pb-8">
                         {/* Timeline line */}
-                        <div className={`absolute left-1/2 -translate-x-1/2 top-0 bottom-0 w-2 rounded-full ${isDark ? 'bg-white/10 border border-white/20' : 'bg-[#1A1A1A]/10 border border-[#1A1A1A]/20'}`}>
-                            <div className="w-full bg-[#FF6B4A] rounded-full" style={{ height: '42%' }} />
-                        </div>
+                        <div className={`absolute left-1/2 -translate-x-1/2 top-0 bottom-0 w-2 rounded-full ${isDark ? 'bg-white/10 border border-white/20' : 'bg-[#1A1A1A]/10 border border-[#1A1A1A]/20'}`} />
 
-                        {/* Step 1: Completed */}
-                        <div className="relative w-full flex justify-end items-center mb-20 pr-12">
-                            <div className="absolute left-1/2 -translate-x-1/2 w-10 h-10 rounded-full bg-[#95E1D3] border-2 border-[#1A1A1A] flex items-center justify-center z-10 shadow-md">
-                                <Check className="w-5 h-5 text-[#1A1A1A]" weight="bold" />
-                            </div>
-                            <div className="w-[45%] p-5 rounded-3xl border border-white/20 text-right" style={{ backgroundColor: isDark ? '#7bc6bb' : '#95E1D3' }}>
-                                <span className={`text-[10px] font-extrabold uppercase tracking-widest mb-1 block ${isDark ? 'text-[#203a35]/70' : 'text-[#1A1A1A]/50'}`}>TUẦN 1-2</span>
-                                <h3 className={`font-extrabold mb-1 ${isDark ? 'text-[#10231f]' : 'text-[#1A1A1A]'}`}>Chương 1: Đại số nâng cao</h3>
-                                <p className={`text-sm font-bold ${isDark ? 'text-[#1f4740]/80' : 'text-[#1A1A1A]/60'}`}>Hoàn thành với 8.8/10</p>
-                            </div>
-                        </div>
-
-                        {/* Step 2: In Progress */}
-                        <div className="relative w-full flex justify-start items-center mb-20 pl-12">
-                            <div className={`absolute left-1/2 -translate-x-1/2 w-12 h-12 rounded-full border-[3px] border-[#FF6B4A] flex items-center justify-center z-10 shadow-md ${isDark ? 'bg-[#17171d] ring-4 ring-[#17171d]' : 'bg-white ring-4 ring-white'}`}>
-                                <div className="w-8 h-8 rounded-full bg-[#FF6B4A]/10 flex items-center justify-center">
-                                    <GraduationCap className="w-4 h-4 text-[#FF6B4A]" weight="fill" />
+                        {/* Chapters from API */}
+                        {(roadmapData?.chapters || []).map((chapter, i) => {
+                            const isRight = i % 2 === 0;
+                            const isFirst = i === 0;
+                            return (
+                                <div key={chapter.id} className={`relative w-full flex ${isRight ? 'justify-end pr-12' : 'justify-start pl-12'} items-center mb-16`}>
+                                    <div className={`absolute left-1/2 -translate-x-1/2 ${isFirst ? 'w-12 h-12 border-[3px] border-[#FF6B4A]' : 'w-10 h-10 border-2'} rounded-full flex items-center justify-center z-10 shadow-md ${isFirst
+                                        ? (isDark ? 'bg-[#17171d] ring-4 ring-[#17171d]' : 'bg-white ring-4 ring-white')
+                                        : (isDark ? 'bg-[#20242b] border-white/20' : 'bg-[#F7F7F2] border-[#1A1A1A]/20')}`}>
+                                        {isFirst ? (
+                                            <div className="w-8 h-8 rounded-full bg-[#FF6B4A]/10 flex items-center justify-center">
+                                                <GraduationCap className="w-4 h-4 text-[#FF6B4A]" weight="fill" />
+                                            </div>
+                                        ) : (
+                                            <span className={`text-xs font-extrabold ${isDark ? 'text-gray-300' : 'text-[#1A1A1A]/50'}`}>{i + 1}</span>
+                                        )}
+                                    </div>
+                                    <div className={`w-[45%] p-5 rounded-3xl ${isFirst
+                                        ? `border-2 border-[#FF6B4A] shadow-md ${isDark ? 'bg-[#FF6B4A]/12' : 'bg-[#FF6B4A]/10'}`
+                                        : `border-2 ${isDark ? 'border-white/15 bg-[#20242b]' : 'border-[#1A1A1A]/15 bg-[#F7F7F2]'}`} ${isRight ? 'text-right' : 'text-left'}`}>
+                                        {isFirst && (
+                                            <span className="text-[9px] font-extrabold text-white bg-[#FF6B4A] px-2 py-0.5 rounded-full uppercase mb-2 inline-block">Bắt đầu</span>
+                                        )}
+                                        <h3 className={`font-extrabold mb-1 ${isDark ? 'text-white' : 'text-[#1A1A1A]'}`}>{chapter.title}</h3>
+                                        <p className={`text-xs font-bold ${isDark ? 'text-gray-400' : 'text-[#1A1A1A]/50'}`}>{chapter.lessons?.length ?? 0} bài học</p>
+                                    </div>
                                 </div>
-                            </div>
-                            <div className="w-[45%] p-5 rounded-3xl border-2 border-[#ff7849] shadow-md" style={{ backgroundColor: isDark ? 'rgba(255,120,73,0.12)' : '#FF6B4A' + '10' }}>
-                                <div className="flex gap-2 items-center mb-2">
-                                    <span className="text-[10px] font-extrabold text-[#ff8b63] uppercase tracking-widest">TUẦN 3-4</span>
-                                    <span className="text-[9px] font-extrabold text-white bg-[#ff7849] px-2 py-0.5 rounded-full uppercase">Đang học</span>
-                                </div>
-                                <h3 className={`font-extrabold mb-3 ${isDark ? 'text-white' : 'text-[#1A1A1A]'}`}>Chương 2: Hình học không gian</h3>
-                                <div className="h-2 w-full bg-[#1A1A1A]/10 rounded-full border border-[#1A1A1A]/15 mb-1 overflow-hidden">
-                                    <div className="h-full bg-[#FF6B4A] rounded-full" style={{ width: '60%' }} />
-                                </div>
-                                <p className={`text-xs font-extrabold ${isDark ? 'text-[#b3b3b3]' : 'text-[#1A1A1A]/50'}`}>Mục tiêu: 9.0 điểm</p>
-                            </div>
-                        </div>
-
-                        {/* Step 3: Locked */}
-                        <div className={`relative w-full flex justify-end items-center mb-20 pr-12 ${isDark ? 'opacity-70' : 'opacity-40'}`}>
-                            <div className={`absolute left-1/2 -translate-x-1/2 w-10 h-10 rounded-full border-2 flex items-center justify-center z-10 ${isDark ? 'bg-white/10 border-white/20' : 'bg-[#1A1A1A]/10 border-[#1A1A1A]/20'}`}>
-                                <Lock className={`w-4 h-4 ${isDark ? 'text-[#cbd5e1]' : 'text-[#1A1A1A]/40'}`} weight="fill" />
-                            </div>
-                            <div className={`w-[45%] p-5 rounded-3xl border-2 border-dashed text-right ${isDark ? 'border-white/25 bg-white/[0.03]' : 'border-[#1A1A1A]/20 bg-[#1A1A1A]/5'}`}>
-                                <span className={`text-[10px] font-extrabold uppercase tracking-widest mb-1 block ${isDark ? 'text-[#94a3b8]' : 'text-[#1A1A1A]/40'}`}>TUẦN 5-7</span>
-                                <h3 className={`font-extrabold ${isDark ? 'text-[#e5e7eb]' : 'text-[#1A1A1A]/60'}`}>Chương 3: Lượng giác</h3>
-                                <p className={`text-sm font-bold ${isDark ? 'text-[#94a3b8]' : 'text-[#1A1A1A]/40'}`}>Bắt đầu: 15/10</p>
-                            </div>
-                        </div>
+                            );
+                        })}
 
                         {/* Goal */}
                         <div className="relative w-full flex justify-start items-center pl-12">

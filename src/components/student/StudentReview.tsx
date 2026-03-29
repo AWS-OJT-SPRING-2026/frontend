@@ -62,6 +62,8 @@ export function StudentReview() {
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [startTime, setStartTime] = useState<number | null>(null);
     const [history, setHistory] = useState<SubmissionHistory[]>([]);
+    const [historyDetail, setHistoryDetail] = useState<SubmissionDetail | null>(null);
+    const [loadingDetail, setLoadingDetail] = useState(false);
 
     interface SubmissionHistory {
         submissionid: number;
@@ -69,6 +71,27 @@ export function StudentReview() {
         time_taken: number;
         submit_time: string;
         quiz_name: string;
+    }
+
+    interface SubmissionDetailQuestion {
+        id: number;
+        question: string;
+        options: string[];
+        selected: number | null;
+        correct: number;
+        explanation: string;
+        subject: string;
+        level: string;
+        is_correct: boolean;
+    }
+
+    interface SubmissionDetail {
+        submissionid: number;
+        score: number;
+        time_taken: number;
+        submit_time: string;
+        quiz_name: string;
+        questions: SubmissionDetailQuestion[];
     }
 
     useEffect(() => {
@@ -94,6 +117,21 @@ export function StudentReview() {
             }
         } catch (err) {
             console.error('Error fetching history:', err);
+        }
+    };
+
+    const handleViewDetail = async (submissionid: number) => {
+        setLoadingDetail(true);
+        try {
+            const res = await fetch(`${FAST_API_URL}/subjects/submissions/${submissionid}/details`);
+            if (res.ok) {
+                const data = await res.json();
+                setHistoryDetail(data);
+            }
+        } catch (err) {
+            console.error('Error fetching submission detail:', err);
+        } finally {
+            setLoadingDetail(false);
         }
     };
 
@@ -502,6 +540,111 @@ export function StudentReview() {
         );
     }
 
+    if (historyDetail) {
+        const correctCount = historyDetail.questions.filter(q => q.is_correct).length;
+        return (
+            <div className={`p-8 space-y-6 max-w-4xl mx-auto ${isDark ? 'bg-gradient-to-b from-[#111111] to-[#1a1a1a]' : ''}`} style={{ fontFamily: "'Nunito', sans-serif" }}>
+                {/* Header */}
+                <div className={`rounded-3xl p-5 flex items-center gap-4 ${isDark ? 'bg-[#232328] border border-white/10' : 'bg-white border-2 border-[#1A1A1A]'}`}>
+                    <button
+                        onClick={() => setHistoryDetail(null)}
+                        className={`w-10 h-10 rounded-xl border-2 flex items-center justify-center shrink-0 ${isDark ? 'border-white/15 text-gray-300 hover:bg-white/10' : 'border-[#1A1A1A]/15 text-[#1A1A1A]/60 hover:bg-[#F7F7F2]'}`}
+                    >
+                        <ArrowLeft className="w-4 h-4" />
+                    </button>
+                    <div className="flex-1 min-w-0">
+                        <h1 className={`text-xl font-extrabold truncate ${isDark ? 'text-white' : 'text-[#1A1A1A]'}`}>
+                            Chi tiết: {historyDetail.quiz_name}
+                        </h1>
+                        <p className={`text-xs font-bold mt-0.5 ${isDark ? 'text-[#94a3b8]' : 'text-gray-400'}`}>
+                            {historyDetail.submit_time} · {Math.floor(historyDetail.time_taken / 60)}p {historyDetail.time_taken % 60}s
+                        </p>
+                    </div>
+                    <div className="flex items-center gap-3 shrink-0">
+                        <div className={`px-4 py-2 rounded-2xl text-center ${isDark ? 'bg-[#fce38a]/15 border border-[#fce38a]/30' : 'bg-[#FCE38A] border-2 border-[#1A1A1A]/15'}`}>
+                            <p className={`text-xs font-extrabold uppercase tracking-widest ${isDark ? 'text-[#fce38a]/70' : 'text-[#1A1A1A]/50'}`}>Điểm</p>
+                            <p className={`text-2xl font-extrabold ${isDark ? 'text-[#fce38a]' : 'text-[#1A1A1A]'}`}>{historyDetail.score}/10</p>
+                        </div>
+                        <div className={`px-4 py-2 rounded-2xl text-center ${isDark ? 'bg-[#95e1d3]/15 border border-[#95e1d3]/30' : 'bg-[#95E1D3] border-2 border-[#1A1A1A]/15'}`}>
+                            <p className={`text-xs font-extrabold uppercase tracking-widest ${isDark ? 'text-[#95e1d3]/70' : 'text-[#1A1A1A]/50'}`}>Đúng</p>
+                            <p className={`text-2xl font-extrabold ${isDark ? 'text-[#95e1d3]' : 'text-[#1A1A1A]'}`}>{correctCount}/{historyDetail.questions.length}</p>
+                        </div>
+                    </div>
+                </div>
+
+                {/* Questions */}
+                <div className="space-y-4">
+                    {historyDetail.questions.map((q, i) => (
+                        <div key={q.id} className={`rounded-3xl overflow-hidden border-2 ${q.is_correct
+                            ? (isDark ? 'border-emerald-500/30' : 'border-emerald-400/40')
+                            : (isDark ? 'border-red-500/30' : 'border-red-400/40')}`}>
+                            {/* Question header */}
+                            <div className={`px-6 py-4 flex items-center gap-3 ${q.is_correct
+                                ? (isDark ? 'bg-emerald-500/10' : 'bg-emerald-50')
+                                : (isDark ? 'bg-red-500/10' : 'bg-red-50')}`}>
+                                <div className={`w-7 h-7 rounded-lg flex items-center justify-center shrink-0 text-xs font-extrabold ${q.is_correct ? 'bg-emerald-500 text-white' : 'bg-red-500 text-white'}`}>
+                                    {i + 1}
+                                </div>
+                                <div className="flex-1 min-w-0">
+                                    <p className={`font-extrabold leading-snug ${isDark ? 'text-white' : 'text-[#1A1A1A]'}`}>{q.question}</p>
+                                    <div className="flex items-center gap-2 mt-1">
+                                        <span className={`text-[10px] font-extrabold px-2 py-0.5 rounded-full ${isDark ? 'bg-white/10 text-gray-300' : 'bg-[#1A1A1A]/10 text-[#1A1A1A]/50'}`}>{q.subject}</span>
+                                        <span className={`text-[10px] font-extrabold px-2 py-0.5 rounded-full ${isDark ? 'bg-white/10 text-gray-300' : 'bg-[#1A1A1A]/10 text-[#1A1A1A]/50'}`}>{q.level}</span>
+                                    </div>
+                                </div>
+                                <span className={`text-xs font-extrabold px-3 py-1 rounded-full shrink-0 ${q.is_correct ? 'bg-emerald-500/20 text-emerald-600' : 'bg-red-500/20 text-red-600'}`}>
+                                    {q.is_correct ? '✓ Đúng' : '✗ Sai'}
+                                </span>
+                            </div>
+
+                            {/* Options */}
+                            <div className={`px-6 py-4 grid grid-cols-1 md:grid-cols-2 gap-2 ${isDark ? 'bg-[#232328]' : 'bg-white'}`}>
+                                {q.options.map((opt, optIdx) => {
+                                    const isSelected = q.selected === optIdx;
+                                    const isCorrectOpt = q.correct === optIdx;
+                                    let cls = '';
+                                    if (isCorrectOpt) cls = isDark ? 'border-emerald-500 bg-emerald-500/15 text-emerald-300' : 'border-emerald-500 bg-emerald-50 text-emerald-700';
+                                    else if (isSelected && !isCorrectOpt) cls = isDark ? 'border-red-500 bg-red-500/15 text-red-300' : 'border-red-400 bg-red-50 text-red-700';
+                                    else cls = isDark ? 'border-white/10 text-gray-400' : 'border-[#1A1A1A]/10 text-[#1A1A1A]/50';
+                                    return (
+                                        <div key={optIdx} className={`flex items-center gap-3 px-4 py-3 rounded-2xl border-2 ${cls}`}>
+                                            <span className={`w-6 h-6 rounded-md border-2 flex items-center justify-center text-xs font-extrabold shrink-0 ${isCorrectOpt ? 'border-emerald-500 bg-emerald-500 text-white' : isSelected ? 'border-red-400 bg-red-400 text-white' : (isDark ? 'border-white/20 text-gray-400' : 'border-[#1A1A1A]/15 text-[#1A1A1A]/40')}`}>
+                                                {String.fromCharCode(65 + optIdx)}
+                                            </span>
+                                            <span className="text-sm font-bold">{opt}</span>
+                                            {isSelected && !isCorrectOpt && <span className="ml-auto text-xs font-extrabold text-red-500">Bạn chọn</span>}
+                                            {isCorrectOpt && <span className="ml-auto text-xs font-extrabold text-emerald-600">Đáp án đúng</span>}
+                                        </div>
+                                    );
+                                })}
+                            </div>
+
+                            {/* Explanation */}
+                            {q.explanation && (
+                                <div className={`px-6 py-3 border-t ${isDark ? 'border-white/10 bg-[#1a1a1f]' : 'border-[#1A1A1A]/10 bg-[#F7F7F2]'}`}>
+                                    <p className={`text-xs font-bold ${isDark ? 'text-[#94a3b8]' : 'text-[#1A1A1A]/50'}`}>
+                                        <span className="font-extrabold text-[#FF6B4A]">Giải thích: </span>{q.explanation}
+                                    </p>
+                                </div>
+                            )}
+                        </div>
+                    ))}
+                </div>
+            </div>
+        );
+    }
+
+    if (loadingDetail) {
+        return (
+            <div className="flex items-center justify-center p-20" style={{ fontFamily: "'Nunito', sans-serif" }}>
+                <div className="text-center space-y-3">
+                    <div className="w-10 h-10 border-4 border-[#FF6B4A]/30 border-t-[#FF6B4A] rounded-full animate-spin mx-auto" />
+                    <p className="font-extrabold text-gray-400">Đang tải chi tiết...</p>
+                </div>
+            </div>
+        );
+    }
+
     return (
         <div className={`p-8 space-y-6 max-w-6xl mx-auto ${isDark ? 'bg-gradient-to-b from-[#111111] to-[#1a1a1a]' : ''}`} style={{ fontFamily: "'Nunito', sans-serif" }}>
             <div>
@@ -668,11 +811,16 @@ export function StudentReview() {
                                             <th className="px-4 py-2">Nội dung</th>
                                             <th className="px-4 py-2">Thời gian</th>
                                             <th className="px-4 py-2">Điểm số</th>
+                                            <th className="px-4 py-2"></th>
                                         </tr>
                                     </thead>
                                     <tbody>
                                         {history.map((item) => (
-                                            <tr key={item.submissionid} className="group hover:bg-[#F7F7F2] transition-colors">
+                                            <tr
+                                                key={item.submissionid}
+                                                onClick={() => handleViewDetail(item.submissionid)}
+                                                className="group hover:bg-[#F7F7F2] transition-colors cursor-pointer"
+                                            >
                                                 <td className="px-4 py-3 bg-[#F7F7F2] group-hover:bg-white rounded-l-2xl border-y-2 border-l-2 border-[#1A1A1A]/5 font-bold text-xs text-[#1A1A1A] text-center">
                                                     {item.submit_time}
                                                 </td>
@@ -682,13 +830,16 @@ export function StudentReview() {
                                                 <td className="px-4 py-3 bg-[#F7F7F2] group-hover:bg-white border-y-2 border-[#1A1A1A]/5 font-bold text-xs text-gray-500 text-center">
                                                     {Math.floor(item.time_taken / 60)}p {item.time_taken % 60}s
                                                 </td>
-                                                <td className="px-4 py-3 bg-[#F7F7F2] group-hover:bg-white rounded-r-2xl border-y-2 border-r-2 border-[#1A1A1A]/5 text-center">
+                                                <td className="px-4 py-3 bg-[#F7F7F2] group-hover:bg-white border-y-2 border-[#1A1A1A]/5 text-center">
                                                     <span className={`px-4 py-1.5 rounded-full font-extrabold text-sm ${item.score >= 8 ? 'bg-[#95E1D3]/20 text-[#2D5A27] border border-[#95E1D3]/30' :
                                                         item.score >= 5 ? 'bg-[#FCE38A]/20 text-[#856404] border border-[#FCE38A]/30' :
                                                             'bg-[#FFB5B5]/20 text-[#721C24] border border-[#FFB5B5]/30'
                                                         }`}>
                                                         {item.score}/10
                                                     </span>
+                                                </td>
+                                                <td className="px-4 py-3 bg-[#F7F7F2] group-hover:bg-white rounded-r-2xl border-y-2 border-r-2 border-[#1A1A1A]/5 text-center">
+                                                    <ArrowRight className="w-4 h-4 text-gray-400 group-hover:text-[#FF6B4A] transition-colors mx-auto" />
                                                 </td>
                                             </tr>
                                         ))}
