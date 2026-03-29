@@ -46,9 +46,9 @@ export function TeacherDocuments() {
         setLoading(true);
         try {
             const [booksRes, subjectsRes, classroomsRes] = await Promise.all([
-                fetch(`${import.meta.env.VITE_FAST_API_URL}/books`),
-                fetch(`${import.meta.env.VITE_FAST_API_URL}/subjects`),
-                fetch(`${import.meta.env.VITE_FAST_API_URL}/classrooms`)
+                fetch(`${import.meta.env.VITE_FAST_API_BASE_URL}/books`),
+                fetch(`${import.meta.env.VITE_FAST_API_BASE_URL}/subjects`),
+                fetch(`${import.meta.env.VITE_FAST_API_BASE_URL}/classrooms`)
             ]);
 
             if (booksRes.ok) {
@@ -91,7 +91,7 @@ export function TeacherDocuments() {
 
         setUploading(true);
         try {
-            const response = await fetch(`${import.meta.env.VITE_FAST_API_URL}/upload`, {
+            const response = await fetch(`${import.meta.env.VITE_FAST_API_BASE_URL}/upload`, {
                 method: 'POST',
                 body: formData,
             });
@@ -122,7 +122,7 @@ export function TeacherDocuments() {
         if (!confirm('Bạn có chắc chắn muốn xóa tài liệu này? Thao tác này sẽ xóa toàn bộ nội dung liên quan trong database.')) return;
 
         try {
-            const response = await fetch(`${import.meta.env.VITE_FAST_API_URL}/books/${doc_type}/${id}`, {
+            const response = await fetch(`${import.meta.env.VITE_FAST_API_BASE_URL}/books/${doc_type}/${id}`, {
                 method: 'DELETE',
             });
             if (response.ok) {

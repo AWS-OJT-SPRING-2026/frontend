@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { ArrowClockwise, Check, GraduationCap, Trophy, TrendUp, Question, ArrowRight, CaretRight, CaretDown, Clock, Sparkle } from '@phosphor-icons/react';
 import { useSettings } from '../../context/SettingsContext';
 
-const FAST_API_URL = import.meta.env.VITE_FAST_API_URL;
+const FAST_API_URL = import.meta.env.VITE_FAST_API_BASE_URL;
 
 const SKILLS = [
     { label: 'Tốc độ giải bài', val: 80, diff: '+12%', bg: '#95E1D3' },
