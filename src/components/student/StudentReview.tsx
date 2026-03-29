@@ -261,22 +261,22 @@ export function StudentReview() {
 
     if (showResult) {
         return (
-            <div className={`p-8 space-y-8 max-w-4xl mx-auto text-center ${isDark ? 'bg-gradient-to-b from-[#111111] to-[#1a1a1a]' : ''}`} style={{ fontFamily: "'Nunito', sans-serif" }}>
-                <div className={`rounded-3xl p-12 space-y-6 ${isDark ? 'bg-[#232328] border border-white/10' : 'bg-white border-2 border-[#1A1A1A]'}`}>
+            <div className="p-8 space-y-8 max-w-4xl mx-auto text-center" style={{ fontFamily: "'Nunito', sans-serif" }}>
+                <div className={`rounded-3xl p-12 space-y-6 ${isDark ? 'bg-[#1A1A1A] border-2 border-[#EEEEEE] shadow-[4px_4px_0_0_#EEEEEE] hover:shadow-[0_0_15px_#FF6B4A] transition-all duration-300' : 'bg-white border-2 border-[#1A1A1A]'}`}>
                     <div className="w-24 h-24 bg-[#FCE38A] rounded-3xl border-4 border-[#1A1A1A] flex items-center justify-center mx-auto shadow-xl">
                         <Trophy className="w-12 h-12 text-[#1A1A1A]" weight="fill" />
                     </div>
                     <div>
-                        <h1 className={`text-4xl font-extrabold ${isDark ? 'text-white' : 'text-[#1A1A1A]'}`}>Hoàn thành ôn tập!</h1>
-                        <p className={`font-bold mt-2 ${isDark ? 'text-[#cbd5e1]' : 'text-gray-500'}`}>Tuyệt vời, bạn đã hoàn thành đề ôn tập được AI cá nhân hóa.</p>
+                        <h1 className={`text-4xl font-extrabold ${isDark ? 'text-[#1A1A1A]' : 'text-[#1A1A1A]'}`}>Hoàn thành ôn tập!</h1>
+                        <p className={`font-bold mt-2 ${isDark ? 'text-gray-500' : 'text-gray-500'}`}>Tuyệt vời, bạn đã hoàn thành đề ôn tập được AI cá nhân hóa.</p>
                     </div>
 
                     <div className="grid grid-cols-2 gap-6 pt-6">
-                        <div className={`p-6 rounded-3xl ${isDark ? 'bg-white/[0.03] border border-white/10' : 'bg-[#F7F7F2] border-2 border-[#1A1A1A]/10'}`}>
+                        <div className={`p-6 rounded-3xl ${isDark ? 'bg-white/[0.03] border border-[#1A1A1A]/20' : 'bg-[#F7F7F2] border-2 border-[#1A1A1A]/10'}`}>
                             <p className="text-gray-400 text-xs font-extrabold uppercase tracking-widest mb-2">Điểm số</p>
                             <p className="text-4xl font-extrabold text-[#FF6B4A]">{score}</p>
                         </div>
-                        <div className={`p-6 rounded-3xl ${isDark ? 'bg-white/[0.03] border border-white/10' : 'bg-[#F7F7F2] border-2 border-[#1A1A1A]/10'}`}>
+                        <div className={`p-6 rounded-3xl ${isDark ? 'bg-white/[0.03] border border-[#1A1A1A]/20' : 'bg-[#F7F7F2] border-2 border-[#1A1A1A]/10'}`}>
                             <p className="text-gray-400 text-xs font-extrabold uppercase tracking-widest mb-2">Đúng/Tổng</p>
                             <p className="text-4xl font-extrabold text-[#1A1A1A]">{correctCount}/{questions.length}</p>
                         </div>
@@ -323,10 +323,10 @@ export function StudentReview() {
         if (questions.length === 0) {
             return (
                 <div className="p-8 text-center" style={{ fontFamily: "'Nunito', sans-serif" }}>
-                    <div className="bg-white rounded-3xl border-2 border-[#1A1A1A] p-12 space-y-4">
+                    <div className={`rounded-3xl p-12 space-y-4 ${isDark ? 'bg-[#1A1A1A] border-2 border-[#EEEEEE] shadow-[4px_4px_0_0_#EEEEEE] hover:shadow-[0_0_15px_#FF6B4A] transition-all duration-300' : 'bg-white border-2 border-[#1A1A1A]'}`}>
                         <Brain className="w-16 h-16 text-[#FF6B4A] mx-auto animate-bounce" weight="fill" />
                         <h2 className="text-2xl font-extrabold text-[#1A1A1A]">Không tìm thấy câu hỏi</h2>
-                            <p className={`font-bold ${isDark ? 'text-[#cbd5e1]' : 'text-gray-500'}`}>Không có câu hỏi nào phù hợp với lựa chọn của bạn. Vui lòng thử chọn bài học khác.</p>
+                            <p className={`font-bold ${isDark ? 'text-gray-500' : 'text-gray-500'}`}>Không có câu hỏi nào phù hợp với lựa chọn của bạn. Vui lòng thử chọn bài học khác.</p>
                         <button
                             onClick={() => setIsReviewing(false)}
                             className="h-12 px-8 bg-[#1A1A1A] text-white rounded-2xl font-extrabold transition-transform hover:scale-[1.02]"
@@ -344,8 +344,8 @@ export function StudentReview() {
             : [questions[currentQuestion]];
 
         return (
-            <div className={`p-4 md:p-6 max-w-6xl mx-auto space-y-5 ${isDark ? 'bg-gradient-to-b from-[#111111] to-[#1a1a1a]' : ''}`} style={{ fontFamily: "'Nunito', sans-serif" }}>
-                <div className={`rounded-3xl p-5 flex flex-col md:flex-row md:items-center justify-between gap-4 ${isDark ? 'bg-[#232328] border border-white/10 shadow-[0_10px_24px_rgba(0,0,0,0.28)]' : 'bg-white border-2 border-[#1A1A1A] shadow-[4px_4px_0_0_rgba(26,26,26,1)]'}`}>
+            <div className="p-4 md:p-6 max-w-6xl mx-auto space-y-5" style={{ fontFamily: "'Nunito', sans-serif" }}>
+                <div className={`rounded-3xl p-5 flex flex-col md:flex-row md:items-center justify-between gap-4 ${isDark ? 'bg-[#1A1A1A] border-2 border-[#EEEEEE] shadow-[4px_4px_0_0_#EEEEEE] hover:shadow-[0_0_15px_#FF6B4A] transition-all duration-300' : 'bg-white border-2 border-[#1A1A1A] shadow-[4px_4px_0_0_rgba(26,26,26,1)]'}`}>
                     <div className="flex items-center gap-3">
                         <button
                             onClick={() => setIsReviewing(false)}
@@ -354,7 +354,7 @@ export function StudentReview() {
                             <ArrowLeft className="w-4 h-4" />
                         </button>
                         <div>
-                            <h2 className={`text-xl font-extrabold ${isDark ? 'text-white' : 'text-[#1A1A1A]'}`}>Đang ôn tập: {subjects.find(s => s.subject_id === selectedSubjectId)?.subject_name || "Môn học"}</h2>
+                            <h2 className={`text-xl font-extrabold ${isDark ? 'text-[#1A1A1A]' : 'text-[#1A1A1A]'}`}>Đang ôn tập: {subjects.find(s => s.subject_id === selectedSubjectId)?.subject_name || "Môn học"}</h2>
                             <div className="flex flex-wrap items-center gap-2 mt-1">
                                 <span className={`text-[10px] font-extrabold ${isDark ? 'text-[#94a3b8]' : 'text-gray-400'}`}>Tiến độ: {answers.filter(a => a !== null).length}/{questions.length}</span>
                                 <div className="flex bg-[#1A1A1A]/5 rounded-xl p-1 border border-[#1A1A1A]/10">
@@ -385,7 +385,7 @@ export function StudentReview() {
 
                 <div className="grid grid-cols-1 lg:grid-cols-[260px_1fr] gap-5">
                     <div className="space-y-4">
-                        <div className={`rounded-3xl p-4 ${isDark ? 'bg-[#232328] border border-white/10 shadow-[0_10px_24px_rgba(0,0,0,0.28)]' : 'bg-white border-2 border-[#1A1A1A] shadow-[4px_4px_0_0_rgba(26,26,26,1)]'}`}>
+                        <div className={`rounded-3xl p-4 ${isDark ? 'bg-[#1A1A1A] border-2 border-[#EEEEEE] shadow-[4px_4px_0_0_#EEEEEE] hover:shadow-[0_0_15px_#FF6B4A] transition-all duration-300' : 'bg-white border-2 border-[#1A1A1A] shadow-[4px_4px_0_0_rgba(26,26,26,1)]'}`}>
                             <p className={`text-[10px] font-extrabold uppercase tracking-widest mb-3 ${isDark ? 'text-[#94a3b8]' : 'text-gray-400'}`}>Danh sách câu hỏi</p>
                             <div className="grid grid-cols-5 gap-2">
                                 {questions.map((_, idx) => {
@@ -407,7 +407,7 @@ export function StudentReview() {
                                                 ? 'bg-[#FF6B4A] border-[#FF6B4A] text-white'
                                                 : answered
                                                     ? 'bg-emerald-100 border-emerald-300 text-emerald-700'
-                                                    : (isDark ? 'bg-[#17171d] border-white/20 text-[#cbd5e1] hover:border-white/35' : 'bg-white border-[#1A1A1A]/15 text-[#1A1A1A]/40 hover:border-[#1A1A1A]/30')
+                                                    : (isDark ? 'bg-[#17171d] border-[#1A1A1A]/20 text-gray-500 hover:border-white/35' : 'bg-white border-[#1A1A1A]/15 text-[#1A1A1A]/40 hover:border-[#1A1A1A]/30')
                                                 }`}
                                         >
                                             {idx + 1}
@@ -430,13 +430,13 @@ export function StudentReview() {
 
                     <div>
                         {displayMode === 'single' ? (
-                            <div className={`rounded-3xl overflow-hidden min-h-[460px] ${isDark ? 'bg-[#232328] border border-white/10 shadow-[0_10px_24px_rgba(0,0,0,0.28)]' : 'bg-white border-2 border-[#1A1A1A] shadow-[4px_4px_0_0_rgba(26,26,26,1)]'}`}>
-                                <div className={`p-6 ${isDark ? 'border-b border-white/10' : 'border-b-2 border-[#1A1A1A]/10'}`}>
+                            <div className={`rounded-3xl overflow-hidden min-h-[460px] ${isDark ? 'bg-[#1A1A1A] border-2 border-[#EEEEEE] shadow-[4px_4px_0_0_#EEEEEE] hover:shadow-[0_0_15px_#FF6B4A] transition-all duration-300' : 'bg-white border-2 border-[#1A1A1A] shadow-[4px_4px_0_0_rgba(26,26,26,1)]'}`}>
+                                <div className={`p-6 ${isDark ? 'border-b border-[#1A1A1A]/20' : 'border-b-2 border-[#1A1A1A]/10'}`}>
                                     <div className="flex flex-wrap items-center gap-2 mb-3">
                                         <span className="text-[10px] font-extrabold px-2 py-1 rounded-full border border-[#B8B5FF] bg-[#B8B5FF]/20 text-[#1A1A1A]">{questions[currentQuestion].type}</span>
                                         <span className="text-[10px] font-extrabold px-2 py-1 rounded-full border border-[#1A1A1A]/10 bg-[#F7F7F2] text-[#1A1A1A]/50">Câu {currentQuestion + 1}</span>
                                     </div>
-                                    <h3 className={`text-2xl font-extrabold leading-relaxed ${isDark ? 'text-white' : 'text-[#1A1A1A]'}`}>{questions[currentQuestion].question}</h3>
+                                    <h3 className={`text-2xl font-extrabold leading-relaxed ${isDark ? 'text-[#1A1A1A]' : 'text-[#1A1A1A]'}`}>{questions[currentQuestion].question}</h3>
                                 </div>
 
                                 <div className="p-6 grid grid-cols-1 md:grid-cols-2 gap-3">
@@ -446,12 +446,12 @@ export function StudentReview() {
                                             onClick={() => handleAnswer(currentQuestion, idx)}
                                             className={`group flex items-center gap-3 p-4 rounded-2xl border-2 transition-all text-left ${answers[currentQuestion] === idx
                                                 ? 'border-[#FF6B4A] bg-[#FF6B4A]/5'
-                                                : (isDark ? 'border-white/20 hover:border-white/35 bg-white/[0.02]' : 'border-[#1A1A1A]/10 hover:border-[#1A1A1A]/30 bg-white')
+                                                : (isDark ? 'border-[#1A1A1A]/20 hover:border-white/35 bg-white/[0.02]' : 'border-[#1A1A1A]/10 hover:border-[#1A1A1A]/30 bg-white')
                                                 }`}
                                         >
                                             <div className={`w-8 h-8 rounded-lg border-2 flex items-center justify-center text-xs font-extrabold ${answers[currentQuestion] === idx
                                                 ? 'bg-[#FF6B4A] border-[#FF6B4A] text-white'
-                                                : (isDark ? 'bg-[#17171d] border-white/25 text-[#d1d5db]' : 'bg-[#F7F7F2] border-[#1A1A1A]/15 text-[#1A1A1A]/50')
+                                                : (isDark ? 'bg-[#17171d] border-white/25 text-gray-500' : 'bg-[#F7F7F2] border-[#1A1A1A]/15 text-[#1A1A1A]/50')
                                                 }`}>
                                                 {String.fromCharCode(65 + idx)}
                                             </div>
@@ -460,7 +460,7 @@ export function StudentReview() {
                                     ))}
                                 </div>
 
-                                <div className={`p-5 flex items-center justify-between ${isDark ? 'bg-[#1a1a1f] border-t border-white/10' : 'bg-gray-50 border-t-2 border-[#1A1A1A]/10'}`}>
+                                <div className={`p-5 flex items-center justify-between ${isDark ? 'bg-[#1a1a1f] border-t border-[#1A1A1A]/20' : 'bg-gray-50 border-t-2 border-[#1A1A1A]/10'}`}>
                                     <button
                                         onClick={() => setCurrentQuestion(Math.max(0, currentQuestion - 1))}
                                         disabled={currentQuestion === 0}
@@ -483,7 +483,7 @@ export function StudentReview() {
                                     const actualIndex = currentPage * questionsPerPage + qIndex;
 
                                     return (
-                                        <div key={actualIndex} id={`q-${actualIndex}`} className="bg-white rounded-2xl border-2 border-[#1A1A1A] p-5 space-y-4">
+                                        <div key={actualIndex} id={`q-${actualIndex}`} className={`rounded-2xl p-5 space-y-4 ${isDark ? 'bg-[#1A1A1A] border-2 border-[#EEEEEE] shadow-[4px_4px_0_0_#EEEEEE] hover:shadow-[0_0_15px_#FF6B4A] transition-all duration-300' : 'bg-white border-2 border-[#1A1A1A]'}`}>
                                             <div className="flex items-center gap-2">
                                                 <span className="w-7 h-7 rounded-lg bg-[#1A1A1A] text-white text-xs font-extrabold flex items-center justify-center">{actualIndex + 1}</span>
                                                 <span className="text-[10px] font-extrabold text-gray-400">{q.subject}</span>
@@ -543,17 +543,17 @@ export function StudentReview() {
     if (historyDetail) {
         const correctCount = historyDetail.questions.filter(q => q.is_correct).length;
         return (
-            <div className={`p-8 space-y-6 max-w-4xl mx-auto ${isDark ? 'bg-gradient-to-b from-[#111111] to-[#1a1a1a]' : ''}`} style={{ fontFamily: "'Nunito', sans-serif" }}>
+            <div className="p-8 space-y-6 max-w-4xl mx-auto" style={{ fontFamily: "'Nunito', sans-serif" }}>
                 {/* Header */}
-                <div className={`rounded-3xl p-5 flex items-center gap-4 ${isDark ? 'bg-[#232328] border border-white/10' : 'bg-white border-2 border-[#1A1A1A]'}`}>
+                <div className={`rounded-3xl p-5 flex items-center gap-4 ${isDark ? 'bg-[#1A1A1A] border-2 border-[#EEEEEE] shadow-[4px_4px_0_0_#EEEEEE] hover:shadow-[0_0_15px_#FF6B4A] transition-all duration-300' : 'bg-white border-2 border-[#1A1A1A]'}`}>
                     <button
                         onClick={() => setHistoryDetail(null)}
-                        className={`w-10 h-10 rounded-xl border-2 flex items-center justify-center shrink-0 ${isDark ? 'border-white/15 text-gray-300 hover:bg-white/10' : 'border-[#1A1A1A]/15 text-[#1A1A1A]/60 hover:bg-[#F7F7F2]'}`}
+                        className={`w-10 h-10 rounded-xl border-2 flex items-center justify-center shrink-0 ${isDark ? 'border-[#1A1A1A]/20 text-gray-300 hover:bg-white/10' : 'border-[#1A1A1A]/15 text-[#1A1A1A]/60 hover:bg-[#F7F7F2]'}`}
                     >
                         <ArrowLeft className="w-4 h-4" />
                     </button>
                     <div className="flex-1 min-w-0">
-                        <h1 className={`text-xl font-extrabold truncate ${isDark ? 'text-white' : 'text-[#1A1A1A]'}`}>
+                        <h1 className={`text-xl font-extrabold truncate ${isDark ? 'text-[#1A1A1A]' : 'text-[#1A1A1A]'}`}>
                             Chi tiết: {historyDetail.quiz_name}
                         </h1>
                         <p className={`text-xs font-bold mt-0.5 ${isDark ? 'text-[#94a3b8]' : 'text-gray-400'}`}>
@@ -586,7 +586,7 @@ export function StudentReview() {
                                     {i + 1}
                                 </div>
                                 <div className="flex-1 min-w-0">
-                                    <p className={`font-extrabold leading-snug ${isDark ? 'text-white' : 'text-[#1A1A1A]'}`}>{q.question}</p>
+                                    <p className={`font-extrabold leading-snug ${isDark ? 'text-[#1A1A1A]' : 'text-[#1A1A1A]'}`}>{q.question}</p>
                                     <div className="flex items-center gap-2 mt-1">
                                         <span className={`text-[10px] font-extrabold px-2 py-0.5 rounded-full ${isDark ? 'bg-white/10 text-gray-300' : 'bg-[#1A1A1A]/10 text-[#1A1A1A]/50'}`}>{q.subject}</span>
                                         <span className={`text-[10px] font-extrabold px-2 py-0.5 rounded-full ${isDark ? 'bg-white/10 text-gray-300' : 'bg-[#1A1A1A]/10 text-[#1A1A1A]/50'}`}>{q.level}</span>
@@ -598,17 +598,17 @@ export function StudentReview() {
                             </div>
 
                             {/* Options */}
-                            <div className={`px-6 py-4 grid grid-cols-1 md:grid-cols-2 gap-2 ${isDark ? 'bg-[#232328]' : 'bg-white'}`}>
+                            <div className={`px-6 py-4 grid grid-cols-1 md:grid-cols-2 gap-2 ${isDark ? 'bg-[#1A1A1A] border-2 border-[#EEEEEE] shadow-[4px_4px_0_0_#EEEEEE] hover:shadow-[0_0_15px_#FF6B4A] transition-all duration-300' : 'bg-white'}`}>
                                 {q.options.map((opt, optIdx) => {
                                     const isSelected = q.selected === optIdx;
                                     const isCorrectOpt = q.correct === optIdx;
                                     let cls = '';
                                     if (isCorrectOpt) cls = isDark ? 'border-emerald-500 bg-emerald-500/15 text-emerald-300' : 'border-emerald-500 bg-emerald-50 text-emerald-700';
                                     else if (isSelected && !isCorrectOpt) cls = isDark ? 'border-red-500 bg-red-500/15 text-red-300' : 'border-red-400 bg-red-50 text-red-700';
-                                    else cls = isDark ? 'border-white/10 text-gray-400' : 'border-[#1A1A1A]/10 text-[#1A1A1A]/50';
+                                    else cls = isDark ? 'border-[#1A1A1A]/20 text-gray-400' : 'border-[#1A1A1A]/10 text-[#1A1A1A]/50';
                                     return (
                                         <div key={optIdx} className={`flex items-center gap-3 px-4 py-3 rounded-2xl border-2 ${cls}`}>
-                                            <span className={`w-6 h-6 rounded-md border-2 flex items-center justify-center text-xs font-extrabold shrink-0 ${isCorrectOpt ? 'border-emerald-500 bg-emerald-500 text-white' : isSelected ? 'border-red-400 bg-red-400 text-white' : (isDark ? 'border-white/20 text-gray-400' : 'border-[#1A1A1A]/15 text-[#1A1A1A]/40')}`}>
+                                            <span className={`w-6 h-6 rounded-md border-2 flex items-center justify-center text-xs font-extrabold shrink-0 ${isCorrectOpt ? 'border-emerald-500 bg-emerald-500 text-white' : isSelected ? 'border-red-400 bg-red-400 text-white' : (isDark ? 'border-[#1A1A1A]/20 text-gray-400' : 'border-[#1A1A1A]/15 text-[#1A1A1A]/40')}`}>
                                                 {String.fromCharCode(65 + optIdx)}
                                             </span>
                                             <span className="text-sm font-bold">{opt}</span>
@@ -621,7 +621,7 @@ export function StudentReview() {
 
                             {/* Explanation */}
                             {q.explanation && (
-                                <div className={`px-6 py-3 border-t ${isDark ? 'border-white/10 bg-[#1a1a1f]' : 'border-[#1A1A1A]/10 bg-[#F7F7F2]'}`}>
+                                <div className={`px-6 py-3 border-t ${isDark ? 'border-[#1A1A1A]/20 bg-[#1a1a1f]' : 'border-[#1A1A1A]/10 bg-[#F7F7F2]'}`}>
                                     <p className={`text-xs font-bold ${isDark ? 'text-[#94a3b8]' : 'text-[#1A1A1A]/50'}`}>
                                         <span className="font-extrabold text-[#FF6B4A]">Giải thích: </span>{q.explanation}
                                     </p>
@@ -646,19 +646,19 @@ export function StudentReview() {
     }
 
     return (
-        <div className={`p-8 space-y-6 max-w-6xl mx-auto ${isDark ? 'bg-gradient-to-b from-[#111111] to-[#1a1a1a]' : ''}`} style={{ fontFamily: "'Nunito', sans-serif" }}>
+        <div className="p-8 space-y-6 max-w-6xl mx-auto" style={{ fontFamily: "'Nunito', sans-serif" }}>
             <div>
                 <p className={`text-xs font-extrabold uppercase tracking-widest mb-1 ${isDark ? 'text-[#94a3b8]' : 'text-gray-400'}`}>{text.titleTag}</p>
-                <h1 className={`text-3xl font-extrabold ${isDark ? 'text-white' : 'text-[#1A1A1A]'}`}>{text.title}</h1>
+                <h1 className={`text-3xl font-extrabold ${isDark ? 'text-white' : 'text-[#1A1A1A]'}'}`}>{text.title}</h1>
             </div>
 
             <div className="flex flex-col lg:flex-row gap-6 items-start">
                 <div className="flex-1 space-y-5">
                     {/* Step 1 */}
-                    <div className={`rounded-3xl p-6 space-y-5 ${isDark ? 'bg-[#232328] border border-white/10' : 'bg-white border-2 border-[#1A1A1A]'}`}>
+                    <div className={`rounded-3xl p-6 space-y-5 ${isDark ? 'bg-[#1A1A1A] border-2 border-[#EEEEEE] shadow-[4px_4px_0_0_#EEEEEE] hover:shadow-[0_0_15px_#FF6B4A] transition-all duration-300' : 'bg-white border-2 border-[#1A1A1A]'}`}>
                         <div className="flex items-center gap-3">
                             <div className={`w-8 h-8 rounded-full font-extrabold flex items-center justify-center text-sm shadow-sm ${isDark ? 'bg-[#fde68a] border border-[#fde68a] text-[#1A1A1A] shadow-[#fde68a]/25' : 'bg-[#FCE38A] border-2 border-[#1A1A1A] text-[#1A1A1A]'}`}>1</div>
-                            <h2 className={`text-xl font-extrabold ${isDark ? 'text-white' : 'text-[#1A1A1A]'}`}>{text.stepGeneral}</h2>
+                            <h2 className={`text-xl font-extrabold ${isDark ? 'text-[#1A1A1A]' : 'text-[#1A1A1A]'}`}>{text.stepGeneral}</h2>
                         </div>
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
                             <div>
@@ -667,7 +667,7 @@ export function StudentReview() {
                                     <select
                                         value={selectedSubjectId || ''}
                                         onChange={(e) => setSelectedSubjectId(Number(e.target.value))}
-                                        className={`w-full h-11 rounded-2xl px-4 appearance-none font-bold focus:outline-none focus:border-[#FF6B4A] transition-colors ${isDark ? 'bg-[#17171d] border border-white/15 text-white' : 'bg-[#F7F7F2] border-2 border-[#1A1A1A]/20 text-[#1A1A1A]'}`}
+                                        className={`w-full h-11 rounded-2xl px-4 appearance-none font-bold focus:outline-none focus:border-[#FF6B4A] transition-colors ${isDark ? 'bg-[#F7F7F2] border-2 border-[#1A1A1A]/20 text-[#1A1A1A]' : 'bg-[#F7F7F2] border-2 border-[#1A1A1A]/20 text-[#1A1A1A]'}`}
                                     >
                                         {subjects.map(s => (
                                             <option key={s.subject_id} value={s.subject_id}>{s.subject_name}</option>
@@ -688,7 +688,7 @@ export function StudentReview() {
                                     }}
                                     min={1}
                                     max={100}
-                                    className={`review-number-input w-full h-11 rounded-2xl px-4 font-bold focus:outline-none focus:border-[#FF6B4A] transition-colors ${isDark ? 'bg-[#17171d] border border-white/15 text-white' : 'bg-[#F7F7F2] border-2 border-[#1A1A1A]/20 text-[#1A1A1A]'}`}
+                                    className={`review-number-input w-full h-11 rounded-2xl px-4 font-bold focus:outline-none focus:border-[#FF6B4A] transition-colors ${isDark ? 'bg-[#F7F7F2] border-2 border-[#1A1A1A]/20 text-[#1A1A1A]' : 'bg-[#F7F7F2] border-2 border-[#1A1A1A]/20 text-[#1A1A1A]'}`}
                                 />
                             </div>
                         </div>
@@ -706,7 +706,7 @@ export function StudentReview() {
                                     onChange={(e) => setAiQuestions(Math.max(0, Math.min(totalQuestions, Number(e.target.value))))}
                                     min={0}
                                     max={totalQuestions}
-                                    className={`review-number-input w-24 h-11 rounded-2xl px-4 font-bold focus:outline-none focus:border-[#FF6B4A] transition-colors text-center ${isDark ? 'bg-[#17171d] border border-white/15 text-white' : 'bg-white border-2 border-[#1A1A1A]/20 text-[#1A1A1A]'}`}
+                                    className={`review-number-input w-24 h-11 rounded-2xl px-4 font-bold focus:outline-none focus:border-[#FF6B4A] transition-colors text-center ${isDark ? 'bg-white border-2 border-[#1A1A1A]/20 text-[#1A1A1A]' : 'bg-white border-2 border-[#1A1A1A]/20 text-[#1A1A1A]'}`}
                                 />
                                 <div className="flex-1">
                                     <div className={`flex justify-between text-xs font-extrabold mb-1 ${isDark ? 'text-[#fef3c7]' : 'text-[#1A1A1A]/60'}`}>
@@ -736,7 +736,7 @@ export function StudentReview() {
                                 </div>
                                 <div>
                                     <h4 className={`font-extrabold mb-0.5 ${isDark ? 'text-[#f3f4f6]' : 'text-[#1A1A1A]'}`}>{text.prioritizeWeak}</h4>
-                                    <p className={`text-sm font-semibold ${isDark ? 'text-[#d1d5db]' : 'text-[#1A1A1A]/60'}`}>{text.prioritizeWeakDesc}</p>
+                                    <p className={`text-sm font-semibold ${isDark ? 'text-gray-500' : 'text-[#1A1A1A]/60'}`}>{text.prioritizeWeakDesc}</p>
                                 </div>
                             </div>
                             <div className="shrink-0 cursor-pointer w-12 h-7 bg-[#FF6B4A] rounded-full p-1 border-2 border-[#FF6B4A]/50">
@@ -746,10 +746,10 @@ export function StudentReview() {
                     </div>
 
                     {/* Step 2 - List format */}
-                    <div className={`rounded-3xl p-6 space-y-5 ${isDark ? 'bg-[#232328] border border-white/10' : 'bg-white border-2 border-[#1A1A1A]'}`}>
+                    <div className={`rounded-3xl p-6 space-y-5 ${isDark ? 'bg-[#1A1A1A] border-2 border-[#EEEEEE] shadow-[4px_4px_0_0_#EEEEEE] hover:shadow-[0_0_15px_#FF6B4A] transition-all duration-300' : 'bg-white border-2 border-[#1A1A1A]'}`}>
                         <div className="flex items-center gap-3">
                             <div className={`w-8 h-8 rounded-full font-extrabold flex items-center justify-center text-sm shadow-sm ${isDark ? 'bg-[#c4b5fd] border border-[#c4b5fd] text-[#1A1A1A] shadow-[#c4b5fd]/25' : 'bg-[#B8B5FF] border-2 border-[#1A1A1A] text-[#1A1A1A]'}`}>2</div>
-                            <h2 className={`text-xl font-extrabold ${isDark ? 'text-white' : 'text-[#1A1A1A]'}`}>{text.stepLessons}</h2>
+                            <h2 className={`text-xl font-extrabold ${isDark ? 'text-[#1A1A1A]' : 'text-[#1A1A1A]'}`}>{text.stepLessons}</h2>
                         </div>
                         {/* List format */}
                         <div className="space-y-2">
@@ -759,14 +759,14 @@ export function StudentReview() {
                                     onClick={() => toggleLesson(i)}
                                     className={`rounded-2xl p-4 cursor-pointer border-2 transition-all duration-200 flex items-center justify-between gap-4 ${selectedLessons[i]
                                         ? 'border-[#FF6B4A] bg-[#FF6B4A]/[0.08] shadow-sm'
-                                        : (isDark ? 'border-white/15 bg-white/[0.02] hover:border-white/30' : 'border-[#1A1A1A]/15 bg-white hover:border-[#1A1A1A]/30')
+                                        : (isDark ? 'border-[#1A1A1A]/20 bg-white/[0.02] hover:border-white/30' : 'border-[#1A1A1A]/15 bg-white hover:border-[#1A1A1A]/30')
                                         }`}
                                 >
                                     {/* Info */}
                                     <div className="flex items-center gap-3 min-w-0">
                                         <h3 className={`font-extrabold truncate ${isDark ? 'text-[#f3f4f6]' : 'text-[#1A1A1A]'}`}>{lesson.label}</h3>
                                         <span
-                                            className={`text-[10px] font-extrabold px-2 py-0.5 rounded-full shrink-0 ${isDark ? 'border border-white/20 text-[#f3f4f6]' : 'border border-[#1A1A1A]/15 text-[#1A1A1A]'}`}
+                                            className={`text-[10px] font-extrabold px-2 py-0.5 rounded-full shrink-0 ${isDark ? 'border border-[#1A1A1A]/15 text-[#1A1A1A]' : 'border border-[#1A1A1A]/15 text-[#1A1A1A]'}`}
                                             style={{ backgroundColor: lesson.levelBg }}
                                         >
                                             {lesson.level}
@@ -785,20 +785,20 @@ export function StudentReview() {
                                 </div>
                             ))}
                         </div>
-                        <p className={`text-xs font-bold ${isDark ? 'text-[#cbd5e1]' : 'text-[#1A1A1A]/55'}`}>
+                        <p className={`text-xs font-bold ${isDark ? 'text-gray-500' : 'text-[#1A1A1A]/55'}`}>
                             {text.selectedLessons} {selectedLessons.filter(Boolean).length}/{lessons.length} {text.lessonsUnit}
                         </p>
                     </div>
 
                     {/* History Section */}
                     {history.length > 0 && (
-                            <div className={`rounded-3xl p-6 space-y-5 ${isDark ? 'bg-[#232328] border border-white/10 shadow-[0_10px_24px_rgba(0,0,0,0.28)]' : 'bg-white border-2 border-[#1A1A1A] shadow-[4px_4px_0_0_rgba(26,26,26,1)]'}`}>
+                            <div className={`rounded-3xl p-6 space-y-5 ${isDark ? 'bg-[#1A1A1A] border-2 border-[#EEEEEE] shadow-[4px_4px_0_0_#EEEEEE] hover:shadow-[0_0_15px_#FF6B4A] transition-all duration-300' : 'bg-white border-2 border-[#1A1A1A] shadow-[4px_4px_0_0_rgba(26,26,26,1)]'}`}>
                             <div className="flex items-center justify-between">
                                 <div className="flex items-center gap-3">
                                     <div className="w-8 h-8 rounded-full bg-[#95E1D3] border-2 border-[#1A1A1A] font-extrabold flex items-center justify-center text-sm text-[#1A1A1A]">
                                         <Trophy weight="bold" className="w-4 h-4" />
                                     </div>
-                                    <h2 className={`text-xl font-extrabold ${isDark ? 'text-white' : 'text-[#1A1A1A]'}`}>Lịch sử ôn tập</h2>
+                                    <h2 className={`text-xl font-extrabold ${isDark ? 'text-[#1A1A1A]' : 'text-[#1A1A1A]'}`}>Lịch sử ôn tập</h2>
                                 </div>
                                 <span className={`text-xs font-bold ${isDark ? 'text-[#94a3b8]' : 'text-gray-400'}`}>Hiển thị {history.length} bài làm gần nhất</span>
                             </div>
@@ -852,8 +852,8 @@ export function StudentReview() {
 
                 {/* Summary panel */}
                 <div className="w-full lg:w-80 space-y-5 shrink-0">
-                    <div className={`rounded-3xl p-6 space-y-5 ${isDark ? 'bg-[#232328] border border-white/10' : 'bg-white border-2 border-[#1A1A1A]'}`}>
-                        <h3 className={`font-extrabold text-xl ${isDark ? 'text-white' : 'text-[#1A1A1A]'}`}>{text.summaryTitle}</h3>
+                    <div className={`rounded-3xl p-6 space-y-5 ${isDark ? 'bg-[#1A1A1A] border-2 border-[#EEEEEE] shadow-[4px_4px_0_0_#EEEEEE] hover:shadow-[0_0_15px_#FF6B4A] transition-all duration-300' : 'bg-white border-2 border-[#1A1A1A]'}`}>
+                        <h3 className={`font-extrabold text-xl ${isDark ? 'text-[#1A1A1A]' : 'text-[#1A1A1A]'}`}>{text.summaryTitle}</h3>
                         <div className="space-y-3">
                             {[
                                 ['Môn học', subjects.find(s => s.subject_id === selectedSubjectId)?.subject_name || '...'],
@@ -875,7 +875,7 @@ export function StudentReview() {
                             ].map(([l, v, bg]) => (
                                 <div key={l} className="flex justify-between text-sm font-bold mb-2">
                                     <div className="flex items-center gap-2"><div className="w-3 h-3 rounded-full border border-[#1A1A1A]/20" style={{ backgroundColor: bg }} />{l}</div>
-                                    <span className={isDark ? 'text-[#cbd5e1]' : 'text-[#1A1A1A]/60'}>{v}</span>
+                                    <span className={isDark ? 'text-gray-500' : 'text-[#1A1A1A]/60'}>{v}</span>
                                 </div>
                             ))}
                         </div>
@@ -899,10 +899,10 @@ export function StudentReview() {
                     </div>
 
                     {/* AI tip */}
-                    <div className={`rounded-3xl p-6 relative overflow-hidden ${isDark ? 'bg-[#17171d] border border-white/10' : 'bg-[#1A1A1A]'}`}>
+                    <div className={`rounded-3xl p-6 relative overflow-hidden ${isDark ? 'bg-[#17171d] border-none' : 'bg-[#1A1A1A]'}`}>
                         <div className="absolute top-0 right-0 w-24 h-24 bg-white/5 rounded-full -translate-y-1/2 translate-x-1/2 blur-xl" />
                         <div className="font-extrabold text-lg text-white mb-3 flex items-center gap-2">✨ {text.aiTip}</div>
-                        <p className={`text-sm font-semibold leading-relaxed italic ${isDark ? 'text-[#cbd5e1]' : 'text-white/60'}`}>
+                        <p className={`text-sm font-semibold leading-relaxed italic ${isDark ? 'text-gray-500' : 'text-white/60'}`}>
                             Bạn đang gặp khó khăn ở Công thức Newton-Leibniz. Bài ôn tập này sẽ thêm 5 câu vận dụng để củng cố căn bản.
                         </p>
                     </div>

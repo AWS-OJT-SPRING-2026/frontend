@@ -33,7 +33,7 @@ export function TeacherLayout() {
         <div className={cn("min-h-screen flex transition-colors duration-300", isDark ? "bg-[#0a0a0a]" : "bg-[#111111]")} style={{ fontFamily: "'Nunito', sans-serif" }}>
             <aside className={cn(
                 "flex flex-col items-center py-5 sticky top-0 h-screen z-20 shrink-0 overflow-hidden transition-[width] duration-300 ease-in-out",
-                isDark ? "bg-[#141414]" : "bg-[#1A1A1A]",
+                "bg-[#0a0a0a]",
                 isExpanded ? "w-60" : "group/sidebar w-20 hover:w-60"
             )}>
                 <div className="mb-6 flex items-center pl-4 w-full h-14">
@@ -95,9 +95,8 @@ export function TeacherLayout() {
                     style={{
                         backgroundColor: isDark ? '#1b1d22' : '#F7F7F2',
                         backgroundImage: isDark
-                            ? 'linear-gradient(180deg, rgba(255,255,255,0.02), rgba(255,255,255,0))'
-                            : `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24' height='24'%3E%3Ctext x='50%25' y='55%25' dominant-baseline='middle' text-anchor='middle' font-size='10' fill='%231A1A1A' fill-opacity='0.12' font-family='sans-serif'%3E%C3%97%3C/text%3E%3C/svg%3E"),
-                                         radial-gradient(ellipse at center, transparent 20%, #F7F7F2 80%)`,
+                            ? `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24' height='24'%3E%3Ctext x='50%25' y='55%25' dominant-baseline='middle' text-anchor='middle' font-size='10' fill='%23FFFFFF' fill-opacity='0.05' font-family='sans-serif'%3E%C3%97%3C/text%3E%3C/svg%3E")`
+                            : `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24' height='24'%3E%3Ctext x='50%25' y='55%25' dominant-baseline='middle' text-anchor='middle' font-size='10' fill='%231A1A1A' fill-opacity='0.12' font-family='sans-serif'%3E%C3%97%3C/text%3E%3C/svg%3E")`,
                         backgroundBlendMode: 'normal',
                     }}
                 >

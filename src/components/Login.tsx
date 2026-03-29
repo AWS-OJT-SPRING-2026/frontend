@@ -79,10 +79,16 @@ export function Login({ onSwitchToRegister, onSwitchToForgotPassword }: LoginPro
     <div
       className={cn(
         'min-h-screen flex items-center justify-center p-4 transition-opacity duration-700 relative',
-        isDark ? 'bg-[#0b0d12]' : 'bg-[#F7F7F2]',
         isVisible ? 'opacity-100' : 'opacity-0'
       )}
-      style={{ fontFamily: "'Nunito', sans-serif" }}
+      style={{
+        fontFamily: "'Nunito', sans-serif",
+        backgroundColor: isDark ? '#465C88' : '#F7F7F2',
+        backgroundImage: isDark
+            ? `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24' height='24'%3E%3Ctext x='50%25' y='55%25' dominant-baseline='middle' text-anchor='middle' font-size='10' fill='%23FFFFFF' fill-opacity='0.05' font-family='sans-serif'%3E%C3%97%3C/text%3E%3C/svg%3E")`
+            : `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24' height='24'%3E%3Ctext x='50%25' y='55%25' dominant-baseline='middle' text-anchor='middle' font-size='10' fill='%231A1A1A' fill-opacity='0.12' font-family='sans-serif'%3E%C3%97%3C/text%3E%3C/svg%3E")`,
+        backgroundBlendMode: 'normal',
+      }}
     >
       <div className="absolute top-5 right-5 md:top-7 md:right-8 z-20 flex items-center gap-2">
         <LanguageSwitcher />

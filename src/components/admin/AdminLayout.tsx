@@ -40,7 +40,7 @@ export function AdminLayout() {
             <aside
                 className={cn(
                     "flex flex-col items-center py-5 h-full z-20 shrink-0 overflow-hidden transition-[width] duration-300 ease-in-out",
-                    isDark ? "bg-[#141414]" : "bg-[#1A1A1A]",
+                    "bg-[#0a0a0a]",
                     isExpanded ? "w-60" : "group/sidebar w-20 hover:w-60"
                 )}
             >
@@ -112,10 +112,19 @@ export function AdminLayout() {
 
             {/* Dark canvas with floating content panel */}
             <main className="flex-1 overflow-auto h-full p-3">
-                <div className={cn(
-                    "min-h-full rounded-3xl overflow-auto shadow-2xl transition-colors duration-300",
-                    isDark ? "bg-[#1e1e1e] text-gray-200" : "bg-[#F7F7F2] text-[#1A1A1A]"
-                )}>
+                <div
+                    className={cn(
+                        "min-h-full rounded-3xl overflow-auto shadow-2xl transition-colors duration-300",
+                        isDark ? "text-gray-200" : "text-[#1A1A1A]"
+                    )}
+                    style={{
+                        backgroundColor: isDark ? '#465C88' : '#F7F7F2',
+                        backgroundImage: isDark
+                            ? `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24' height='24'%3E%3Ctext x='50%25' y='55%25' dominant-baseline='middle' text-anchor='middle' font-size='10' fill='%23FFFFFF' fill-opacity='0.05' font-family='sans-serif'%3E%C3%97%3C/text%3E%3C/svg%3E")`
+                            : `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24' height='24'%3E%3Ctext x='50%25' y='55%25' dominant-baseline='middle' text-anchor='middle' font-size='10' fill='%231A1A1A' fill-opacity='0.12' font-family='sans-serif'%3E%C3%97%3C/text%3E%3C/svg%3E")`,
+                        backgroundBlendMode: 'normal',
+                    }}
+                >
                     <Outlet />
                 </div>
             </main>
