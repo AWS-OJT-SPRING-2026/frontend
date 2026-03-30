@@ -36,6 +36,13 @@ export interface SubjectItem {
   subjectName: string;
 }
 
+export interface TeacherClassroomOption {
+  classID: number;
+  className: string;
+  subjectID: number;
+  subjectName: string;
+}
+
 interface PageResponse<T> {
   currentPage: number;
   totalPages: number;
@@ -73,6 +80,11 @@ export const classroomService = {
   async getAllSubjects(token: string): Promise<SubjectItem[]> {
 	const response = await api.get<ApiResponse<SubjectItem[]>>('/subjects', token);
 	return response.result ?? [];
+  },
+
+  async getMyClassroomOptions(token: string): Promise<TeacherClassroomOption[]> {
+    const response = await api.get<ApiResponse<TeacherClassroomOption[]>>('/classrooms/teacher/me/options', token);
+    return response.result ?? [];
   },
 };
 
