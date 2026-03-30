@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
-import { Sparkle, PaperPlaneTilt, CircleNotch, CaretLeft, MagnifyingGlass, DotsThreeVertical, Microphone } from '@phosphor-icons/react';
+import { Sparkle, PaperPlaneTilt, CircleNotch, CaretLeft, MagnifyingGlass, DotsThreeVertical, Microphone, FileArrowUp } from '@phosphor-icons/react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import remarkMath from 'remark-math';
@@ -27,7 +27,7 @@ function generateSessionId(): string {
 
 function formatSessionTitle(input: string): string {
     const trimmed = input.trim();
-    if (!trimmed) return 'Cuoc hoi thoai moi';
+    if (!trimmed) return 'Cuộc hội thoại mới';
     return trimmed.length > 25 ? `${trimmed.substring(0, 25)}...` : trimmed;
 }
 
@@ -153,7 +153,7 @@ export function StudentChat() {
                     isFirstChunk = false;
                 }
                 currentAssistantContent += token;
-                
+
                 // Update the messages state with the new token
                 setMessages(prev => {
                     const lastIdx = prev.length - 1;
@@ -254,7 +254,7 @@ export function StudentChat() {
                     /* Tuyệt đối KHÔNG gán background, padding hay border vào đây vì sẽ phá vỡ cấu trúc absolute nội bộ của KaTeX */
                 }
             `}</style>
-            
+
             {/* Left Sidebar */}
             <div className={`w-80 hidden lg:flex flex-col border-r ${isDark ? 'bg-[#1a1a1f] border-white/10' : 'bg-white border-[#1A1A1A]/10 border-r-2'}`}>
                 {/* Sidebar Header */}
@@ -282,15 +282,14 @@ export function StudentChat() {
                             {sessions.length === 0 ? (
                                 <p className="text-xs px-2 text-gray-400 font-bold italic">Chưa có lịch sử chat.</p>
                             ) : (
-                                [...sessions].sort((a,b) => b.updatedAt - a.updatedAt).map(session => (
+                                [...sessions].sort((a, b) => b.updatedAt - a.updatedAt).map(session => (
                                     <button
                                         key={session.id}
                                         onClick={() => switchSession(session.id)}
-                                        className={`w-full text-left px-3 py-2.5 rounded-xl border transition-colors flex items-center justify-between ${
-                                            sessionId === session.id
+                                        className={`w-full text-left px-3 py-2.5 rounded-xl border transition-colors flex items-center justify-between ${sessionId === session.id
                                                 ? isDark ? 'bg-[#2a2f44] border-[#525a80] font-extrabold text-gray-100' : 'bg-[#B8B5FF]/30 border-[#1A1A1A] font-extrabold text-[#1A1A1A]'
                                                 : isDark ? 'hover:bg-white/5 border-transparent font-bold text-gray-300' : 'hover:bg-[#1A1A1A]/5 border-transparent font-bold text-[#1A1A1A]/70'
-                                        }`}
+                                            }`}
                                     >
                                         <span className="truncate pr-2">{session.title}</span>
                                         {sessionId === session.id ? (
@@ -331,7 +330,7 @@ export function StudentChat() {
                             <div className="w-6 h-6 rounded-full bg-[#1A1A1A] text-white flex items-center justify-center text-[10px] font-black mx-auto mb-2">💡</div>
                             <h4 className={`font-extrabold text-center text-sm mb-2 ${isDark ? 'text-gray-100' : 'text-[#1A1A1A]'}`}>Chia nhỏ câu hỏi</h4>
                             <p className={`text-[11px] text-center font-bold leading-relaxed ${isDark ? 'text-gray-300' : 'text-[#1A1A1A]/70'}`}>Thay vì hỏi toàn bộ bài dài, hãy hỏi từng ý nhỏ. AI sẽ giúp bạn tư duy dễ dàng và tự tin hơn.</p>
-                            
+
                             <div className="flex justify-center gap-1 mt-4">
                                 <div className="w-1.5 h-1.5 rounded-full bg-[#1A1A1A]" />
                                 <div className="w-1.5 h-1.5 rounded-full bg-[#1A1A1A]/20" />
@@ -346,12 +345,20 @@ export function StudentChat() {
             <div className="flex-1 flex flex-col relative min-h-0">
                 {/* Chat Header */}
                 <div className={`h-16 flex items-center justify-between px-6 shrink-0 z-10 w-full ${isDark ? 'bg-[#1a1a1f] border-b border-l border-white/10' : 'bg-white border-b-2 border-l-2 border-[#1A1A1A]/10 shadow-sm'}`}>
-                    <h2 className={`font-extrabold text-[17px] ${isDark ? 'text-gray-100' : 'text-[#1A1A1A]'}`}>
+                    <h2 className={`font-extrabold text-[17px] truncate pr-4 ${isDark ? 'text-gray-100' : 'text-[#1A1A1A]'}`}>
                         {sessions.find(s => s.id === sessionId)?.title || 'Bài tập mới hiện tại'}
                     </h2>
-                    <button className={`w-9 h-9 rounded-xl flex items-center justify-center transition-colors ${isDark ? 'text-gray-200 hover:bg-white/10' : 'text-[#1A1A1A] hover:bg-[#1A1A1A]/5'}`}>
-                        <DotsThreeVertical className="w-6 h-6" weight="bold" />
-                    </button>
+                    <div className="flex items-center gap-2 shrink-0">
+                        <button className={`hidden sm:block px-4 py-1.5 font-extrabold text-xs rounded-xl transition-colors ${isDark ? 'bg-[#1f1f23] hover:bg-[#26262b] text-gray-100 border border-white/10' : 'bg-[#F7F7F2] hover:bg-[#1A1A1A]/5 text-[#1A1A1A] border-2 border-[#1A1A1A]/20'}`}>
+                            Đánh giá
+                        </button>
+                        <button className={`hidden sm:block px-4 py-1.5 font-extrabold text-xs rounded-xl transition-colors ${isDark ? 'bg-[#1f1f23] hover:border-[#ff9a73] text-[#ff9a73] border border-[#ff9a73]/50' : 'bg-[#FF6B4A]/10 hover:bg-[#FF6B4A]/20 text-[#FF6B4A] border-2 border-[#FF6B4A]/30'}`}>
+                            Kết thúc
+                        </button>
+                        <button className={`w-9 h-9 rounded-xl flex items-center justify-center transition-colors ${isDark ? 'text-gray-200 hover:bg-white/10' : 'text-[#1A1A1A] hover:bg-[#1A1A1A]/5'}`}>
+                            <DotsThreeVertical className="w-6 h-6" weight="bold" />
+                        </button>
+                    </div>
                 </div>
 
                 <div className="flex-1 overflow-y-auto p-6 md:p-8 space-y-6">
@@ -397,11 +404,10 @@ export function StudentChat() {
                                     </div>
                                 )}
                                 <div
-                                    className={`rounded-3xl px-6 py-4 shadow-sm max-w-[85%] lg:max-w-[75%] ${
-                                        msg.role === 'user'
+                                    className={`rounded-3xl px-6 py-4 shadow-sm max-w-[85%] lg:max-w-[75%] ${msg.role === 'user'
                                             ? isDark ? 'bg-[#232327] text-gray-100 border border-white/10 rounded-tr-none' : 'bg-white text-[#1A1A1A] border-2 border-[#1A1A1A]/10 rounded-tr-none'
                                             : isDark ? 'bg-[#1c1c20] text-gray-100 border border-white/10 rounded-tl-none' : 'bg-white text-[#1A1A1A] border-2 border-[#1A1A1A]/10 rounded-tl-none'
-                                    }`}
+                                        }`}
                                 >
                                     {msg.role === 'assistant' ? (
                                         <div className={`prose prose-sm max-w-none overflow-hidden
@@ -454,40 +460,39 @@ export function StudentChat() {
                 </div>
 
                 {/* Input Area (Matched reference layout style) */}
-                <div className={`p-5 w-full shrink-0 ${isDark ? 'bg-[#1a1a1f] border-t border-l border-white/10' : 'bg-white border-t-2 border-l-2 border-[#1A1A1A]/10'}`}>
-                    <div className="max-w-4xl mx-auto flex flex-col md:flex-row items-center gap-3">
-                        <button className="w-full md:w-auto flex items-center justify-center gap-2 bg-[#1A1A1A] hover:bg-[#333333] text-white font-extrabold px-6 py-3.5 rounded-2xl border-2 border-[#1A1A1A] transition-colors shrink-0 shadow-sm group">
-                            <Microphone className="w-5 h-5 text-[#FF6B4A] group-hover:scale-110 transition-transform" weight="fill" />
-                            Ghi âm câu hỏi
-                        </button>
+                <div className="p-4 md:p-6 w-full shrink-0">
+                    <div className="max-w-4xl mx-auto flex flex-row items-center gap-2 md:gap-3">
+                        {/* Action Buttons */}
+                        <div className="flex items-center gap-2 shrink-0">
+                            <button className={`w-12 h-12 md:w-14 md:h-14 rounded-full flex items-center justify-center transition-colors shadow-sm focus:outline-none ${isDark ? 'bg-[#222] hover:bg-[#2a2a2a] text-gray-200' : 'bg-[#1e1e1e] hover:bg-[#2a2a2a] text-gray-100'}`}>
+                                <FileArrowUp className="w-5 h-5 md:w-6 md:h-6" weight="regular" />
+                            </button>
+                            <button className={`w-12 h-12 md:w-14 md:h-14 rounded-full flex items-center justify-center transition-colors shadow-sm focus:outline-none ${isDark ? 'bg-[#222] hover:bg-[#2a2a2a] text-gray-200' : 'bg-[#1e1e1e] hover:bg-[#2a2a2a] text-gray-100'}`}>
+                                <Microphone className="w-5 h-5 md:w-6 md:h-6" weight="regular" />
+                            </button>
+                        </div>
                         
-                        <div className={`w-full h-12 md:h-14 rounded-2xl flex items-center pl-4 pr-1.5 transition-colors relative shadow-inner ${isDark ? 'border border-white/10 bg-[#111216] focus-within:border-[#ff7849]' : 'border-2 border-[#1A1A1A]/20 bg-[#F7F7F2] focus-within:border-[#FF6B4A]'}`}>
+                        {/* Input Field */}
+                        <div className={`flex-1 h-12 md:h-14 rounded-full flex items-center px-5 transition-colors shadow-sm focus-within:ring-2 focus-within:ring-[#FFB800] ${isDark ? 'bg-[#222] text-gray-100' : 'bg-[#1e1e1e] text-white'}`}>
                             <input
                                 ref={inputRef}
                                 value={input}
                                 onChange={(e) => setInput(e.target.value)}
                                 onKeyDown={handleKeyDown}
                                 disabled={isLoading}
-                                className={`w-full h-full bg-transparent border-none outline-none text-sm font-semibold ${isDark ? 'text-gray-100 placeholder:text-gray-500' : 'text-[#1A1A1A] placeholder:text-[#1A1A1A]/40'}`}
-                                placeholder="..."
+                                className={`w-full h-full bg-transparent border-none outline-none text-[15px] font-semibold ${isDark ? 'placeholder:text-gray-500 text-gray-100' : 'placeholder:text-gray-400 text-white'}`}
+                                placeholder="Start typing..."
                             />
-                            <button
-                                onClick={handleSend}
-                                disabled={isLoading || !input.trim()}
-                                className="w-10 h-10 md:w-11 md:h-11 rounded-xl bg-[#FF6B4A] hover:bg-[#ff5535] disabled:opacity-50 disabled:cursor-not-allowed text-white flex items-center justify-center transition-colors shrink-0 shadow-sm"
-                            >
-                                <PaperPlaneTilt className="w-5 h-5" weight="fill" />
-                            </button>
                         </div>
                         
-                        <div className="hidden md:flex items-center gap-2 shrink-0">
-                            <button className={`px-5 h-14 font-extrabold text-sm rounded-2xl transition-colors ${isDark ? 'bg-[#1f1f23] hover:bg-[#26262b] text-gray-100 border border-white/10' : 'bg-white hover:bg-[#1A1A1A]/5 text-[#1A1A1A] border-2 border-[#1A1A1A]/20'}`}>
-                                Xem đánh giá
-                            </button>
-                            <button className={`px-5 h-14 font-extrabold text-sm rounded-2xl transition-colors ${isDark ? 'bg-[#1f1f23] hover:border-[#ff9a73] hover:text-[#ff9a73] text-gray-100 border border-white/10' : 'bg-white hover:border-[#FF6B4A] hover:text-[#FF6B4A] text-[#1A1A1A] border-2 border-[#1A1A1A]/20'}`}>
-                                Kết thúc
-                            </button>
-                        </div>
+                        {/* Send Button */}
+                        <button
+                            onClick={handleSend}
+                            disabled={isLoading || !input.trim()}
+                            className={`w-12 h-12 md:w-14 md:h-14 rounded-full flex items-center justify-center transition-colors shrink-0 shadow-sm focus:outline-none ${!input.trim() || isLoading ? (isDark ? 'bg-white/10 text-gray-500' : 'bg-[#1A1A1A]/10 text-[#1A1A1A]/40') : 'bg-[#FFB800] hover:bg-[#f5b100] text-[#1e1e1e]'}`}
+                        >
+                            <PaperPlaneTilt className="w-5 h-5 md:w-6 md:h-6" weight="fill" />
+                        </button>
                     </div>
                 </div>
             </div>

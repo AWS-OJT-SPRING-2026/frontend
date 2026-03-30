@@ -206,7 +206,7 @@ function EventTooltip({ event, x, y, now }: { event: ScheduleEntry; x: number; y
             className="fixed z-[100] pointer-events-none animate-[tooltipIn_0.15s_ease-out]"
             style={{ left: x + 14, top: y - 12 }}
         >
-            <div className="bg-[#1A1A1A] text-white rounded-xl px-4 py-3 text-xs shadow-2xl max-w-[280px] border border-white/10">
+            <div className="bg-[#1A1A1A] text-white rounded-xl px-4 py-3 text-xs shadow-2xl max-w-[280px] border border-[#1A1A1A]/20">
                 <div className="flex items-center gap-2 mb-2">
                     <span className={`w-2.5 h-2.5 rounded-full ${style.dot} ${status === 'ongoing' ? 'animate-pulse' : ''}`} />
                     <span className={`text-[10px] font-extrabold uppercase tracking-wider ${style.text}`}>
@@ -241,7 +241,7 @@ function EventTooltip({ event, x, y, now }: { event: ScheduleEntry; x: number; y
                         </div>
                     )}
                 </div>
-                <div className="mt-2 pt-2 border-t border-white/10 text-[10px] text-white/40 font-bold">
+                <div className="mt-2 pt-2 border-t border-[#1A1A1A]/20 text-[10px] text-white/40 font-bold">
                     Nhấp để xem chi tiết
                 </div>
             </div>
@@ -612,18 +612,18 @@ export function StudentSchedule() {
     };
 
     return (
-        <div className={`p-8 pb-20 space-y-6 min-h-screen ${isDark ? 'bg-gradient-to-b from-[#111111] to-[#1a1a1a]' : ''}`} style={{ fontFamily: "'Nunito', sans-serif" }}>
+        <div className="p-8 pb-20 space-y-6 min-h-screen" style={{ fontFamily: "'Nunito', sans-serif" }}>
             <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4">
                 <div className="flex items-center gap-3">
                     <div>
-                        <p className={`text-xs font-extrabold uppercase tracking-widest mb-1 ${isDark ? 'text-[#b3b3b3]' : 'text-gray-400'}`}>Lịch trình cá nhân</p>
-                        <h1 className={`text-3xl font-extrabold ${isDark ? 'text-white' : 'text-[#1A1A1A]'}`}>Lịch học của tôi</h1>
+                        <p className={`text-xs font-extrabold uppercase tracking-widest mb-1 ${isDark ? 'text-[#1A1A1A]/50' : 'text-gray-400'}`}>Lịch trình cá nhân</p>
+                        <h1 className={`text-3xl font-extrabold ${isDark ? 'text-white' : 'text-[#1A1A1A]'}'}`}>Lịch học của tôi</h1>
                     </div>
                 </div>
                 <div className="flex items-center gap-3 flex-wrap">
                     <DropdownMenu open={isNotificationsOpen} onOpenChange={setIsNotificationsOpen}>
                         <DropdownMenuTrigger asChild>
-                            <button className={`relative w-10 h-10 rounded-2xl flex items-center justify-center transition-colors ${isDark ? 'bg-[#1a1a1f] border border-white/10 hover:bg-white/5' : 'bg-white border-2 border-[#1A1A1A]/20 hover:bg-[#1A1A1A]/5'}`}>
+                            <button className={`relative w-10 h-10 rounded-2xl flex items-center justify-center transition-colors ${isDark ? 'bg-[#1a1a1f] border-none hover:bg-white/5' : 'bg-white border-2 border-[#1A1A1A]/20 hover:bg-[#1A1A1A]/5'}`}>
                                 <Bell className={`w-5 h-5 ${isDark ? 'text-[#f3f4f6]' : 'text-[#1A1A1A]'}`} weight="fill" />
                                 {unreadNotificationsCount > 0 && (
                                     <span className={`absolute -top-1.5 -right-1.5 min-w-5 h-5 px-1 rounded-full bg-red-500 text-white text-[10px] font-extrabold flex items-center justify-center ${isDark ? 'border border-[#111]' : 'border-2 border-white'}`}>
@@ -632,20 +632,20 @@ export function StudentSchedule() {
                                 )}
                             </button>
                         </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end" sideOffset={8} className={`w-[340px] p-0 rounded-2xl shadow-2xl overflow-hidden ${isDark ? 'border border-white/15 bg-[#1b1b22]' : 'border-2 border-[#1A1A1A]/20 bg-white'}`}>
-                            <div className={`px-4 py-3 flex items-center justify-between ${isDark ? 'bg-[#111217] text-white border-b border-white/10' : 'bg-[#1A1A1A] text-white'}`}>
+                        <DropdownMenuContent align="end" sideOffset={8} className={`w-[340px] p-0 rounded-2xl shadow-2xl overflow-hidden ${isDark ? 'border border-[#1A1A1A]/20 bg-[#1b1b22]' : 'border-2 border-[#1A1A1A]/20 bg-white'}`}>
+                            <div className={`px-4 py-3 flex items-center justify-between ${isDark ? 'bg-[#111217] text-white border-b border-[#1A1A1A]/20' : 'bg-[#1A1A1A] text-white'}`}>
                                 <h3 className="font-extrabold text-base flex items-center gap-2">
                                     <Bell className="w-4 h-4" weight="fill" /> Thông báo
                                 </h3>
                                 <span className="bg-red-500 text-white text-[10px] font-extrabold px-2 py-0.5 rounded-full">{unreadNotificationsCount} mới</span>
                             </div>
-                            <div className={`max-h-[320px] overflow-y-auto px-2 py-2 space-y-2 ${isDark ? 'bg-[#1b1b22]' : 'bg-white'}`}>
+                            <div className={`max-h-[320px] overflow-y-auto px-2 py-2 space-y-2 ${isDark ? 'bg-[#1A1A1A] border-2 border-[#EEEEEE] shadow-[4px_4px_0_0_#EEEEEE] hover:shadow-[0_0_15px_#FF6B4A] transition-all duration-300' : 'bg-white'}`}>
                                 {NOTIFICATIONS.map((notif, i) => (
-                                    <div key={i} className={`rounded-xl border p-3 ${notif.read ? (isDark ? 'border-white/10 bg-white/[0.02]' : 'border-[#1A1A1A]/10') : (isDark ? 'border-red-400/40 bg-red-500/10' : 'border-2 border-red-200 bg-red-50/50')}`}>
+                                    <div key={i} className={`rounded-xl border p-3 ${notif.read ? (isDark ? 'border-[#1A1A1A]/20 bg-white/[0.02]' : 'border-[#1A1A1A]/10') : (isDark ? 'border-red-400/40 bg-red-500/10' : 'border-2 border-red-200 bg-red-50/50')}`}>
                                         <div className="flex items-start justify-between gap-2">
                                             <div className="min-w-0">
                                                 <p className={`text-sm font-extrabold ${notif.read ? (isDark ? 'text-[#f3f4f6]' : 'text-[#1A1A1A]') : 'text-red-500'}`}>{notif.title}</p>
-                                                <p className={`text-xs font-semibold mt-1 line-clamp-2 ${isDark ? 'text-[#cbd5e1]' : 'text-[#1A1A1A]/70'}`}>{notif.desc}</p>
+                                                <p className={`text-xs font-semibold mt-1 line-clamp-2 ${isDark ? 'text-gray-500' : 'text-[#1A1A1A]/70'}`}>{notif.desc}</p>
                                             </div>
                                             {!notif.read && <span className="w-2 h-2 rounded-full bg-red-500 shrink-0 mt-1" />}
                                         </div>
@@ -666,32 +666,32 @@ export function StudentSchedule() {
                             </div>
                         </DropdownMenuContent>
                     </DropdownMenu>
-                    <div className={`flex rounded-2xl p-1 ${isDark ? 'bg-[#18181b] border border-white/10' : 'bg-[#1A1A1A]/5 border-2 border-[#1A1A1A]/10'}`}>
+                    <div className={`flex rounded-2xl p-1 ${isDark ? 'bg-[#18181b] border-none' : 'bg-[#1A1A1A]/5 border-2 border-[#1A1A1A]/10'}`}>
                         <button
                             onClick={() => { setViewMode('day'); setSelectedEvent(null); }}
-                            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-sm font-extrabold transition-all ${viewMode === 'day' ? (isDark ? 'bg-[#232328] text-white shadow-sm' : 'bg-white text-[#1A1A1A] shadow-sm') : (isDark ? 'text-[#b3b3b3] hover:text-white' : 'text-[#1A1A1A]/50 hover:text-[#1A1A1A]/70')}`}
+                            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-sm font-extrabold transition-all ${viewMode === 'day' ? (isDark ? 'bg-white text-[#1A1A1A] shadow-sm' : 'bg-white text-[#1A1A1A] shadow-sm') : (isDark ? 'text-[#1A1A1A]/50 hover:text-[#1A1A1A]/70' : 'text-[#1A1A1A]/50 hover:text-[#1A1A1A]/70')}`}
                         >
                             <Rows className="w-4 h-4" weight={viewMode === 'day' ? 'fill' : 'regular'} /> Ngày
                         </button>
                         <button
                             onClick={() => { setViewMode('week'); setSelectedEvent(null); }}
-                            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-sm font-extrabold transition-all ${viewMode === 'week' ? (isDark ? 'bg-[#232328] text-white shadow-sm' : 'bg-white text-[#1A1A1A] shadow-sm') : (isDark ? 'text-[#b3b3b3] hover:text-white' : 'text-[#1A1A1A]/50 hover:text-[#1A1A1A]/70')}`}
+                            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-sm font-extrabold transition-all ${viewMode === 'week' ? (isDark ? 'bg-white text-[#1A1A1A] shadow-sm' : 'bg-white text-[#1A1A1A] shadow-sm') : (isDark ? 'text-[#1A1A1A]/50 hover:text-[#1A1A1A]/70' : 'text-[#1A1A1A]/50 hover:text-[#1A1A1A]/70')}`}
                         >
                             <SquaresFour className="w-4 h-4" weight={viewMode === 'week' ? 'fill' : 'regular'} /> Tuần
                         </button>
                         <button
                             onClick={() => { setViewMode('month'); setSelectedEvent(null); }}
-                            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-sm font-extrabold transition-all ${viewMode === 'month' ? (isDark ? 'bg-[#232328] text-white shadow-sm' : 'bg-white text-[#1A1A1A] shadow-sm') : (isDark ? 'text-[#b3b3b3] hover:text-white' : 'text-[#1A1A1A]/50 hover:text-[#1A1A1A]/70')}`}
+                            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-sm font-extrabold transition-all ${viewMode === 'month' ? (isDark ? 'bg-white text-[#1A1A1A] shadow-sm' : 'bg-white text-[#1A1A1A] shadow-sm') : (isDark ? 'text-[#1A1A1A]/50 hover:text-[#1A1A1A]/70' : 'text-[#1A1A1A]/50 hover:text-[#1A1A1A]/70')}`}
                         >
                             <CalendarDots className="w-4 h-4" weight={viewMode === 'month' ? 'fill' : 'regular'} /> Tháng
                         </button>
                     </div>
 
-                    <div className={`flex items-center rounded-2xl p-1 gap-1 ${isDark ? 'bg-[#1a1a1f] border border-white/10' : 'bg-white border-2 border-[#1A1A1A]/20'}`}>
+                    <div className={`flex items-center rounded-2xl p-1 gap-1 ${isDark ? 'bg-[#1a1a1f] border-none' : 'bg-white border-2 border-[#1A1A1A]/20'}`}>
                         <button onClick={goPrev} className={`p-2 rounded-xl transition-colors active:scale-95 ${isDark ? 'hover:bg-white/10' : 'hover:bg-[#1A1A1A]/5'}`}>
                             <CaretLeft className="w-4 h-4 text-[#1A1A1A]" />
                         </button>
-                        <span className={`px-3 font-extrabold text-sm whitespace-nowrap ${isDark ? 'text-white' : 'text-[#1A1A1A]'}`}>
+                        <span className={`px-3 font-extrabold text-sm whitespace-nowrap ${isDark ? 'text-[#1A1A1A]' : 'text-[#1A1A1A]'}`}>
                             {viewMode === 'week'
                                 ? `${pad(monday.getDate())}/${pad(monday.getMonth() + 1)} - ${pad(weekDays[6].date)}/${pad(weekDays[6].fullDate.getMonth() + 1)}`
                                 : viewMode === 'day' 
@@ -712,32 +712,32 @@ export function StudentSchedule() {
 
             <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
                 {statsCards.map((s, i) => (
-                    <div key={i} className={`rounded-3xl p-5 flex items-center gap-4 hover:-translate-y-0.5 transition-all shadow-sm ${isDark ? 'border border-white/10' : 'border-2 border-[#1A1A1A]'}`} style={{ backgroundColor: isDark ? `${s.bg}66` : s.bg }}>
+                    <div key={i} className={`rounded-3xl p-5 flex items-center gap-4 hover:-translate-y-0.5 transition-all shadow-sm ${isDark ? 'border border-[#1A1A1A]/20' : 'border-2 border-[#1A1A1A]'}`} style={{ backgroundColor: isDark ? `${s.bg}66` : s.bg }}>
                         <div className={`w-11 h-11 rounded-2xl flex items-center justify-center shrink-0 ${isDark ? 'bg-[#1b1b20]' : 'bg-[#1A1A1A]'}`}>
                             <s.icon className="w-5 h-5 text-white" weight="fill" />
                         </div>
                         <div>
-                            <p className={`text-2xl font-extrabold ${isDark ? 'text-white' : 'text-[#1A1A1A]'}`}>{s.value}</p>
-                            <p className={`text-sm font-extrabold ${isDark ? 'text-[#b3b3b3]' : 'text-[#1A1A1A]/70'}`}>{s.label}</p>
+                            <p className={`text-2xl font-extrabold ${isDark ? 'text-[#1A1A1A]' : 'text-[#1A1A1A]'}`}>{s.value}</p>
+                            <p className={`text-sm font-extrabold ${isDark ? 'text-[#1A1A1A]/50' : 'text-[#1A1A1A]/70'}`}>{s.label}</p>
                         </div>
                     </div>
                 ))}
                 
                 {/* Gamification Progress */}
-                <div className={`rounded-3xl p-5 flex flex-col justify-between hover:-translate-y-0.5 transition-all shadow-sm ${isDark ? 'border border-white/10 bg-[#232328]' : 'border-2 border-[#1A1A1A] bg-white'}`}>
+                <div className={`rounded-3xl p-5 flex flex-col justify-between hover:-translate-y-0.5 transition-all shadow-sm ${isDark ? 'border border-[#1A1A1A]/20 bg-[#232328]' : 'border-2 border-[#1A1A1A] bg-white'}`}>
                     <div className="flex items-center justify-between mb-2">
-                        <span className={`text-xs font-extrabold uppercase tracking-widest ${isDark ? 'text-[#b3b3b3]' : 'text-gray-400'}`}>Tiến độ tuần</span>
-                        <span className={`text-sm font-extrabold ${isDark ? 'text-white' : 'text-[#1A1A1A]'}`}>75%</span>
+                        <span className={`text-xs font-extrabold uppercase tracking-widest ${isDark ? 'text-[#1A1A1A]/50' : 'text-gray-400'}`}>Tiến độ tuần</span>
+                        <span className={`text-sm font-extrabold ${isDark ? 'text-[#1A1A1A]' : 'text-[#1A1A1A]'}`}>75%</span>
                     </div>
                     <div className={`w-full h-2.5 rounded-full overflow-hidden ${isDark ? 'bg-white/10' : 'bg-[#1A1A1A]/10'}`}>
                         <div className="bg-[#ff7849] h-full rounded-full w-3/4"></div>
                     </div>
-                    <p className={`text-[10px] font-bold mt-2 ${isDark ? 'text-[#b3b3b3]' : 'text-gray-400'}`}>Đã hoàn thành 6/8 nhiệm vụ</p>
+                    <p className={`text-[10px] font-bold mt-2 ${isDark ? 'text-[#1A1A1A]/50' : 'text-gray-400'}`}>Đã hoàn thành 6/8 nhiệm vụ</p>
                 </div>
             </div>
 
             {/* Attendance Legend */}
-            <div className={`flex items-center gap-6 text-sm font-extrabold pb-1 ${isDark ? 'text-[#d1d5db]' : 'text-[#1A1A1A]/70'}`}>
+            <div className={`flex items-center gap-6 text-sm font-extrabold pb-1 ${isDark ? 'text-gray-500' : 'text-[#1A1A1A]/70'}`}>
                 <span className={`uppercase tracking-widest font-extrabold text-xs ${isDark ? 'text-white' : ''}`}>Trạng thái điểm danh:</span>
                 <div className="flex items-center gap-2"><CheckCircle className="text-emerald-500 w-5 h-5" weight="fill" /> Có mặt</div>
                 <div className="flex items-center gap-2"><XCircle className="text-red-500 w-5 h-5" weight="fill" /> Vắng mặt</div>
@@ -753,9 +753,9 @@ export function StudentSchedule() {
                 <div className="flex-1 overflow-hidden min-w-0">
                     
                     {viewMode === 'month' ? (
-                        <div className={`rounded-[2rem] overflow-hidden shadow-sm ${isDark ? 'bg-[#18181b] border border-white/10' : 'bg-white border-2 border-[#1A1A1A]'}`}>
-                            <div className={`grid grid-cols-7 ${isDark ? 'bg-[#1c1c1e] border-b border-white/10' : 'bg-[#1A1A1A]/5 border-b-2 border-[#1A1A1A]/10'}`}>
-                                {DAYS.map(d => <div key={d} className={`py-3 text-center text-xs font-extrabold ${isDark ? 'text-[#d1d5db]' : 'text-[#1A1A1A]/60'}`}>{d}</div>)}
+                        <div className={`rounded-[2rem] overflow-hidden shadow-sm ${isDark ? 'bg-[#18181b] border-none' : 'bg-white border-2 border-[#1A1A1A]'}`}>
+                            <div className={`grid grid-cols-7 ${isDark ? 'bg-[#1c1c1e] border-b border-[#1A1A1A]/20' : 'bg-[#1A1A1A]/5 border-b-2 border-[#1A1A1A]/10'}`}>
+                                {DAYS.map(d => <div key={d} className={`py-3 text-center text-xs font-extrabold ${isDark ? 'text-gray-500' : 'text-[#1A1A1A]/60'}`}>{d}</div>)}
                             </div>
                             <div className="grid grid-cols-7">
                                 {monthDays.map((day, i) => {
@@ -791,7 +791,7 @@ export function StudentSchedule() {
                                                                 {ev.attendanceStatus === 'present' && <CheckCircle className="text-emerald-600 shrink-0 w-3 h-3" weight="fill" />}
                                                                 {ev.attendanceStatus === 'absent' && <XCircle className="text-red-600 shrink-0 w-3 h-3" weight="fill" />}
                                                             </div>
-                                                            <span className={`truncate text-[11px] font-extrabold ${isDark ? 'text-white' : 'text-[#1A1A1A]'}`}>{ev.subject}</span>
+                                                            <span className={`truncate text-[11px] font-extrabold ${isDark ? 'text-[#1A1A1A]' : 'text-[#1A1A1A]'}`}>{ev.subject}</span>
                                                         </div>
                                                     );
                                                 })}
@@ -802,7 +802,7 @@ export function StudentSchedule() {
                             </div>
                         </div>
                     ) : ( 
-                    <div className={`rounded-[2rem] overflow-hidden shadow-sm ${isDark ? 'bg-[#18181b] border border-white/10' : 'bg-white border-2 border-[#1A1A1A]'}`}>
+                    <div className={`rounded-[2rem] overflow-hidden shadow-sm ${isDark ? 'bg-[#18181b] border-none' : 'bg-white border-2 border-[#1A1A1A]'}`}>
                     {/* Headers */}
                     <div className={`grid ${viewMode === 'week' ? 'grid-cols-[60px_repeat(7,1fr)]' : 'grid-cols-[60px_1fr]'} ${isDark ? 'border-b border-[rgba(255,255,255,0.06)]' : 'border-b-2 border-[#1A1A1A]'}`}>
                         <div className={`${isDark ? 'border-r border-[rgba(255,255,255,0.06)] bg-[#16161a]' : 'border-r-2 border-[#1A1A1A]/10 bg-[#1A1A1A]/[0.02]'}`} />
@@ -812,8 +812,8 @@ export function StudentSchedule() {
                                 className={`py-4 text-center last:border-r-0 transition-colors ${isDark ? 'border-r border-[rgba(255,255,255,0.06)]' : 'border-r-2 border-[#1A1A1A]/10'} ${viewMode === 'week' ? (isDark ? 'cursor-pointer hover:bg-white/5' : 'cursor-pointer hover:bg-[#1A1A1A]/5') : ''} ${day.isToday ? (isDark ? 'bg-[#ff7849]/12' : 'bg-[#FF6B4A]/10') : ''}`}
                                 onClick={() => { if (viewMode === 'week') { setCurrentDate(day.fullDate); setViewMode('day'); } }}
                             >
-                                <div className={`text-[11px] font-extrabold uppercase tracking-widest mb-1 ${day.isToday ? 'text-[#ff7849]' : (isDark ? 'text-[#b3b3b3]' : 'text-gray-400')}`}>{day.name}</div>
-                                <div className={`text-2xl font-extrabold ${day.isToday ? 'text-[#ff7849]' : (isDark ? 'text-white' : 'text-[#1A1A1A]')}`}>{day.date}</div>
+                                <div className={`text-[11px] font-extrabold uppercase tracking-widest mb-1 ${day.isToday ? 'text-[#ff7849]' : (isDark ? 'text-[#1A1A1A]/50' : 'text-gray-400')}`}>{day.name}</div>
+                                <div className={`text-2xl font-extrabold ${day.isToday ? 'text-[#ff7849]' : (isDark ? 'text-[#1A1A1A]' : 'text-[#1A1A1A]')}`}>{day.date}</div>
                             </div>
                         ))}
                     </div>
@@ -870,7 +870,7 @@ export function StudentSchedule() {
                                     }}
                                 >
                                     <div
-                                        className={`group relative h-full rounded-2xl px-3 py-2 cursor-pointer transition-all duration-200 overflow-hidden flex flex-col ${isDark ? 'border shadow-[0_8px_20px_rgba(0,0,0,0.26)]' : 'border-2'} ${selectedEvent?.id === ev.id ? (isDark ? 'shadow-lg scale-[1.02] ring-2 ring-white/20' : 'shadow-lg scale-[1.02] ring-2 ring-[#1A1A1A]/20') : 'hover:shadow-md hover:-translate-y-0.5'} ${status === 'ongoing' ? 'animate-border-blink shadow-xl scale-[1.01]' : ''}`}
+                                        className={`group relative h-full rounded-2xl px-3 py-2 cursor-pointer transition-all duration-200 overflow-hidden flex flex-col ${isDark ? 'border' : 'border-2'} ${selectedEvent?.id === ev.id ? (isDark ? 'shadow-lg scale-[1.02] ring-2 ring-white/20' : 'shadow-lg scale-[1.02] ring-2 ring-[#1A1A1A]/20') : 'hover:shadow-md hover:-translate-y-0.5'} ${status === 'ongoing' ? 'animate-border-blink shadow-xl scale-[1.01]' : ''}`}
                                         style={{ backgroundColor: style.bg, borderColor: style.border, opacity: status === 'past' ? 0.76 : 1 }}
                                         onClick={() => setSelectedEvent(ev)}
                                         onMouseEnter={(e) => { setHoveredEventId(ev.id); showTooltip(ev, e); }}
@@ -894,18 +894,18 @@ export function StudentSchedule() {
                                             </div>
                                         )}
                                         
-                                        <div className={`font-extrabold leading-tight ${isDark ? 'text-white' : 'text-[#1A1A1A]'} ${viewMode === 'day' ? 'text-[17px]' : 'text-[13px]'}`}>{ev.subject}</div>
-                                        <div className={`font-extrabold mt-0.5 ${isDark ? 'text-[#b3b3b3]' : 'text-[#1A1A1A]/75'} ${viewMode === 'day' ? 'text-[13px]' : 'text-[11px]'}`}>Lớp {ev.className}</div>
+                                        <div className={`font-extrabold leading-tight ${isDark ? 'text-[#1A1A1A]' : 'text-[#1A1A1A]'} ${viewMode === 'day' ? 'text-[17px]' : 'text-[13px]'}`}>{ev.subject}</div>
+                                        <div className={`font-extrabold mt-0.5 ${isDark ? 'text-[#1A1A1A]/50' : 'text-[#1A1A1A]/75'} ${viewMode === 'day' ? 'text-[13px]' : 'text-[11px]'}`}>Lớp {ev.className}</div>
                                         <div className={`font-extrabold ${isDark ? 'text-[#e5e7eb]' : 'text-[#1A1A1A]'} ${viewMode === 'day' ? 'text-[13px] mt-1 line-clamp-1' : 'text-[11px] mt-0.5 line-clamp-1'}`}>
                                             GV: {ev.teacher}
                                         </div>
                                         
                                         {viewMode === 'day' && (
-                                            <div className={`font-semibold text-[12px] mt-1.5 line-clamp-1 ${isDark ? 'text-[#b3b3b3]' : 'text-[#1A1A1A]/80'}`}>{ev.topic}</div>
+                                            <div className={`font-semibold text-[12px] mt-1.5 line-clamp-1 ${isDark ? 'text-[#1A1A1A]/50' : 'text-[#1A1A1A]/80'}`}>{ev.topic}</div>
                                         )}
 
                                         <div className="mt-auto flex items-center justify-between gap-2 pt-2">
-                                            <span className={`font-extrabold ${isDark ? 'text-[#d1d5db]' : 'text-[#1A1A1A]/80'} ${viewMode === 'day' ? 'text-[12px]' : 'text-[10px]'}`}>
+                                            <span className={`font-extrabold ${isDark ? 'text-gray-500' : 'text-[#1A1A1A]/80'} ${viewMode === 'day' ? 'text-[12px]' : 'text-[10px]'}`}>
                                                 {pad(ev.startHour)}:{pad(ev.startMin)} - {pad(ev.endHour)}:{pad(ev.endMin)}
                                             </span>
                                             <div className="flex items-center gap-1.5 justify-end">
@@ -930,7 +930,7 @@ export function StudentSchedule() {
                     )}
 
                     {viewMode !== 'month' && (
-                        <div className={`flex flex-wrap items-center gap-4 text-xs font-bold pt-4 pb-8 px-2 ${isDark ? 'text-[#d1d5db]' : 'text-[#1A1A1A]/60'}`}>
+                        <div className={`flex flex-wrap items-center gap-4 text-xs font-bold pt-4 pb-8 px-2 ${isDark ? 'text-gray-500' : 'text-[#1A1A1A]/60'}`}>
                             <span className="uppercase tracking-widest font-extrabold text-[10px]">Trạng thái môn học:</span>
                             <div className="flex items-center gap-1.5"><div className="w-3 h-3 rounded border border-gray-300 bg-gray-100"></div> Đã kết thúc</div>
                             <div className="flex items-center gap-1.5"><div className="w-3 h-3 rounded bg-emerald-400 ring-2 ring-emerald-400 animate-pulse border border-emerald-300"></div> Đang diễn ra</div>
@@ -944,7 +944,7 @@ export function StudentSchedule() {
                 <div className={`shrink-0 transition-all duration-300 ease-in-out ${sidebarOpen ? 'w-full lg:w-80' : 'w-12'}`}>
                     <button
                         onClick={() => setSidebarOpen(!sidebarOpen)}
-                        className={`w-full flex items-center justify-center gap-2 rounded-2xl py-2.5 mb-4 font-extrabold text-sm transition-all ${isDark ? 'bg-[#1a1a1f] border border-white/10 text-white hover:bg-white/5 hover:border-white/20' : 'bg-white border-2 border-[#1A1A1A]/20 text-[#1A1A1A] hover:bg-[#1A1A1A]/5 hover:border-[#1A1A1A]/30'} ${!sidebarOpen && 'px-0'}`}
+                        className={`w-full flex items-center justify-center gap-2 rounded-2xl py-2.5 mb-4 font-extrabold text-sm transition-all ${isDark ? 'bg-white border-2 border-[#1A1A1A]/20 text-[#1A1A1A] hover:bg-[#1A1A1A]/5 hover:border-[#1A1A1A]/30' : 'bg-white border-2 border-[#1A1A1A]/20 text-[#1A1A1A] hover:bg-[#1A1A1A]/5 hover:border-[#1A1A1A]/30'} ${!sidebarOpen && 'px-0'}`}
                         title={sidebarOpen ? "Thu gọn Sidebar" : "Mở rộng Sidebar"}
                     >
                         {sidebarOpen ? (
@@ -958,18 +958,18 @@ export function StudentSchedule() {
                     </button>
 
                     {sidebarOpen && (
-                        <div className={`rounded-[2rem] p-5 space-y-5 shadow-sm min-h-[500px] ${isDark ? 'bg-[#1a1a1f] border border-white/10' : 'bg-white border-2 border-[#1A1A1A]'}`}>
+                        <div className={`rounded-[2rem] p-5 space-y-5 shadow-sm min-h-[500px] ${isDark ? 'bg-[#1a1a1f] border-none' : 'bg-white border-2 border-[#1A1A1A]'}`}>
                             <div>
-                                <h2 className={`font-extrabold text-lg ${isDark ? 'text-white' : 'text-[#1A1A1A]'}`}>Sắp tới</h2>
-                                <p className={`text-xs font-bold mt-1 ${isDark ? 'text-[#b3b3b3]' : 'text-gray-400'}`}>Nhiệm vụ và sự kiện</p>
+                                <h2 className={`font-extrabold text-lg ${isDark ? 'text-[#1A1A1A]' : 'text-[#1A1A1A]'}`}>Sắp tới</h2>
+                                <p className={`text-xs font-bold mt-1 ${isDark ? 'text-[#1A1A1A]/50' : 'text-gray-400'}`}>Nhiệm vụ và sự kiện</p>
                             </div>
 
-                            <div className={`flex p-1 rounded-2xl gap-1 ${isDark ? 'bg-[#18181b] border border-white/10' : 'bg-[#F7F7F2] border-2 border-[#1A1A1A]/10'}`}>
+                            <div className={`flex p-1 rounded-2xl gap-1 ${isDark ? 'bg-[#18181b] border-none' : 'bg-[#F7F7F2] border-2 border-[#1A1A1A]/10'}`}>
                                 {[{ id: 'all', label: 'Tất cả' }, { id: 'test', label: 'Kiểm tra' }, { id: 'hw', label: 'Bài tập' }].map(t => (
                                     <button
                                         key={t.id}
                                         onClick={() => setUpcomingTab(t.id as TabType)}
-                                        className={`flex-1 py-1.5 text-xs font-extrabold rounded-xl transition-colors ${upcomingTab === t.id ? (isDark ? 'bg-[#232328] text-white shadow-sm' : 'bg-[#1A1A1A] text-white shadow-sm') : (isDark ? 'text-[#b3b3b3] hover:bg-white/5' : 'text-[#1A1A1A]/50 hover:bg-[#1A1A1A]/5')}`}
+                                        className={`flex-1 py-1.5 text-xs font-extrabold rounded-xl transition-colors ${upcomingTab === t.id ? (isDark ? 'bg-[#1A1A1A] border-2 border-[#EEEEEE] shadow-[4px_4px_0_0_#EEEEEE] hover:shadow-[0_0_15px_#FF6B4A] transition-all duration-300 text-white shadow-sm' : 'bg-[#1A1A1A] text-white shadow-sm') : (isDark ? 'text-[#1A1A1A]/50 hover:bg-white/5' : 'text-[#1A1A1A]/50 hover:bg-[#1A1A1A]/5')}`}
                                     >
                                         {t.label}
                                     </button>
@@ -984,12 +984,12 @@ export function StudentSchedule() {
                                     </div>
                                 ) : (
                                     filteredUpcoming.map((ev: any, i) => (
-                                        <div key={i} className={`group rounded-2xl ${isDark ? 'border border-white/10' : 'border-2'} ${ev.isUrgent ? (isDark ? 'border-[#d48a84] shadow-[0_6px_16px_rgba(212,138,132,0.18)] bg-[#2a1f21]' : 'border-red-400 shadow-[0_4px_12px_rgba(248,113,113,0.15)] bg-red-50/20') : (isDark ? 'bg-[#232328]' : 'border-[#1A1A1A] bg-white')} p-3.5 transition-all hover:-translate-y-0.5 hover:shadow-md cursor-pointer relative overflow-hidden`} >
+                                        <div key={i} className={`group rounded-2xl ${isDark ? '' : 'border-2'} ${ev.isUrgent ? (isDark ? 'border-2 border-[#d48a84] bg-[#2a1f21]' : 'border-red-400 shadow-[0_4px_12px_rgba(248,113,113,0.15)] bg-red-50/20') : (isDark ? 'bg-[#1A1A1A] border-2 border-[#1A1A1A] hover:shadow-[0_0_15px_#FF6B4A] transition-all duration-300' : 'border-[#1A1A1A] bg-white')} p-3.5 transition-all hover:-translate-y-0.5 hover:shadow-md cursor-pointer relative overflow-hidden`} >
                                             <div className={`absolute top-0 left-0 w-1.5 h-full`} style={{ backgroundColor: ev.isUrgent ? (isDark ? '#d48a84' : '#F87171') : ev.bg }} />
                                             <div className="pl-2">
                                                 <div className="flex justify-between items-start mb-1">
                                                     <div>
-                                                        <p className={`font-extrabold text-sm leading-tight pr-4 ${ev.isUrgent ? (isDark ? 'text-[#f5b1a8]' : 'text-red-600') : (isDark ? 'text-white' : 'text-[#1A1A1A]')}`}>{ev.subject}</p>
+                                                        <p className={`font-extrabold text-sm leading-tight pr-4 ${ev.isUrgent ? (isDark ? 'text-[#f5b1a8]' : 'text-red-600') : (isDark ? 'text-[#1A1A1A]' : 'text-[#1A1A1A]')}`}>{ev.subject}</p>
                                                         {ev.isUrgent && (
                                                             <span className={`inline-flex items-center gap-1 mt-1 text-[9px] font-extrabold px-1.5 py-0.5 rounded animate-pulse ${isDark ? 'text-[#ffd5d0] bg-[#8f4b45]/40' : 'text-red-600 bg-red-100'}`}>
                                                                 <WarningCircle className="w-3 h-3" /> Hạn chót &lt; 2h
@@ -1001,10 +1001,10 @@ export function StudentSchedule() {
                                                     </span>
                                                 </div>
                                                 <div className="flex items-center gap-2 mt-2">
-                                                    <span className={`flex items-center gap-1 text-[10px] font-bold px-1.5 py-0.5 rounded-md ${isDark ? 'text-[#b3b3b3] bg-white/8' : 'text-[#1A1A1A]/60 bg-[#1A1A1A]/5'}`}>
+                                                    <span className={`flex items-center gap-1 text-[10px] font-bold px-1.5 py-0.5 rounded-md ${isDark ? 'text-[#1A1A1A]/50 bg-white/8' : 'text-[#1A1A1A]/60 bg-[#1A1A1A]/5'}`}>
                                                         <CalendarBlank className="w-3 h-3" /> {ev.displayDate}
                                                     </span>
-                                                    <span className={`flex items-center gap-1 text-[10px] font-bold px-1.5 py-0.5 rounded-md ${isDark ? 'text-[#b3b3b3] bg-white/8' : 'text-[#1A1A1A]/60 bg-[#1A1A1A]/5'}`}>
+                                                    <span className={`flex items-center gap-1 text-[10px] font-bold px-1.5 py-0.5 rounded-md ${isDark ? 'text-[#1A1A1A]/50 bg-white/8' : 'text-[#1A1A1A]/60 bg-[#1A1A1A]/5'}`}>
                                                         <Clock className="w-3 h-3" /> {ev.time}
                                                     </span>
                                                 </div>
@@ -1012,8 +1012,8 @@ export function StudentSchedule() {
                                                 {ev.progress !== undefined && (
                                                     <div className="mt-3">
                                                         <div className="flex justify-between items-center mb-1">
-                                                            <span className={`text-[9px] font-extrabold uppercase ${isDark ? 'text-[#b3b3b3]' : 'text-[#1A1A1A]/50'}`}>Tiến độ</span>
-                                                            <span className={`text-[9px] font-extrabold ${isDark ? 'text-white' : 'text-[#1A1A1A]'}`}>{ev.progress}%</span>
+                                                            <span className={`text-[9px] font-extrabold uppercase ${isDark ? 'text-[#1A1A1A]/50' : 'text-[#1A1A1A]/50'}`}>Tiến độ</span>
+                                                            <span className={`text-[9px] font-extrabold ${isDark ? 'text-[#1A1A1A]' : 'text-[#1A1A1A]'}`}>{ev.progress}%</span>
                                                         </div>
                                                         <div className={`w-full h-1.5 rounded-full overflow-hidden ${isDark ? 'bg-white/10' : 'bg-[#1A1A1A]/10'}`}>
                                                             <div className={`h-full rounded-full transition-all duration-500 ease-out bg-[#1A1A1A]`} style={{ width: `${ev.progress}%` }} />
@@ -1031,12 +1031,12 @@ export function StudentSchedule() {
                                 )}
                             </div>
 
-                            <div className={`pt-4 mt-auto ${isDark ? 'border-t border-white/10' : 'border-t-2 border-[#1A1A1A]/10'}`}>
-                                <h3 className={`font-extrabold text-sm mb-2 flex items-center gap-1.5 ${isDark ? 'text-white' : 'text-[#1A1A1A]'}`}>
+                            <div className={`pt-4 mt-auto ${isDark ? 'border-t border-[#1A1A1A]/20' : 'border-t-2 border-[#1A1A1A]/10'}`}>
+                                <h3 className={`font-extrabold text-sm mb-2 flex items-center gap-1.5 ${isDark ? 'text-[#1A1A1A]' : 'text-[#1A1A1A]'}`}>
                                     <FileText className="w-4 h-4 text-[#FF6B4A]" weight="fill" /> Ghi chú nhanh
                                 </h3>
                                 <textarea 
-                                    className={`w-full rounded-2xl p-3 text-xs font-bold resize-none focus:outline-none transition-colors ${isDark ? 'bg-[#18181b] border border-white/10 text-white placeholder:text-[#9ca3af] focus:border-[#ff7849]' : 'bg-[#F7F7F2] border-2 border-[#1A1A1A]/10 text-[#1A1A1A] placeholder:text-gray-400 focus:border-[#FF6B4A]'}`}
+                                    className={`w-full rounded-2xl p-3 text-xs font-bold resize-none focus:outline-none transition-colors ${isDark ? 'bg-[#F7F7F2] border-2 border-[#1A1A1A]/10 text-[#1A1A1A] placeholder:text-gray-400 focus:border-[#FF6B4A]' : 'bg-[#F7F7F2] border-2 border-[#1A1A1A]/10 text-[#1A1A1A] placeholder:text-gray-400 focus:border-[#FF6B4A]'}`}
                                     rows={3}
                                     placeholder="Nhập ghi chú nhanh cho tuần học..."
                                     defaultValue="Nhớ mang compa cho giờ Toán thứ Tư."
@@ -1101,9 +1101,9 @@ export function StudentSchedule() {
             </Dialog>
 
             <Dialog open={!!selectedNotification} onOpenChange={(open) => !open && setSelectedNotification(null)}>
-                <DialogContent className={`rounded-3xl max-w-md ${isDark ? 'border border-white/15 bg-[#1b1b22]' : 'border-2 border-[#1A1A1A] bg-white'}`}>
+                <DialogContent className={`rounded-3xl max-w-md ${isDark ? 'border border-[#1A1A1A]/20 bg-[#1b1b22]' : 'border-2 border-[#1A1A1A] bg-white'}`}>
                     <DialogHeader>
-                        <DialogTitle className={`text-xl font-extrabold flex items-center gap-2 ${isDark ? 'text-white' : 'text-[#1A1A1A]'}`}>
+                        <DialogTitle className={`text-xl font-extrabold flex items-center gap-2 ${isDark ? 'text-[#1A1A1A]' : 'text-[#1A1A1A]'}`}>
                             <Bell className="w-5 h-5 text-[#FF6B4A]" weight="fill" /> Chi tiết thông báo
                         </DialogTitle>
                         <DialogDescription className={`font-bold ${isDark ? 'text-[#94a3b8]' : ''}`}>
@@ -1111,15 +1111,15 @@ export function StudentSchedule() {
                         </DialogDescription>
                     </DialogHeader>
                     <div className="space-y-3">
-                        <div className={`rounded-2xl p-4 ${selectedNotification?.read ? (isDark ? 'border border-white/10 bg-white/[0.02]' : 'border-2 border-[#1A1A1A]/10 bg-[#F7F7F2]') : (isDark ? 'border border-red-400/40 bg-red-500/10' : 'border-2 border-red-200 bg-red-50/40')}`}>
-                            <p className={`text-lg font-extrabold ${selectedNotification?.read ? (isDark ? 'text-white' : 'text-[#1A1A1A]') : 'text-red-500'}`}>
+                        <div className={`rounded-2xl p-4 ${selectedNotification?.read ? (isDark ? 'border border-[#1A1A1A]/20 bg-white/[0.02]' : 'border-2 border-[#1A1A1A]/10 bg-[#F7F7F2]') : (isDark ? 'border border-red-400/40 bg-red-500/10' : 'border-2 border-red-200 bg-red-50/40')}`}>
+                            <p className={`text-lg font-extrabold ${selectedNotification?.read ? (isDark ? 'text-[#1A1A1A]' : 'text-[#1A1A1A]') : 'text-red-500'}`}>
                                 {selectedNotification?.title}
                             </p>
-                            <p className={`text-sm font-semibold mt-2 ${isDark ? 'text-[#d1d5db]' : 'text-[#1A1A1A]/70'}`}>{selectedNotification?.desc}</p>
+                            <p className={`text-sm font-semibold mt-2 ${isDark ? 'text-gray-500' : 'text-[#1A1A1A]/70'}`}>{selectedNotification?.desc}</p>
                         </div>
                         <button
                             onClick={() => setSelectedNotification(null)}
-                            className={`w-full font-extrabold py-3 rounded-2xl transition-colors ${isDark ? 'bg-white/10 hover:bg-white/15 text-white border border-white/15' : 'bg-[#1A1A1A] hover:bg-[#333] text-white'}`}
+                            className={`w-full font-extrabold py-3 rounded-2xl transition-colors ${isDark ? 'bg-white/10 hover:bg-white/15 text-white border border-[#1A1A1A]/20' : 'bg-[#1A1A1A] hover:bg-[#333] text-white'}`}
                         >
                             Đóng
                         </button>

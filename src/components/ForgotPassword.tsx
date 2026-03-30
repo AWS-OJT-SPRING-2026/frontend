@@ -5,6 +5,10 @@ import {
   RefreshCw, PartyPopper
 } from 'lucide-react';
 import { api, ApiError } from '../services/api';
+import { useSettings } from '../context/SettingsContext';
+import { LanguageSwitcher } from './LanguageSwitcher';
+import { ThemeSwitcher } from './ThemeSwitcher';
+import { cn } from '../lib/utils';
 
 /* ────────────────────── types ────────────────────── */
 type Step = 'email' | 'otp' | 'reset' | 'success';
@@ -42,6 +46,8 @@ export function ForgotPassword({ onBackToLogin }: ForgotPasswordProps) {
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
   const [isVisible, setIsVisible] = useState(false);
+  const { theme } = useSettings();
+  const isDark = theme === 'dark';
 
   /* OTP state */
   const [otpDigits, setOtpDigits] = useState<string[]>(Array(OTP_LENGTH).fill(''));
@@ -275,13 +281,33 @@ export function ForgotPassword({ onBackToLogin }: ForgotPasswordProps) {
   /* ═══════════════════ RENDER ═══════════════════ */
   return (
     <div
-      className={`min-h-screen flex items-center justify-center bg-[#F7F7F2] p-4 transition-opacity duration-700 ${isVisible ? 'opacity-100' : 'opacity-0'}`}
-      style={{ fontFamily: "'Nunito', sans-serif" }}
+      className={cn(
+        'min-h-screen flex items-center justify-center p-4 transition-all duration-700 relative',
+        isVisible ? 'opacity-100' : 'opacity-0'
+      )}
+      style={{
+        fontFamily: "'Nunito', sans-serif",
+        backgroundColor: isDark ? '#465C88' : '#F7F7F2',
+        backgroundImage: isDark
+            ? `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24' height='24'%3E%3Ctext x='50%25' y='55%25' dominant-baseline='middle' text-anchor='middle' font-size='10' fill='%23FFFFFF' fill-opacity='0.05' font-family='sans-serif'%3E%C3%97%3C/text%3E%3C/svg%3E")`
+            : `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24' height='24'%3E%3Ctext x='50%25' y='55%25' dominant-baseline='middle' text-anchor='middle' font-size='10' fill='%231A1A1A' fill-opacity='0.12' font-family='sans-serif'%3E%C3%97%3C/text%3E%3C/svg%3E")`,
+        backgroundBlendMode: 'normal',
+      }}
     >
-      <div className="w-full max-w-4xl rounded-[2rem] shadow-2xl overflow-hidden flex flex-col md:flex-row min-h-[580px]">
+      <div className="absolute top-5 right-5 md:top-7 md:right-8 z-20 flex items-center gap-2">
+        <LanguageSwitcher />
+        <ThemeSwitcher />
+      </div>
+      <div className={cn(
+        'w-full max-w-4xl rounded-[2rem] shadow-2xl overflow-hidden flex flex-col md:flex-row min-h-[580px] border transition-colors duration-300',
+        isDark ? 'border-white/10' : 'border-[#1A1A1A]/8'
+      )}>
 
         {/* ── LEFT PANEL – dark (matching Login) ── */}
-        <div className="relative flex flex-col justify-between p-10 md:w-5/12 bg-[#1A1A1A] overflow-hidden">
+        <div className={cn(
+          'relative flex flex-col justify-between p-10 md:w-5/12 overflow-hidden transition-colors duration-300',
+          isDark ? 'bg-[#141a24]' : 'bg-[#1A1A1A]'
+        )}>
           {/* Decorative shapes */}
           <div className="absolute -top-16 -left-16 w-64 h-64 rounded-full bg-white/5" />
           <div className="absolute top-48 -right-12 w-56 h-56 rounded-full bg-[#FF6B4A]/10" />
@@ -347,7 +373,10 @@ export function ForgotPassword({ onBackToLogin }: ForgotPasswordProps) {
         </div>
 
         {/* ── RIGHT PANEL – white ── */}
-        <div className="flex-1 bg-white flex flex-col justify-center px-10 py-10">
+        <div className={cn(
+          'flex-1 flex flex-col justify-center px-10 py-10 transition-colors duration-300',
+          isDark ? 'bg-[#1b2230]' : 'bg-white'
+        )}>
 
           {/* ──── STEP: EMAIL ──── */}
           {step === 'email' && (
@@ -359,8 +388,8 @@ export function ForgotPassword({ onBackToLogin }: ForgotPasswordProps) {
                 >
                   <ArrowLeft className="w-4 h-4" /> Quay lại đăng nhập
                 </button>
-                <h1 className="text-2xl font-extrabold text-[#1A1A1A]">Quên mật khẩu</h1>
-                <p className="text-gray-400 text-sm mt-1 font-semibold">
+                <h1 className={cn('text-2xl font-extrabold', isDark ? 'text-white' : 'text-[#1A1A1A]')}>Quên mật khẩu</h1>
+                <p className={cn('text-sm mt-1 font-semibold', isDark ? 'text-gray-400' : 'text-gray-400')}>
                   Nhập địa chỉ email liên kết với tài khoản của bạn.
                 </p>
               </div>
@@ -431,8 +460,8 @@ export function ForgotPassword({ onBackToLogin }: ForgotPasswordProps) {
                 >
                   <ArrowLeft className="w-4 h-4" /> Thay đổi email
                 </button>
-                <h1 className="text-2xl font-extrabold text-[#1A1A1A]">Xác nhận mã OTP</h1>
-                <p className="text-gray-400 text-sm mt-1 font-semibold">
+                <h1 className={cn('text-2xl font-extrabold', isDark ? 'text-white' : 'text-[#1A1A1A]')}>Xác nhận mã OTP</h1>
+                <p className={cn('text-sm mt-1 font-semibold', isDark ? 'text-gray-400' : 'text-gray-400')}>
                   Mã OTP đã được gửi đến: <span className="text-[#FF6B4A] font-extrabold">{maskEmail(email)}</span>
                 </p>
               </div>
@@ -559,8 +588,8 @@ export function ForgotPassword({ onBackToLogin }: ForgotPasswordProps) {
           {step === 'reset' && (
             <>
               <div className="mb-6">
-                <h1 className="text-2xl font-extrabold text-[#1A1A1A]">Đặt lại mật khẩu mới</h1>
-                <p className="text-gray-400 text-sm mt-1 font-semibold">
+                <h1 className={cn('text-2xl font-extrabold', isDark ? 'text-white' : 'text-[#1A1A1A]')}>Đặt lại mật khẩu mới</h1>
+                <p className={cn('text-sm mt-1 font-semibold', isDark ? 'text-gray-400' : 'text-gray-400')}>
                   Tạo mật khẩu mới cho tài khoản <span className="text-[#FF6B4A] font-extrabold">{maskEmail(email)}</span>
                 </p>
               </div>

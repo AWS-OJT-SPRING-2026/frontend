@@ -2,6 +2,10 @@ import { useState, useEffect } from 'react';
 import { Sparkles, Mail, Lock, User as UserIcon, AlertCircle, CheckCircle, Eye, EyeOff, Phone } from 'lucide-react';
 import { authService } from '../services/authService';
 import { ApiError } from '../services/api';
+import { useSettings } from '../context/SettingsContext';
+import { LanguageSwitcher } from './LanguageSwitcher';
+import { ThemeSwitcher } from './ThemeSwitcher';
+import { cn } from '../lib/utils';
 import {
   mapBackendRegisterErrorToField,
   type RegisterField,
@@ -30,6 +34,9 @@ export function Register({ onSwitchToLogin }: RegisterProps) {
   const [loading, setLoading] = useState(false);
   const [isVisible, setIsVisible] = useState(false);
   const [submitAttempted, setSubmitAttempted] = useState(false);
+
+  const { theme } = useSettings();
+  const isDark = theme === 'dark';
 
   useEffect(() => {
     setIsVisible(true);
@@ -153,11 +160,30 @@ export function Register({ onSwitchToLogin }: RegisterProps) {
 
   return (
     <div
-      className={`w-full max-w-lg lg:max-w-xl transform transition-all duration-700 ${
-        isVisible ? 'opacity-100 scale-100' : 'opacity-0 scale-95'
-      }`}
+      className={cn(
+        'min-h-screen flex items-center justify-center p-4 transition-all duration-700 relative',
+        isVisible ? 'opacity-100' : 'opacity-0'
+      )}
+      style={{
+        fontFamily: "'Nunito', sans-serif",
+        backgroundColor: isDark ? '#465C88' : '#F7F7F2',
+        backgroundImage: isDark
+            ? `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24' height='24'%3E%3Ctext x='50%25' y='55%25' dominant-baseline='middle' text-anchor='middle' font-size='10' fill='%23FFFFFF' fill-opacity='0.05' font-family='sans-serif'%3E%C3%97%3C/text%3E%3C/svg%3E")`
+            : `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24' height='24'%3E%3Ctext x='50%25' y='55%25' dominant-baseline='middle' text-anchor='middle' font-size='10' fill='%231A1A1A' fill-opacity='0.12' font-family='sans-serif'%3E%C3%97%3C/text%3E%3C/svg%3E")`,
+        backgroundBlendMode: 'normal',
+      }}
     >
-      <div className="relative">
+      <div className="absolute top-5 right-5 md:top-7 md:right-8 z-20 flex items-center gap-2">
+        <LanguageSwitcher />
+        <ThemeSwitcher />
+      </div>
+      <div
+        className={cn(
+          "w-full max-w-lg lg:max-w-xl transform transition-all duration-700",
+          isVisible ? "opacity-100 scale-100" : "opacity-0 scale-95"
+        )}
+      >
+        <div className="relative">
         <div className="absolute -inset-1 bg-gradient-to-r from-green-400 via-blue-400 to-green-400 rounded-2xl blur-xl opacity-25 animate-pulse"></div>
         <div className="relative bg-white/70 border border-white/40 rounded-2xl shadow-2xl p-10 backdrop-blur-md">
           <div className="text-center mb-10">
@@ -437,6 +463,7 @@ export function Register({ onSwitchToLogin }: RegisterProps) {
           </div>
         </div>
       </div>
+    </div>
     </div>
   );
 }

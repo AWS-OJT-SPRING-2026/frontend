@@ -1,7 +1,7 @@
 import { useState, useEffect, useMemo } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { 
-    CheckCircle, ClipboardText, Clock, BookOpen, CaretRight, 
+import {
+    CheckCircle, ClipboardText, Clock, BookOpen, CaretRight,
     ArrowCounterClockwise, Star, Hourglass, WarningCircle,
     FloppyDisk, Medal, Flag, MagnifyingGlass, Funnel, ListNumbers, XCircle
 } from '@phosphor-icons/react';
@@ -61,7 +61,7 @@ function parseDate(dateStr: string) {
 function isUrgent(dateStr: string) {
     const due = parseDate(dateStr);
     // Hardcoded mock current date based on mock data (e.g. 11/03/2026) for demo consistency
-    const now = new Date(2026, 2, 11); 
+    const now = new Date(2026, 2, 11);
     const diff = due.getTime() - now.getTime();
     return diff > 0 && diff <= 24 * 60 * 60 * 1000;
 }
@@ -126,10 +126,10 @@ function TestCard({ test, onStart, isDark }: { test: Test; onStart: (t: Test) =>
     const urgent = !isCompleted && isUrgent(test.dueDate);
 
     return (
-        <div className={`rounded-3xl overflow-hidden transition-all ${isDark ? 'bg-[rgba(28,28,30,0.95)] border border-[rgba(255,255,255,0.08)] shadow-[0_14px_28px_rgba(0,0,0,0.32)] hover:shadow-[0_18px_34px_rgba(0,0,0,0.42)]' : 'bg-white border-2 border-[#1A1A1A] hover:shadow-lg'} ${urgent ? (isDark ? 'shadow-[0_18px_38px_rgba(255,120,73,0.15)]' : 'shadow-[6px_6px_0_0_rgba(255,107,74,0.2)]') : ''}`}>
+        <div className={`rounded-3xl overflow-hidden transition-all ${isDark ? 'bg-[#1A1A1A] border-2 border-[#EEEEEE] shadow-[4px_4px_0_0_#EEEEEE] hover:shadow-[0_0_15px_#FF6B4A] transition-all duration-300 hover:-translate-y-0.5' : 'bg-white border-2 border-[#1A1A1A] shadow-[4px_4px_0_0_#1A1A1A] hover:shadow-[6px_6px_0_0_#1A1A1A] hover:-translate-y-0.5'} ${urgent ? (isDark ? 'border border-[#686D76] shadow-[4px_4px_0_0_#686D76]' : 'shadow-[4px_4px_0_0_#FF6B4A]') : ''}`}>
             <div className="p-5 flex flex-col sm:flex-row sm:items-center gap-4">
                 {/* Subject icon */}
-                <div className={`w-14 h-14 rounded-2xl flex items-center justify-center shrink-0 relative ${isDark ? 'border border-white/12 shadow-[0_8px_18px_rgba(0,0,0,0.28)]' : 'border-2 border-[#1A1A1A] shadow-[2px_2px_0_0_#1A1A1A]'}`} style={{ backgroundColor: isDark ? `${bg}66` : bg }}>
+                <div className={`w-14 h-14 rounded-2xl flex items-center justify-center shrink-0 relative ${isDark ? 'border border-[#1A1A1A]/20' : 'border-2 border-[#1A1A1A] shadow-[2px_2px_0_0_#1A1A1A]'}`} style={{ backgroundColor: isDark ? `${bg}66` : bg }}>
                     {isCompleted
                         ? <CheckCircle className={`w-7 h-7 ${isDark ? 'text-emerald-300' : 'text-emerald-700'}`} weight="fill" />
                         : <ClipboardText className={`w-7 h-7 ${isDark ? 'text-amber-200' : 'text-[#1A1A1A]'}`} weight="fill" />
@@ -139,10 +139,10 @@ function TestCard({ test, onStart, isDark }: { test: Test; onStart: (t: Test) =>
                 {/* Info */}
                 <div className="flex-1 min-w-0">
                     <div className="flex flex-wrap items-center gap-2 mb-1.5">
-                        <span className={`text-[10px] font-extrabold px-3 py-1 rounded-full flex items-center gap-1 ${isDark ? 'border border-white/12 text-[#e5e7eb] bg-[#222226]' : 'border-2 border-[#1A1A1A] text-[#1A1A1A] bg-white shadow-[2px_2px_0_0_#1A1A1A]'}`}>
+                        <span className={`text-[10px] font-extrabold px-3 py-1 rounded-full flex items-center gap-1 ${isDark ? 'border border-[#1A1A1A]/20 text-[#e5e7eb] bg-[#222226]' : 'border-2 border-[#1A1A1A] text-[#1A1A1A] bg-white shadow-[2px_2px_0_0_#1A1A1A]'}`}>
                             {test.category === 'homework' ? 'Bài tập' : 'Kiểm tra'}
                         </span>
-                        <span className={`text-[10px] font-extrabold px-3 py-1 rounded-full ${isDark ? 'border border-white/20 text-[#f8fafc] bg-[#2a2a31]' : 'border-2 border-[#1A1A1A] text-[#1A1A1A] shadow-[2px_2px_0_0_#1A1A1A]'}`} style={{ backgroundColor: isDark ? undefined : bg }}>
+                        <span className={`text-[10px] font-extrabold px-3 py-1 rounded-full ${isDark ? 'border border-[#1A1A1A]/20 text-[#f8fafc] bg-[#2a2a31]' : 'border-2 border-[#1A1A1A] text-[#1A1A1A] shadow-[2px_2px_0_0_#1A1A1A]'}`} style={{ backgroundColor: isDark ? undefined : bg }}>
                             {test.subject}
                         </span>
                         {test.status === 'in_progress' && (
@@ -151,19 +151,19 @@ function TestCard({ test, onStart, isDark }: { test: Test; onStart: (t: Test) =>
                             </span>
                         )}
                     </div>
-                    <h3 className={`font-extrabold text-base truncate ${isDark ? 'text-white' : 'text-[#1A1A1A]'}`}>{test.title}</h3>
+                    <h3 className={`font-extrabold text-base truncate ${isDark ? 'text-[#1A1A1A]' : 'text-[#1A1A1A]'}`}>{test.title}</h3>
                     <div className="flex flex-wrap items-center gap-x-4 gap-y-2 mt-1.5 text-xs font-bold">
-                        <span className={`flex items-center gap-1 ${isDark ? 'text-[#b3b3b3]' : 'text-[#1A1A1A]/70'}`}><Clock className="w-4 h-4" weight="fill" />{test.duration} phút</span>
-                        <span className={`flex items-center gap-1 ${isDark ? 'text-[#b3b3b3]' : 'text-[#1A1A1A]/70'}`}><BookOpen className="w-4 h-4" weight="fill" />{test.questionCount} câu</span>
-                        
+                        <span className={`flex items-center gap-1 ${isDark ? 'text-[#1A1A1A]/50' : 'text-[#1A1A1A]/70'}`}><Clock className="w-4 h-4" weight="fill" />{test.duration} phút</span>
+                        <span className={`flex items-center gap-1 ${isDark ? 'text-[#1A1A1A]/50' : 'text-[#1A1A1A]/70'}`}><BookOpen className="w-4 h-4" weight="fill" />{test.questionCount} câu</span>
+
                         {isCompleted ? (
-                            <span className={`flex items-center gap-1 ${isDark ? 'text-[#b3b3b3]' : 'text-[#1A1A1A]/70'}`}>
+                            <span className={`flex items-center gap-1 ${isDark ? 'text-[#1A1A1A]/50' : 'text-[#1A1A1A]/70'}`}>
                                 <CheckCircle className="w-4 h-4 text-emerald-500" weight="fill" />
                                 {test.correctCount}/{test.questionCount} câu đúng
                             </span>
                         ) : (
-                            <span className={`flex items-center gap-1 px-2 py-0.5 rounded-md ${urgent ? (isDark ? 'text-[#ff8b63] font-black' : 'text-[#FF6B4A] font-black') : (isDark ? 'text-[#b3b3b3]' : 'text-[#1A1A1A]/70')}`}>
-                                {urgent ? <Hourglass className="w-4 h-4 animate-spin-slow" weight="fill"/> : null}
+                            <span className={`flex items-center gap-1 px-2 py-0.5 rounded-md ${urgent ? (isDark ? 'text-[#ff8b63] font-black' : 'text-[#FF6B4A] font-black') : (isDark ? 'text-[#1A1A1A]/50' : 'text-[#1A1A1A]/70')}`}>
+                                {urgent ? <Hourglass className="w-4 h-4 animate-spin-slow" weight="fill" /> : null}
                                 Hạn: {test.dueDate}
                                 {urgent && <span className={`ml-1 text-[10px] uppercase font-extrabold px-1.5 py-0.5 rounded ${isDark ? 'bg-[#d46b5f] text-white border border-[#f2a298]/40' : 'shadow-[2px_2px_0_0_#1A1A1A] bg-[#FF6B4A] text-white border-2 border-[#1A1A1A]'}`}>Sắp hết</span>}
                             </span>
@@ -175,17 +175,17 @@ function TestCard({ test, onStart, isDark }: { test: Test; onStart: (t: Test) =>
                 <div className="shrink-0 flex items-center gap-3">
                     {isCompleted && test.score !== undefined && (
                         <div className="text-right">
-                            <div className={`text-3xl font-extrabold ${isDark ? 'text-white' : 'text-[#1A1A1A]'}`}>{test.score.toFixed(1)}</div>
+                            <div className={`text-3xl font-extrabold ${isDark ? 'text-white' : 'text-[#1A1A1A]'}'}`}>{test.score.toFixed(1)}</div>
                             <div className="text-[10px] font-extrabold text-gray-400 uppercase tracking-widest">Điểm số</div>
                         </div>
                     )}
-                    <button 
+                    <button
                         onClick={() => onStart(test)}
-                        className={`h-10 px-5 rounded-2xl font-extrabold text-sm flex items-center gap-1.5 transition-all hover:-translate-y-0.5 ${isCompleted 
-                            ? (isDark ? 'bg-white/5 text-gray-100 border border-white/10 hover:bg-white/10' : 'border-2 border-[#1A1A1A] bg-[#1A1A1A]/5 text-[#1A1A1A] hover:bg-[#1A1A1A]/10 shadow-[2px_2px_0_0_#1A1A1A]')
+                        className={`h-10 px-5 rounded-2xl font-extrabold text-sm flex items-center gap-1.5 transition-all hover:-translate-y-0.5 ${isCompleted
+                            ? (isDark ? 'bg-white/5 text-gray-100 border border-[#1A1A1A]/20 hover:bg-white/10' : 'border-2 border-[#1A1A1A] bg-[#1A1A1A]/5 text-[#1A1A1A] hover:bg-[#1A1A1A]/10 shadow-[2px_2px_0_0_#1A1A1A]')
                             : (isDark ? 'bg-[#ff7849] text-white border border-[#ff7849]/40 hover:bg-[#ff8b63] shadow-[0_8px_18px_rgba(255,120,73,0.25)]' : 'border-2 border-[#1A1A1A] bg-[#FF6B4A] text-white hover:bg-[#ff5535] shadow-[3px_3px_0_0_#1A1A1A] hover:shadow-[1px_1px_0_0_#1A1A1A]')}`}
                     >
-                        {isCompleted 
+                        {isCompleted
                             ? <><ArrowCounterClockwise className="w-4 h-4" /> Xem lại</>
                             : <>{test.status === 'in_progress' ? 'Tiếp tục' : 'Làm bài'} <CaretRight className="w-4 h-4" /></>
                         }
@@ -218,16 +218,16 @@ function TestDetailView({
 
     return (
         <div className="max-w-4xl mx-auto space-y-6 pb-20">
-            <button onClick={onBack} className={`flex items-center gap-2 font-extrabold text-sm transition-colors ${isDark ? 'text-[#94a3b8] hover:text-white' : 'text-gray-400 hover:text-[#1A1A1A]'}`}>
+            <button onClick={onBack} className={`flex items-center gap-2 font-extrabold text-sm transition-colors ${isDark ? 'text-gray-400 hover:text-[#1A1A1A]' : 'text-gray-400 hover:text-[#1A1A1A]'}`}>
                 {'<-'} Quay lại danh sách
             </button>
 
-            <div className={`rounded-3xl p-6 md:p-8 space-y-6 ${isDark ? 'bg-[#232328] border border-white/10 shadow-[0_14px_30px_rgba(0,0,0,0.32)]' : 'bg-white border-2 border-[#1A1A1A] shadow-[8px_8px_0_0_rgba(26,26,26,1)]'}`}>
+            <div className={`rounded-3xl p-6 md:p-8 space-y-6 ${isDark ? 'bg-[#1A1A1A] border-2 border-[#EEEEEE] shadow-[4px_4px_0_0_#EEEEEE] hover:shadow-[0_0_15px_#FF6B4A] transition-all duration-300' : 'bg-white border-2 border-[#1A1A1A] shadow-[8px_8px_0_0_rgba(26,26,26,1)]'}`}>
                 <div className="flex flex-wrap items-center gap-2">
                     <span className="text-[10px] font-extrabold px-3 py-1 rounded-full border-2 border-[#1A1A1A] bg-white text-[#1A1A1A] shadow-[2px_2px_0_0_#1A1A1A]">
                         {test.category === 'homework' ? 'Bài tập' : 'Kiểm tra'}
                     </span>
-                    <span className={`text-[10px] font-extrabold px-3 py-1 rounded-full ${isDark ? 'border border-white/20 bg-[#2a2a31] text-[#f8fafc]' : 'border-2 border-[#1A1A1A] text-[#1A1A1A] shadow-[2px_2px_0_0_#1A1A1A]'}`} style={{ backgroundColor: isDark ? undefined : SUBJECT_BG[test.subject] }}>
+                    <span className={`text-[10px] font-extrabold px-3 py-1 rounded-full ${isDark ? 'border border-[#1A1A1A]/20 bg-[#2a2a31] text-[#f8fafc]' : 'border-2 border-[#1A1A1A] text-[#1A1A1A] shadow-[2px_2px_0_0_#1A1A1A]'}`} style={{ backgroundColor: isDark ? undefined : SUBJECT_BG[test.subject] }}>
                         {test.subject}
                     </span>
                     <span className={`text-[10px] font-extrabold px-3 py-1 rounded-full border-2 border-[#1A1A1A] shadow-[2px_2px_0_0_#1A1A1A] ${isCompleted ? 'bg-emerald-100 text-emerald-700' : isInProgress ? 'bg-[#FF6B4A] text-white animate-pulse' : 'bg-gray-100 text-gray-600'}`}>
@@ -236,30 +236,30 @@ function TestDetailView({
                 </div>
 
                 <div>
-                    <h1 className={`text-2xl md:text-3xl font-black leading-tight ${isDark ? 'text-white' : 'text-[#1A1A1A]'}`}>{test.title}</h1>
-                    <p className={`text-sm font-bold mt-2 ${isDark ? 'text-[#cbd5e1]' : 'text-[#1A1A1A]/60'}`}>
+                    <h1 className={`text-2xl md:text-3xl font-black leading-tight ${isDark ? 'text-[#1A1A1A]' : 'text-[#1A1A1A]'}`}>{test.title}</h1>
+                    <p className={`text-sm font-bold mt-2 ${isDark ? 'text-gray-500' : 'text-[#1A1A1A]/60'}`}>
                         Giao diện demo thông tin chi tiết bài làm trước khi vào làm bài/xem kết quả.
                     </p>
                 </div>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                    <div className={`rounded-2xl p-4 ${isDark ? 'border border-white/10 bg-white/[0.02]' : 'border-2 border-[#1A1A1A]/10 bg-[#F7F7F2]'}`}>
+                    <div className={`rounded-2xl p-4 ${isDark ? 'border border-[#1A1A1A]/20 bg-white/[0.02]' : 'border-2 border-[#1A1A1A]/10 bg-[#F7F7F2]'}`}>
                         <p className="text-[10px] font-extrabold uppercase tracking-widest text-[#1A1A1A]/50 mb-1">Thời gian làm bài</p>
                         <p className="text-lg font-extrabold text-[#1A1A1A]">{test.duration} phút</p>
                     </div>
-                    <div className={`rounded-2xl p-4 ${isDark ? 'border border-white/10 bg-white/[0.02]' : 'border-2 border-[#1A1A1A]/10 bg-[#F7F7F2]'}`}>
+                    <div className={`rounded-2xl p-4 ${isDark ? 'border border-[#1A1A1A]/20 bg-white/[0.02]' : 'border-2 border-[#1A1A1A]/10 bg-[#F7F7F2]'}`}>
                         <p className="text-[10px] font-extrabold uppercase tracking-widest text-[#1A1A1A]/50 mb-1">Số câu hỏi</p>
                         <p className="text-lg font-extrabold text-[#1A1A1A]">{test.questionCount} câu</p>
                     </div>
-                    <div className={`rounded-2xl p-4 ${isDark ? 'border border-white/10 bg-white/[0.02]' : 'border-2 border-[#1A1A1A]/10 bg-[#F7F7F2]'}`}>
+                    <div className={`rounded-2xl p-4 ${isDark ? 'border border-[#1A1A1A]/20 bg-white/[0.02]' : 'border-2 border-[#1A1A1A]/10 bg-[#F7F7F2]'}`}>
                         <p className="text-[10px] font-extrabold uppercase tracking-widest text-[#1A1A1A]/50 mb-1">Hạn nộp</p>
                         <p className="text-lg font-extrabold text-[#1A1A1A]">{test.dueDate}</p>
                     </div>
-                    <div className={`rounded-2xl p-4 ${isDark ? 'border border-white/10 bg-white/[0.02]' : 'border-2 border-[#1A1A1A]/10 bg-[#F7F7F2]'}`}>
+                    <div className={`rounded-2xl p-4 ${isDark ? 'border border-[#1A1A1A]/20 bg-white/[0.02]' : 'border-2 border-[#1A1A1A]/10 bg-[#F7F7F2]'}`}>
                         <p className="text-[10px] font-extrabold uppercase tracking-widest text-[#1A1A1A]/50 mb-1">Lớp/Tiết học</p>
                         <p className="text-lg font-extrabold text-[#1A1A1A]">{test.className ?? '---'} {test.lessonLabel ? `- ${test.lessonLabel}` : ''}</p>
                     </div>
-                    <div className={`rounded-2xl p-4 md:col-span-2 ${isDark ? 'border border-white/10 bg-white/[0.02]' : 'border-2 border-[#1A1A1A]/10 bg-[#F7F7F2]'}`}>
+                    <div className={`rounded-2xl p-4 md:col-span-2 ${isDark ? 'border border-[#1A1A1A]/20 bg-white/[0.02]' : 'border-2 border-[#1A1A1A]/10 bg-[#F7F7F2]'}`}>
                         <p className="text-[10px] font-extrabold uppercase tracking-widest text-[#1A1A1A]/50 mb-1">Bài của ngày</p>
                         <p className="text-lg font-extrabold text-[#1A1A1A]">{lessonDate ?? 'Chưa xác định ngày cụ thể'}</p>
                     </div>
@@ -275,12 +275,12 @@ function TestDetailView({
                 )}
 
                 <div className="flex flex-col sm:flex-row gap-3 sm:justify-end pt-2">
-                    <button onClick={onBack} className={`h-11 px-6 rounded-2xl font-extrabold transition-colors ${isDark ? 'border border-white/20 text-[#f3f4f6] hover:bg-white/10' : 'border-2 border-[#1A1A1A]/20 text-[#1A1A1A] hover:bg-[#1A1A1A]/5'}`}>
+                    <button onClick={onBack} className={`h-11 px-6 rounded-2xl font-extrabold transition-colors ${isDark ? 'border-2 border-[#1A1A1A]/20 text-[#1A1A1A] hover:bg-[#1A1A1A]/5' : 'border-2 border-[#1A1A1A]/20 text-[#1A1A1A] hover:bg-[#1A1A1A]/5'}`}>
                         Quay lại
                     </button>
                     {isCompleted ? (
                         <>
-                            <button onClick={onDetailedReview} className={`h-11 px-6 rounded-2xl font-extrabold transition-colors ${isDark ? 'border border-white/20 text-white hover:bg-white/10' : 'border-2 border-[#1A1A1A] text-[#1A1A1A] hover:bg-[#1A1A1A]/5'}`}>
+                            <button onClick={onDetailedReview} className={`h-11 px-6 rounded-2xl font-extrabold transition-colors ${isDark ? 'border-2 border-[#1A1A1A] text-[#1A1A1A] hover:bg-[#1A1A1A]/5' : 'border-2 border-[#1A1A1A] text-[#1A1A1A] hover:bg-[#1A1A1A]/5'}`}>
                                 Xem đáp án chi tiết
                             </button>
                             <button onClick={onPrimary} className="h-11 px-6 rounded-2xl bg-[#FF6B4A] text-white font-extrabold hover:bg-[#ff5535] transition-colors">
@@ -303,11 +303,11 @@ function DetailedReviewView({ test, onBack, isDark }: { test: Test; onBack: () =
 
     return (
         <div className="max-w-5xl mx-auto space-y-6 pb-20">
-            <button onClick={onBack} className={`flex items-center gap-2 font-extrabold text-sm transition-colors ${isDark ? 'text-[#94a3b8] hover:text-white' : 'text-gray-400 hover:text-[#1A1A1A]'}`}>
+            <button onClick={onBack} className={`flex items-center gap-2 font-extrabold text-sm transition-colors ${isDark ? 'text-gray-400 hover:text-[#1A1A1A]' : 'text-gray-400 hover:text-[#1A1A1A]'}`}>
                 {'<-'} Quay lại kết quả
             </button>
 
-            <div className="bg-white rounded-3xl border-2 border-[#1A1A1A] p-6 md:p-8 space-y-6 shadow-[4px_4px_0_0_rgba(26,26,26,1)]">
+            <div className={`rounded-3xl p-6 md:p-8 space-y-6 ${isDark ? 'bg-[#1A1A1A] border-2 border-[#EEEEEE] shadow-[4px_4px_0_0_#EEEEEE] hover:shadow-[0_0_15px_#FF6B4A] transition-all duration-300' : 'bg-white border-2 border-[#1A1A1A] shadow-[4px_4px_0_0_rgba(26,26,26,1)]'}`}>
                 <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 border-b-2 border-[#1A1A1A]/10 pb-5">
                     <div>
                         <p className="text-xs font-extrabold text-gray-400 uppercase tracking-widest">Xem lại đáp án chi tiết</p>
@@ -383,7 +383,7 @@ function TestTakingView({ test, onBack, onOpenDetailedReview, isDark }: { test: 
     const [currentQ, setCurrentQ] = useState(7);
     const [autoSaveState, setAutoSaveState] = useState<'idle' | 'saving' | 'saved'>('idle');
     const [textInput, setTextInput] = useState('');
-    
+
     // Mock answers state: 0=unanswered, 1=answered, 2=flagged
     const [answersMap, setAnswersMap] = useState<Record<number, number>>({
         1: 1, 2: 1, 3: 1, 4: 2, 5: 1, 6: 1, 7: 1
@@ -421,7 +421,7 @@ function TestTakingView({ test, onBack, onOpenDetailedReview, isDark }: { test: 
                 <button onClick={onBack} className="flex items-center gap-2 text-gray-400 hover:text-[#1A1A1A] font-extrabold text-sm transition-colors">
                     ← Quay lại danh sách
                 </button>
-                <div className="bg-white rounded-3xl border-2 border-[#1A1A1A] p-8 shadow-[8px_8px_0_0_rgba(26,26,26,1)]">
+                <div className={`rounded-3xl p-8 ${isDark ? 'bg-[#1A1A1A] border-2 border-[#EEEEEE] shadow-[4px_4px_0_0_#EEEEEE] hover:shadow-[0_0_15px_#FF6B4A] transition-all duration-300' : 'bg-white border-2 border-[#1A1A1A] shadow-[8px_8px_0_0_rgba(26,26,26,1)]'}`}>
                     <div className="flex flex-col md:flex-row items-center gap-8 border-b-2 border-[#1A1A1A]/10 pb-8 mb-8">
                         <div className="w-36 h-36 rounded-full border-4 border-[#1A1A1A] flex items-center justify-center shrink-0 relative" style={{ backgroundColor: bg }}>
                             <div className="text-center">
@@ -439,7 +439,7 @@ function TestTakingView({ test, onBack, onOpenDetailedReview, isDark }: { test: 
                                 <h2 className="text-3xl font-black text-[#1A1A1A]">{(test.score ?? 0) >= 8 ? 'Xuất sắc!' : 'Đã hoàn thành!'}</h2>
                                 <p className="text-[#1A1A1A]/60 font-bold mt-1 text-lg">{test.title}</p>
                             </div>
-                            
+
                             <div className="flex flex-wrap items-center gap-4 text-sm font-extrabold">
                                 <div className="flex items-center gap-2 bg-emerald-50 text-emerald-700 px-4 py-2 rounded-2xl border-2 border-emerald-200">
                                     <CheckCircle className="w-5 h-5" weight="fill" /> {test.correctCount}/{test.questionCount} câu đúng
@@ -518,17 +518,17 @@ function TestTakingView({ test, onBack, onOpenDetailedReview, isDark }: { test: 
     return (
         <div className="max-w-6xl mx-auto pb-20 flex flex-col lg:flex-row gap-6">
             <div className="flex-1 space-y-5">
-                <button onClick={onBack} className={`flex items-center gap-2 font-extrabold text-sm transition-colors ${isDark ? 'text-[#94a3b8] hover:text-white' : 'text-gray-400 hover:text-[#1A1A1A]'}`}>← Thoát làm bài</button>
-                
+                <button onClick={onBack} className={`flex items-center gap-2 font-extrabold text-sm transition-colors ${isDark ? 'text-gray-400 hover:text-[#1A1A1A]' : 'text-gray-400 hover:text-[#1A1A1A]'}`}>← Thoát làm bài</button>
+
                 {/* Header */}
-                <div className={`rounded-3xl p-6 flex flex-col md:flex-row justify-between gap-5 transition-colors ${isDark ? 'bg-[#232328] border border-white/10' : 'bg-white border-2 border-[#1A1A1A]'} ${isCriticalTime ? (isDark ? 'border-red-400/60 bg-red-500/10' : 'border-red-500 bg-red-50') : ''}`}>
+                <div className={`rounded-3xl p-6 flex flex-col md:flex-row justify-between gap-5 transition-colors ${isDark ? 'bg-[#1A1A1A] border-2 border-[#EEEEEE] shadow-[4px_4px_0_0_#EEEEEE] hover:shadow-[0_0_15px_#FF6B4A] transition-all duration-300' : 'bg-white border-2 border-[#1A1A1A]'} ${isCriticalTime ? (isDark ? 'border-red-400/60 bg-red-500/10' : 'border-red-500 bg-red-50') : ''}`}>
                     <div className="flex-1 space-y-3">
                         <div className="flex items-center gap-3">
                             <span className="text-[10px] font-extrabold bg-[#FF6B4A] text-white px-3 py-1 rounded-full uppercase">Đang diễn ra</span>
-                            <h1 className={`text-xl font-extrabold ${isDark ? 'text-white' : 'text-[#1A1A1A]'}`}>{test.title}</h1>
+                            <h1 className={`text-xl font-extrabold ${isDark ? 'text-[#1A1A1A]' : 'text-[#1A1A1A]'}`}>{test.title}</h1>
                         </div>
                         <div>
-                            <div className={`flex justify-between text-sm font-extrabold mb-1 ${isDark ? 'text-white' : 'text-[#1A1A1A]'}`}>
+                            <div className={`flex justify-between text-sm font-extrabold mb-1 ${isDark ? 'text-[#1A1A1A]' : 'text-[#1A1A1A]'}`}>
                                 <span>Tiến độ làm bài</span>
                                 <span className={isCriticalTime ? 'text-red-500' : 'text-[#FF6B4A]'}>
                                     {Object.values(answersMap).filter(v => v !== 0).length}/{test.questionCount} câu
@@ -551,21 +551,21 @@ function TestTakingView({ test, onBack, onOpenDetailedReview, isDark }: { test: 
                 </div>
 
                 {/* Question */}
-                <div className={`rounded-3xl overflow-hidden ${isDark ? 'bg-[#232328] border border-white/10 shadow-[0_10px_24px_rgba(0,0,0,0.28)]' : 'bg-white border-2 border-[#1A1A1A] shadow-[4px_4px_0_0_rgba(26,26,26,1)]'}`}>
-                    <div className={`p-6 relative ${isDark ? 'border-b border-white/10' : 'border-b-2 border-[#1A1A1A]/10'}`}>
+                <div className={`rounded-3xl overflow-hidden ${isDark ? 'bg-[#1A1A1A] border-2 border-[#EEEEEE] shadow-[4px_4px_0_0_#EEEEEE] hover:shadow-[0_0_15px_#FF6B4A] transition-all duration-300' : 'bg-white border-2 border-[#1A1A1A] shadow-[4px_4px_0_0_rgba(26,26,26,1)]'}`}>
+                    <div className={`p-6 relative ${isDark ? 'border-b border-[#1A1A1A]/20' : 'border-b-2 border-[#1A1A1A]/10'}`}>
                         <div className="flex justify-between items-start">
                             <div>
                                 <div className="text-xs font-extrabold text-[#FF6B4A] tracking-widest uppercase mb-3 flex items-center gap-2">
                                     Câu hỏi {currentQ}
-                                    {answersMap[currentQ] === 2 && <span className="bg-amber-100 text-amber-600 px-2 flex items-center gap-1 rounded uppercase tracking-wider text-[10px] py-1 border border-amber-200"><Flag weight="fill"/> Cần xem lại</span>}
+                                    {answersMap[currentQ] === 2 && <span className="bg-amber-100 text-amber-600 px-2 flex items-center gap-1 rounded uppercase tracking-wider text-[10px] py-1 border border-amber-200"><Flag weight="fill" /> Cần xem lại</span>}
                                 </div>
-                                <h2 className={`text-xl font-extrabold leading-relaxed ${isDark ? 'text-white' : 'text-[#1A1A1A]'}`}>
+                                <h2 className={`text-xl font-extrabold leading-relaxed ${isDark ? 'text-[#1A1A1A]' : 'text-[#1A1A1A]'}`}>
                                     Phân tích ý nghĩa nhân đạo sâu sắc của "Vợ nhặt" qua chi tiết bữa cơm ngày đói?
                                 </h2>
                             </div>
-                            <button 
+                            <button
                                 onClick={handleFlag}
-                                className={`shrink-0 p-2 rounded-xl transition-colors border-2 ${answersMap[currentQ] === 2 ? 'bg-amber-100 border-amber-300 text-amber-600' : (isDark ? 'hover:bg-white/10 border-transparent text-[#94a3b8]' : 'hover:bg-gray-100 border-transparent text-gray-400')}`}
+                                className={`shrink-0 p-2 rounded-xl transition-colors border-2 ${answersMap[currentQ] === 2 ? 'bg-amber-100 border-amber-300 text-amber-600' : (isDark ? 'hover:bg-gray-100 border-transparent text-gray-400' : 'hover:bg-gray-100 border-transparent text-gray-400')}`}
                                 title="Đánh dấu câu hỏi này cân xem lại"
                             >
                                 <Flag className="w-6 h-6 " weight={answersMap[currentQ] === 2 ? 'fill' : 'regular'} />
@@ -579,41 +579,41 @@ function TestTakingView({ test, onBack, onOpenDetailedReview, isDark }: { test: 
                             { label: 'C', text: 'Ca ngợi vẻ đẹp tiềm ẩn của người nông dân trước cách mạng.', selected: false },
                             { label: 'D', text: 'Làm nổi bật tiếng khóc xót xa của Kim Lân trước số phận con người.', selected: false },
                         ].map((opt) => (
-                            <div key={opt.label} className={`relative p-4 rounded-2xl cursor-pointer border-2 transition-all hover:translate-x-1 ${opt.selected ? (isDark ? 'border-[#ff8b63] bg-[#ff7849]/10' : 'border-[#FF6B4A] bg-[#FF6B4A]/5') : (isDark ? 'border-white/20 bg-white/[0.02] hover:border-white/35' : 'border-[#1A1A1A]/20 bg-white hover:border-[#1A1A1A]/40')}`}>
+                            <div key={opt.label} className={`relative p-4 rounded-2xl cursor-pointer border-2 transition-all hover:translate-x-1 ${opt.selected ? (isDark ? 'border-[#ff8b63] bg-[#ff7849]/10' : 'border-[#FF6B4A] bg-[#FF6B4A]/5') : (isDark ? 'border-[#1A1A1A]/20 bg-white/[0.02] hover:border-white/35' : 'border-[#1A1A1A]/20 bg-white hover:border-[#1A1A1A]/40')}`}>
                                 <div className="flex items-start gap-4">
                                     <div className={`w-6 h-6 rounded-full border-2 flex items-center justify-center shrink-0 mt-0.5 transition-colors ${opt.selected ? 'bg-[#FF6B4A] border-[#FF6B4A]' : (isDark ? 'border-white/45 bg-[#1a1a1f]' : 'border-[#1A1A1A]/30 bg-white')}`}>
                                         {opt.selected && <div className="w-2.5 h-2.5 rounded-full bg-white" />}
                                     </div>
                                     <div>
-                                        <div className={`font-extrabold text-sm mb-1 transition-colors ${opt.selected ? 'text-[#FF6B4A]' : (isDark ? 'text-[#cbd5e1]' : 'text-[#1A1A1A]/55')}`}>Đáp án {opt.label}</div>
+                                        <div className={`font-extrabold text-sm mb-1 transition-colors ${opt.selected ? 'text-[#FF6B4A]' : (isDark ? 'text-gray-500' : 'text-[#1A1A1A]/55')}`}>Đáp án {opt.label}</div>
                                         <p className={`font-semibold text-[15px] ${isDark ? 'text-[#f3f4f6]' : 'text-[#1A1A1A]'}`}>{opt.text}</p>
                                     </div>
                                 </div>
                             </div>
                         ))}
-                        
-                        <div className={`pt-4 mt-4 border-t-2 border-dashed ${isDark ? 'border-white/15' : 'border-[#1A1A1A]/10'}`}>
+
+                        <div className={`pt-4 mt-4 border-t-2 border-dashed ${isDark ? 'border-[#1A1A1A]/20' : 'border-[#1A1A1A]/10'}`}>
                             <div className="flex justify-between items-end mb-2">
-                                <label className={`text-sm font-extrabold ${isDark ? 'text-white' : 'text-[#1A1A1A]'}`}>Câu trả lời bổ sung (Tự luận ngắn):</label>
+                                <label className={`text-sm font-extrabold ${isDark ? 'text-[#1A1A1A]' : 'text-[#1A1A1A]'}`}>Câu trả lời bổ sung (Tự luận ngắn):</label>
                                 <div className="text-[11px] font-extrabold text-gray-400 flex items-center gap-1 min-w-[100px] justify-end">
-                                    {autoSaveState === 'saving' && <><Hourglass className="animate-spin-slow"/> Đang lưu...</>}
+                                    {autoSaveState === 'saving' && <><Hourglass className="animate-spin-slow" /> Đang lưu...</>}
                                     {autoSaveState === 'saved' && <><CheckCircle className="text-emerald-500" weight="fill" /> Đã tự động lưu</>}
                                 </div>
                             </div>
-                            <textarea 
+                            <textarea
                                 value={textInput}
                                 onChange={(e) => setTextInput(e.target.value)}
-                                className={`w-full h-32 rounded-2xl p-4 font-semibold focus:outline-none focus:border-[#FF6B4A] resize-none transition-colors ${isDark ? 'bg-[#1a1a1f] border border-white/15 text-white placeholder:text-[#94a3b8]' : 'bg-[#F7F7F2] border-2 border-[#1A1A1A]/20 text-[#1A1A1A]'}`} 
-                                placeholder="Nhập suy nghĩ của bạn..." 
+                                className={`w-full h-32 rounded-2xl p-4 font-semibold focus:outline-none focus:border-[#FF6B4A] resize-none transition-colors ${isDark ? 'bg-[#F7F7F2] border-2 border-[#1A1A1A]/20 text-[#1A1A1A]' : 'bg-[#F7F7F2] border-2 border-[#1A1A1A]/20 text-[#1A1A1A]'}`}
+                                placeholder="Nhập suy nghĩ của bạn..."
                             />
                         </div>
                     </div>
-                    <div className={`p-5 flex items-center justify-between ${isDark ? 'bg-[#1a1a1f] border-t border-white/10' : 'bg-gray-50 border-t-2 border-[#1A1A1A]/10'}`}>
-                        <button className={`flex items-center gap-2 font-extrabold transition-colors px-4 py-2 rounded-xl ${isDark ? 'text-[#cbd5e1] hover:text-white bg-white/5 border border-white/15' : 'text-[#1A1A1A]/60 hover:text-[#1A1A1A] bg-white border-2 border-[#1A1A1A]/10'}`}>
+                    <div className={`p-5 flex items-center justify-between ${isDark ? 'bg-[#1a1a1f] border-t border-[#1A1A1A]/20' : 'bg-gray-50 border-t-2 border-[#1A1A1A]/10'}`}>
+                        <button className={`flex items-center gap-2 font-extrabold transition-colors px-4 py-2 rounded-xl ${isDark ? 'text-[#1A1A1A]/60 hover:text-[#1A1A1A] bg-white border-2 border-[#1A1A1A]/10' : 'text-[#1A1A1A]/60 hover:text-[#1A1A1A] bg-white border-2 border-[#1A1A1A]/10'}`}>
                             ← Câu trước
                         </button>
                         <div className="flex gap-3">
-                            <button className={`flex items-center gap-2 px-5 h-11 font-extrabold text-sm rounded-2xl transition-all ${isDark ? 'border border-white/20 hover:bg-white/10 text-white bg-transparent' : 'border-2 border-[#1A1A1A]/20 hover:bg-white text-[#1A1A1A] hover:border-[#1A1A1A] bg-transparent'}`}>
+                            <button className={`flex items-center gap-2 px-5 h-11 font-extrabold text-sm rounded-2xl transition-all ${isDark ? 'border-2 border-[#1A1A1A]/20 hover:bg-white text-[#1A1A1A] hover:border-[#1A1A1A] bg-transparent' : 'border-2 border-[#1A1A1A]/20 hover:bg-white text-[#1A1A1A] hover:border-[#1A1A1A] bg-transparent'}`}>
                                 <FloppyDisk className="w-4 h-4" /> Lưu nháp
                             </button>
                             <button className="px-8 h-11 bg-[#FF6B4A] hover:bg-[#ff5535] text-white font-extrabold rounded-2xl text-sm transition-all shadow-[0_4px_0_0_#A83F2A] hover:translate-y-0.5 hover:shadow-[0_2px_0_0_#A83F2A] flex items-center gap-2">
@@ -626,21 +626,21 @@ function TestTakingView({ test, onBack, onOpenDetailedReview, isDark }: { test: 
 
             {/* Navigation Panel */}
             <div className="w-full lg:w-80 shrink-0">
-                <div className={`rounded-3xl p-6 sticky top-6 ${isDark ? 'bg-[#232328] border border-white/10 shadow-[0_10px_22px_rgba(0,0,0,0.28)]' : 'bg-white border-2 border-[#1A1A1A] shadow-[4px_4px_0_0_rgba(26,26,26,1)]'}`}>
-                    <h3 className={`font-extrabold text-lg mb-4 flex items-center gap-2 ${isDark ? 'text-white' : 'text-[#1A1A1A]'}`}>
-                        <ListNumbers className="w-5 h-5 text-[#FF6B4A]" weight="fill" /> 
+                <div className={`rounded-3xl p-6 sticky top-6 ${isDark ? 'bg-[#1A1A1A] border-2 border-[#EEEEEE] shadow-[4px_4px_0_0_#EEEEEE] hover:shadow-[0_0_15px_#FF6B4A] transition-all duration-300' : 'bg-white border-2 border-[#1A1A1A] shadow-[4px_4px_0_0_rgba(26,26,26,1)]'}`}>
+                    <h3 className={`font-extrabold text-lg mb-4 flex items-center gap-2 ${isDark ? 'text-[#1A1A1A]' : 'text-[#1A1A1A]'}`}>
+                        <ListNumbers className="w-5 h-5 text-[#FF6B4A]" weight="fill" />
                         Danh sách câu hỏi
                     </h3>
-                    
+
                     <div className="grid grid-cols-5 gap-2.5">
-                        {Array.from({length: test.questionCount}).map((_, i) => {
+                        {Array.from({ length: test.questionCount }).map((_, i) => {
                             const qNum = i + 1;
                             const status = answersMap[qNum] || 0;
                             // 0 = gray, 1 = blue/green (answered), 2 = yellow (flagged)
                             let btnClass = isDark
-                                ? "border-white/20 bg-[#17171d] text-[#cbd5e1] hover:border-white/40"
+                                ? "border-[#1A1A1A]/20 bg-[#17171d] text-gray-500 hover:border-white/40"
                                 : "border-[#1A1A1A]/20 bg-gray-50 text-gray-500 hover:border-[#1A1A1A]/50"; // default
-                            
+
                             if (status === 1) {
                                 btnClass = "bg-emerald-100 border-emerald-300 text-emerald-700 font-black"; // answered
                             } else if (status === 2) {
@@ -652,7 +652,7 @@ function TestTakingView({ test, onBack, onOpenDetailedReview, isDark }: { test: 
                             }
 
                             return (
-                                <button 
+                                <button
                                     key={qNum}
                                     onClick={() => setCurrentQ(qNum)}
                                     className={`w-full aspect-square rounded-xl border-2 flex flex-col items-center justify-center font-extrabold text-sm transition-all hover:scale-105 ${btnClass}`}
@@ -664,16 +664,16 @@ function TestTakingView({ test, onBack, onOpenDetailedReview, isDark }: { test: 
                         })}
                     </div>
 
-                    <div className={`mt-6 pt-5 space-y-3 ${isDark ? 'border-t border-white/10' : 'border-t-2 border-[#1A1A1A]/10'}`}>
-                        <div className={`flex items-center gap-3 text-sm font-bold ${isDark ? 'text-[#cbd5e1]' : 'text-[#1A1A1A]/60'}`}>
+                    <div className={`mt-6 pt-5 space-y-3 ${isDark ? 'border-t border-[#1A1A1A]/20' : 'border-t-2 border-[#1A1A1A]/10'}`}>
+                        <div className={`flex items-center gap-3 text-sm font-bold ${isDark ? 'text-gray-500' : 'text-[#1A1A1A]/60'}`}>
                             <span className={`w-4 h-4 rounded-md border-2 flex-shrink-0 ${isDark ? 'border-emerald-300/60 bg-emerald-400/20' : 'border-emerald-300 bg-emerald-100'}`} />
                             Câu đã làm
                         </div>
-                        <div className={`flex items-center gap-3 text-sm font-bold ${isDark ? 'text-[#cbd5e1]' : 'text-[#1A1A1A]/60'}`}>
+                        <div className={`flex items-center gap-3 text-sm font-bold ${isDark ? 'text-gray-500' : 'text-[#1A1A1A]/60'}`}>
                             <span className={`w-4 h-4 rounded-md border-2 flex-shrink-0 ${isDark ? 'border-white/25 bg-[#17171d]' : 'border-[#1A1A1A]/20 bg-gray-50'}`} />
                             Câu chưa làm
                         </div>
-                        <div className={`flex items-center gap-3 text-sm font-bold ${isDark ? 'text-[#cbd5e1]' : 'text-[#1A1A1A]/60'}`}>
+                        <div className={`flex items-center gap-3 text-sm font-bold ${isDark ? 'text-gray-500' : 'text-[#1A1A1A]/60'}`}>
                             <span className={`w-4 h-4 rounded-md border-2 flex-shrink-0 ${isDark ? 'border-amber-300/60 bg-amber-300/25' : 'border-amber-400 bg-amber-200'}`} />
                             Đang phân vân
                         </div>
@@ -749,8 +749,8 @@ export function StudentTests() {
             const matchSchedule = !scheduleFilter
                 ? true
                 : (!scheduleFilter.subject || t.subject === scheduleFilter.subject)
-                    && (!scheduleFilter.className || t.className === scheduleFilter.className)
-                    && (!scheduleFilter.lessonKey || t.lessonKey === scheduleFilter.lessonKey);
+                && (!scheduleFilter.className || t.className === scheduleFilter.className)
+                && (!scheduleFilter.lessonKey || t.lessonKey === scheduleFilter.lessonKey);
 
             return matchSearch && matchCategory && matchSchedule;
         }).sort((a, b) => {
@@ -777,7 +777,7 @@ export function StudentTests() {
     if (selectedTest) {
         if (selectedTest.status === 'completed' && exerciseViewMode === 'detailedReview') {
             return (
-                <div className={`min-h-screen p-6 lg:p-8 ${isDark ? 'bg-gradient-to-b from-[#111111] to-[#1a1a1a]' : ''}`} style={{ fontFamily: "'Nunito', sans-serif" }}>
+                <div className="min-h-screen p-6 lg:p-8" style={{ fontFamily: "'Nunito', sans-serif" }}>
                     <DetailedReviewView test={selectedTest} onBack={() => setExerciseViewMode('detail')} isDark={isDark} />
                 </div>
             );
@@ -785,7 +785,7 @@ export function StudentTests() {
 
         if (exerciseViewMode === 'detail') {
             return (
-                <div className={`min-h-screen p-6 lg:p-8 ${isDark ? 'bg-gradient-to-b from-[#111111] to-[#1a1a1a]' : ''}`} style={{ fontFamily: "'Nunito', sans-serif" }}>
+                <div className="min-h-screen p-6 lg:p-8" style={{ fontFamily: "'Nunito', sans-serif" }}>
                     <TestDetailView
                         test={selectedTest}
                         scheduleDate={scheduleFilter?.date}
@@ -799,7 +799,7 @@ export function StudentTests() {
         }
 
         return (
-            <div className={`min-h-screen p-6 lg:p-8 ${isDark ? 'bg-gradient-to-b from-[#111111] to-[#1a1a1a]' : ''}`} style={{ fontFamily: "'Nunito', sans-serif" }}>
+            <div className="min-h-screen p-6 lg:p-8" style={{ fontFamily: "'Nunito', sans-serif" }}>
                 <TestTakingView
                     test={selectedTest}
                     onBack={() => setExerciseViewMode('detail')}
@@ -811,18 +811,18 @@ export function StudentTests() {
     }
 
     return (
-        <div className={`p-6 lg:p-8 space-y-8 max-w-5xl mx-auto ${isDark ? 'bg-gradient-to-b from-[#111111] to-[#1a1a1a]' : ''}`} style={{ fontFamily: "'Nunito', sans-serif" }}>
+        <div className="p-6 lg:p-8 space-y-8 max-w-5xl mx-auto" style={{ fontFamily: "'Nunito', sans-serif" }}>
             <div className="mb-2">
                 <p className="text-xs font-extrabold text-[#FF6B4A] uppercase tracking-widest mb-1">Học tập hiệu quả</p>
-                <h1 className={`text-4xl font-black tracking-tight ${isDark ? 'text-white' : 'text-[#1A1A1A]'}`}>Bài tập &amp; Kiểm tra</h1>
+                <h1 className={`text-4xl font-black tracking-tight ${isDark ? 'text-white' : 'text-[#1A1A1A]'}'}`}>Bài tập &amp; Kiểm tra</h1>
             </div>
 
-            <div className={`rounded-3xl p-2 flex flex-col sm:flex-row gap-4 relative z-10 w-full ${isDark ? 'bg-[rgba(28,28,30,0.95)] border border-[rgba(255,255,255,0.08)] shadow-[0_14px_28px_rgba(0,0,0,0.32)]' : 'bg-white border-2 border-[#1A1A1A] shadow-[4px_4px_0_0_rgba(26,26,26,1)]'}`}>
+            <div className={`rounded-3xl p-2 flex flex-col sm:flex-row gap-4 relative z-10 w-full ${isDark ? 'bg-[#1A1A1A] border-2 border-[#EEEEEE] shadow-[4px_4px_0_0_#EEEEEE] hover:shadow-[0_0_15px_#FF6B4A] transition-all duration-300' : 'bg-white border-2 border-[#1A1A1A] shadow-[4px_4px_0_0_rgba(26,26,26,1)]'}`}>
                 {/* Search */}
                 <div className="flex-1 relative">
                     <MagnifyingGlass className={`absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 pointer-events-none ${isDark ? 'text-[#9ca3af]' : 'text-gray-400'}`} />
-                    <input 
-                        type="text" 
+                    <input
+                        type="text"
                         placeholder="Tìm bài tập, môn học..."
                         value={searchQuery}
                         onChange={(e) => setSearchQuery(e.target.value)}
@@ -830,9 +830,9 @@ export function StudentTests() {
                     />
                 </div>
                 {/* Filter Dropdown */}
-                <div className={`flex items-center pl-4 py-1 pr-2 ${isDark ? 'border-l border-white/10' : 'border-l-2 border-gray-100'}`}>
+                <div className={`flex items-center pl-4 py-1 pr-2 ${isDark ? 'border-l border-[#1A1A1A]/20' : 'border-l-2 border-gray-100'}`}>
                     <Funnel className={`w-5 h-5 mr-3 ${isDark ? 'text-[#9ca3af]' : 'text-gray-400'}`} />
-                    <select 
+                    <select
                         value={filterCategory}
                         onChange={(e) => setFilterCategory(e.target.value as FilterCategory)}
                         className={`bg-transparent font-extrabold text-sm outline-none cursor-pointer ${isDark ? 'text-[#e5e7eb]' : 'text-[#1A1A1A]'}`}
@@ -863,12 +863,12 @@ export function StudentTests() {
             )}
 
             {/* Tabs */}
-            <div className={`flex p-1.5 rounded-2xl w-fit gap-2 ${isDark ? 'bg-[#18181b] border border-white/10' : 'bg-[#1A1A1A]/5 border-2 border-[#1A1A1A]/10'}`}>
+            <div className={`flex p-1.5 rounded-2xl w-fit gap-2 ${isDark ? 'bg-[#18181b] border-none' : 'bg-[#1A1A1A]/5 border-2 border-[#1A1A1A]/10'}`}>
                 {[['available', `Đang có (${availableTests.length})`], ['completed', `Đã xong (${completedTests.length})`]].map(([tab, label]) => (
                     <button
                         key={tab}
                         onClick={() => setActiveTab(tab as ActiveTab)}
-                        className={`px-6 py-2.5 rounded-xl text-sm font-extrabold transition-all ${activeTab === tab ? 'bg-[#ff7849] text-white shadow-sm' : (isDark ? 'bg-[#131316] text-[#b3b3b3] hover:text-white' : 'text-[#1A1A1A]/50 hover:text-[#1A1A1A]')}`}
+                        className={`px-6 py-2.5 rounded-xl text-sm font-extrabold transition-all ${activeTab === tab ? 'bg-[#ff7849] text-white shadow-sm' : (isDark ? 'text-[#1A1A1A]/50 hover:text-[#1A1A1A]' : 'text-[#1A1A1A]/50 hover:text-[#1A1A1A]')}`}
                     >
                         {label}
                     </button>
@@ -879,9 +879,9 @@ export function StudentTests() {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
                 {filteredTests.length > 0
                     ? filteredTests.map((t) => <TestCard key={t.id} test={t} onStart={handleOpenTest} isDark={isDark} />)
-                    : <div className={`col-span-1 md:col-span-2 text-center py-20 rounded-3xl border-dashed ${isDark ? 'bg-[#1a1a1f] border border-white/10' : 'bg-white/50 border-2 border-[#1A1A1A]/20'}`}>
+                    : <div className={`col-span-1 md:col-span-2 text-center py-20 rounded-3xl border-dashed ${isDark ? 'bg-[#1a1a1f] border-none' : 'bg-white/50 border-2 border-[#1A1A1A]/20'}`}>
                         <Funnel className="w-12 h-12 text-[#1A1A1A]/20 mx-auto mb-3" />
-                        <div className={`font-extrabold text-lg ${isDark ? 'text-[#b3b3b3]' : 'text-[#1A1A1A]/60'}`}>Không tìm thấy bài tập phù hợp</div>
+                        <div className={`font-extrabold text-lg ${isDark ? 'text-[#1A1A1A]/50' : 'text-[#1A1A1A]/60'}`}>Không tìm thấy bài tập phù hợp</div>
                     </div>
                 }
             </div>
