@@ -11,7 +11,7 @@ import { useSettings } from '../../context/SettingsContext';
 import { authService } from '../../services/authService';
 import { StudentClassmate, StudentScheduleItem, StudentWeeklyStats, timetableService } from '../../services/timetableService';
 
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080/api';
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL;
 
 const DAYS = ['T2', 'T3', 'T4', 'T5', 'T6', 'T7', 'CN'];
 const DAY_NAMES_FULL = ['Thứ 2', 'Thứ 3', 'Thứ 4', 'Thứ 5', 'Thứ 6', 'Thứ 7', 'Chủ nhật'];
