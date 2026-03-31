@@ -3,7 +3,7 @@ import { ArrowClockwise, Check, GraduationCap, Trophy, TrendUp, Question, ArrowR
 import { useSettings } from '../../context/SettingsContext';
 import { useSearchParams } from 'react-router-dom';
 
-const FAST_API_URL = import.meta.env.VITE_FAST_API_BASE_URL;
+import { FAST_API_BASE_URL as FAST_API_URL } from '../../services/env';
 
 const SKILLS = [
     { label: 'Tốc độ giải bài', val: 80, diff: '+12%', bg: '#95E1D3' },

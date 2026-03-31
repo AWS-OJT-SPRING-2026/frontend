@@ -117,7 +117,7 @@ export interface StudentWeeklyStats {
   totalExams: number;
 }
 
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL;
+import { API_BASE_URL } from './env';
 const SESSION_EXPIRED_EVENT = 'educare:session-expired';
 
 function getAxiosErrorMessage(error: unknown): string {

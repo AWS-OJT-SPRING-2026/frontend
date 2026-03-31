@@ -2,6 +2,7 @@ import { useRef, useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { MagnifyingGlass, Bell, BookmarkSimple, ArrowRight, CheckCircle, Info } from '@phosphor-icons/react';
 import { useSettings } from '../../context/SettingsContext';
+import { API_BASE_URL } from '../../services/env';
 
 const courses = [
     {
@@ -132,7 +133,7 @@ export function StudentHomepage() {
     }, []);
 
     useEffect(() => {
-        fetch(`${import.meta.env.VITE_API_BASE_URL}/quotes/today`)
+        fetch(`${API_BASE_URL}/quotes/today`)
             .then(res => res.json())
             .then(data => {
                 if (Array.isArray(data) && data.length > 0) {

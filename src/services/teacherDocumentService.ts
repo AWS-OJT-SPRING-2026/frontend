@@ -1,7 +1,7 @@
 import { authService } from './authService';
 import { api, ApiError } from './api';
 
-const FAST_API_BASE_URL = import.meta.env.VITE_FAST_API_BASE_URL;
+import { FAST_API_BASE_URL } from './env';
 
 export type DocType = 'theory' | 'question';
 

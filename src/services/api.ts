@@ -1,4 +1,4 @@
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL;
+import { API_BASE_URL } from './env';
 const QUICK_DEMO_SESSION_KEY = 'educare_quick_demo_session';
 
 // Keep in sync with AuthContext.ts

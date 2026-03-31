@@ -3,7 +3,7 @@ import { Brain, CaretDown, Check, ArrowRight, ArrowLeft, Trophy } from '@phospho
 import { useSettings } from '../../context/SettingsContext';
 import { useSearchParams } from 'react-router-dom';
 
-const FAST_API_URL = import.meta.env.VITE_FAST_API_BASE_URL;
+import { FAST_API_BASE_URL as FAST_API_URL } from '../../services/env';
 
 const levels = [
     { level: 'Yếu', levelBg: '#FFB5B5' },
