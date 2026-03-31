@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { ArrowClockwise, Check, GraduationCap, Trophy, TrendUp, Question, ArrowRight, CaretRight, CaretDown, Clock, Sparkle } from '@phosphor-icons/react';
 import { useSettings } from '../../context/SettingsContext';
+import { useSearchParams } from 'react-router-dom';
 
 const FAST_API_URL = import.meta.env.VITE_FAST_API_BASE_URL;
 
@@ -57,6 +58,8 @@ interface RoadmapData {
 export function StudentRoadmap() {
     const { theme } = useSettings();
     const isDark = theme === 'dark';
+    const [searchParams, setSearchParams] = useSearchParams();
+    
     const [hasRoadmap, setHasRoadmap] = useState(false);
     const [selectedSubjectId, setSelectedSubjectId] = useState('');
     const [studyTime, setStudyTime] = useState('');
@@ -66,43 +69,83 @@ export function StudentRoadmap() {
 
     const selectedSubjectName = apiSubjects.find(s => s.subject_id.toString() === selectedSubjectId)?.subject_name || '';
 
-    useEffect(() => {
-        fetch(`${FAST_API_URL}/subjects`)
-            .then(res => res.ok ? res.json() : Promise.reject(res.status))
-            .then(data => { if (Array.isArray(data)) setApiSubjects(data); })
-            .catch(err => console.error('Error fetching subjects:', err));
-
-        fetch(`${FAST_API_URL}/roadmap/current/1`)
-            .then(res => res.ok ? res.json() : Promise.reject(res.status))
-            .then(data => {
-                if (data && data.roadmapid) { setRoadmapData(data); setHasRoadmap(true); }
-            })
-            .catch(err => console.error('Error fetching current roadmap:', err));
-    }, []);
-
-    const handleGenerateRoadmap = async () => {
-        if (!selectedSubjectId || !studyTime) return;
+    const generateRoadmapFor = async (subId: number, wks: number) => {
         setIsGenerating(true);
         try {
             const response = await fetch(`${FAST_API_URL}/roadmap/generate`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
-                    userid: 1,
-                    subject_id: parseInt(selectedSubjectId),
-                    total_weeks: parseInt(studyTime)
+                    userid: 1, // hardcoded for now
+                    subject_id: subId,
+                    total_weeks: wks
                 })
             });
             if (!response.ok) throw new Error('Failed to generate roadmap');
             const data = await response.json();
             setRoadmapData(data);
             setHasRoadmap(true);
+            
+            // Xoá search params sau khi tạo thành công để không bị lặp lại
+            searchParams.delete('auto');
+            setSearchParams(searchParams);
         } catch (err) {
             console.error('Error generating roadmap:', err);
             alert('Có lỗi khi tạo lộ trình. Vui lòng thử lại.');
         } finally {
             setIsGenerating(false);
         }
+    };
+
+    useEffect(() => {
+        const autoSubject = searchParams.get('subject');
+        const autoWeeks = searchParams.get('weeks');
+        const autoRun = searchParams.get('auto');
+
+        fetch(`${FAST_API_URL}/subjects`)
+            .then(res => res.ok ? res.json() : Promise.reject(res.status))
+            .then(data => { 
+                if (Array.isArray(data)) {
+                    setApiSubjects(data); 
+
+                    if (autoRun === 'true' && autoSubject && autoWeeks) {
+                        // Match subject id logically
+                        // Try exact substring match inside data
+                        const subNameLower = autoSubject.toLowerCase().trim();
+                        // Strip words like "thpt", "thi", etc for better matching
+                        const keyword = subNameLower.replace("thpt", "").replace("thi", "").trim();
+
+                        const matched = data.find(s => 
+                            s.subject_name.toLowerCase().includes(keyword) || 
+                            keyword.includes(s.subject_name.toLowerCase())
+                        );
+
+                        if (matched) {
+                            setSelectedSubjectId(matched.subject_id.toString());
+                            setStudyTime(autoWeeks);
+                            generateRoadmapFor(matched.subject_id, parseInt(autoWeeks));
+                        } else {
+                            // If unable to detect subject, just populate the week and wait for user to select subject manually.
+                            setStudyTime(autoWeeks);
+                        }
+                    }
+                }
+            })
+            .catch(err => console.error('Error fetching subjects:', err));
+
+        if (autoRun !== 'true') {
+            fetch(`${FAST_API_URL}/roadmap/current/1`)
+                .then(res => res.ok ? res.json() : Promise.reject(res.status))
+                .then(data => {
+                    if (data && data.roadmapid) { setRoadmapData(data); setHasRoadmap(true); }
+                })
+                .catch(err => console.error('Error fetching current roadmap:', err));
+        }
+    }, [searchParams]);
+
+    const handleGenerateRoadmap = () => {
+        if (!selectedSubjectId || !studyTime) return;
+        generateRoadmapFor(parseInt(selectedSubjectId), parseInt(studyTime));
     };
 
     // ── Initial Form (before roadmap is generated) ──

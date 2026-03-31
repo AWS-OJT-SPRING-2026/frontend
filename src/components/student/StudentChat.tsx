@@ -7,6 +7,7 @@ import rehypeKatex from 'rehype-katex';
 import 'katex/dist/katex.min.css';
 import { getChatSessions, streamChatMessage, upsertChatSession, type ChatSessionDto } from '../../services/chatService';
 import { useSettings } from '../../context/SettingsContext';
+import { RoadmapWidget, DocumentWidget, QuizWidget } from './ChatWidgets';
 
 interface Message {
     role: 'user' | 'assistant';
@@ -47,6 +48,35 @@ function fromDto(dto: ChatSessionDto): ChatSession {
 export function StudentChat() {
     const { theme } = useSettings();
     const isDark = theme === 'dark';
+    
+    // Tách nội dung thành các segment: text thuần và widget
+    // Tránh hoàn toàn việc nhúng widget vào thẻ <a> của markdown
+    type Segment = { type: 'text'; content: string } | { type: 'widget'; widgetType: string; params: string[] };
+    
+    const parseContentSegments = (content: string): Segment[] => {
+        if (!content) return [];
+        const regex = />>>\[UI_WIDGET:([^\]]+)\]<<</g;
+        const segments: Segment[] = [];
+        let lastIndex = 0;
+        let match;
+        
+        while ((match = regex.exec(content)) !== null) {
+            // Text trước widget
+            if (match.index > lastIndex) {
+                segments.push({ type: 'text', content: content.slice(lastIndex, match.index) });
+            }
+            // Widget
+            const parts = match[1].split('|');
+            segments.push({ type: 'widget', widgetType: parts[0], params: parts.slice(1) });
+            lastIndex = regex.lastIndex;
+        }
+        // Text còn lại sau widget cuối
+        if (lastIndex < content.length) {
+            segments.push({ type: 'text', content: content.slice(lastIndex) });
+        }
+        return segments.length > 0 ? segments : [{ type: 'text', content }];
+    };
+
     const [sessions, setSessions] = useState<ChatSession[]>([]);
     const [messages, setMessages] = useState<Message[]>([]);
     const [input, setInput] = useState('');
@@ -416,12 +446,29 @@ export function StudentChat() {
                                                        prose-strong:font-black
                                                        prose-ul:my-2 prose-li:my-0.5
                                                        prose-code:px-1 prose-code:py-0.5 prose-code:rounded prose-pre:rounded-xl ${isDark ? 'prose-invert prose-headings:text-[#ff9a73] prose-strong:text-gray-100 prose-code:text-[#ff9a73] prose-code:bg-[#ff7849]/15 prose-pre:bg-[#111216] prose-pre:text-gray-100' : 'prose-[#1A1A1A] prose-headings:text-[#FF6B4A] prose-strong:text-[#1A1A1A] prose-code:text-[#FF6B4A] prose-code:bg-[#FF6B4A]/10 prose-pre:bg-[#1A1A1A] prose-pre:text-white'}`}>
-                                            <ReactMarkdown
-                                                remarkPlugins={[remarkGfm, remarkMath]}
-                                                rehypePlugins={[rehypeKatex]}
-                                            >
-                                                {msg.content}
-                                            </ReactMarkdown>
+                                            {parseContentSegments(msg.content).map((seg, si) => {
+                                                if (seg.type === 'widget') {
+                                                    if (seg.widgetType === 'ROADMAP') {
+                                                        return <RoadmapWidget key={si} subjectName={seg.params[0]} totalWeeks={seg.params[1]} />;
+                                                    }
+                                                    if (seg.widgetType === 'DOCUMENT') {
+                                                        return <DocumentWidget key={si} bookId={seg.params[0]} sectionId={seg.params[1]} />;
+                                                    }
+                                                    if (seg.widgetType === 'QUIZ') {
+                                                        return <QuizWidget key={si} subjectName={seg.params[0]} numQuestions={seg.params[1]} />;
+                                                    }
+                                                    return null;
+                                                }
+                                                return (
+                                                    <ReactMarkdown
+                                                        key={si}
+                                                        remarkPlugins={[remarkGfm, remarkMath]}
+                                                        rehypePlugins={[rehypeKatex]}
+                                                    >
+                                                        {seg.content}
+                                                    </ReactMarkdown>
+                                                );
+                                            })}
                                         </div>
                                     ) : (
                                         <p className="font-semibold text-[15px] leading-relaxed whitespace-pre-wrap">{msg.content}</p>

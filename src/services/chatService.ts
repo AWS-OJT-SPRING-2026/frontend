@@ -37,12 +37,19 @@ export async function streamChatMessage(
   sessionId: string,
   onChunk: (chunk: string) => void
 ): Promise<void> {
+
+  const user = authService.getUser() as any;
+
   const response = await fetch(`${AGENT_BASE_URL}/invocations`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
     },
-    body: JSON.stringify({ prompt, session_id: sessionId }),
+    body: JSON.stringify({ 
+        prompt, 
+        session_id: sessionId,
+        user_name: user?.name || ''
+    }),
   });
 
   if (!response.ok) {

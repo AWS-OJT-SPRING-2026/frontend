@@ -1,6 +1,7 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState, useRef } from 'react';
 import { CaretDown, CaretLeft, CaretRight, BookOpen, Star } from '@phosphor-icons/react';
 import { useSettings } from '../../context/SettingsContext';
+import { useSearchParams } from 'react-router-dom';
 import { authService } from '../../services/authService';
 import {
   studentMaterialService,
@@ -47,6 +48,11 @@ export function StudentDocuments() {
   const [openLessons, setOpenLessons] = useState<number[]>([]);
   const [bookLoading, setBookLoading] = useState(false);
 
+  const [searchParams, setSearchParams] = useSearchParams();
+  const urlBookId = searchParams.get('book');
+  const urlLessonId = searchParams.get('lesson');
+  const urlApplied = useRef(false);
+
   useEffect(() => {
     const run = async () => {
       setLoading(true);
@@ -58,6 +64,53 @@ export function StudentDocuments() {
         }
         const data = await studentMaterialService.getTheorySubjectsOverview(token);
         setSubjects(data);
+
+        // Auto-load book if specified in URL
+        if (urlBookId && !urlApplied.current) {
+          const bookIdNum = parseInt(urlBookId);
+          if (!isNaN(bookIdNum)) {
+            // Find subject that has this book
+            const subject = data.find(s => s.bookId === bookIdNum);
+            if (subject) {
+              setSelectedSubjectId(subject.subjectId);
+              setBookLoading(true);
+              try {
+                const hierarchy = await studentMaterialService.getBookFullHierarchy(bookIdNum, token);
+                setActiveBook(hierarchy);
+                
+                // If a lesson is specified, open its chapter and the lesson itself
+                if (urlLessonId) {
+                  const lessonIdNum = parseInt(urlLessonId);
+                  if (!isNaN(lessonIdNum)) {
+                    // Find the chapter containing this lesson
+                    const chapter = hierarchy.chapters.find(c => c.lessons.some(l => l.id === lessonIdNum));
+                    if (chapter) {
+                       setOpenChapters([chapter.id]);
+                       setOpenLessons([lessonIdNum]);
+                       
+                       // Scroll to lesson after a short delay for render
+                       setTimeout(() => {
+                         const el = document.getElementById(`lesson-${lessonIdNum}`);
+                         if (el) {
+                            el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                            // Optional: add a temporary highlight class or inline style
+                         }
+                       }, 300);
+                    }
+                  }
+                } else if (hierarchy.chapters.length > 0) {
+                   setOpenChapters([hierarchy.chapters[0].id]);
+                }
+              } catch (err) {
+                console.error('Failed to load deep link book', err);
+              } finally {
+                setBookLoading(false);
+              }
+            }
+          }
+          urlApplied.current = true;
+          setSearchParams({}, { replace: true });
+        }
       } catch (e) {
         const message = e instanceof Error ? e.message : 'Không thể tải dữ liệu tài liệu học tập.';
         setError(message);
@@ -228,7 +281,7 @@ export function StudentDocuments() {
             {chapter.lessons.map((lesson) => {
               const lessonOpen = openLessons.includes(lesson.id);
               return (
-                <div key={lesson.id} className={`border-b last:border-b-0 ${isDark ? 'border-white/10' : 'border-[#1A1A1A]/10'}`}>
+                <div key={lesson.id} id={`lesson-${lesson.id}`} className={`border-b last:border-b-0 scroll-mt-24 ${isDark ? 'border-white/10' : 'border-[#1A1A1A]/10'}`}>
                   <button
                     onClick={() => toggleLesson(lesson.id)}
                     className={`w-full px-4 py-3 text-left flex items-center justify-between ${isDark ? 'hover:bg-white/5' : 'hover:bg-[#1A1A1A]/5'}`}
