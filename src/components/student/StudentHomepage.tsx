@@ -132,7 +132,7 @@ export function StudentHomepage() {
     }, []);
 
     useEffect(() => {
-        fetch('http://localhost:8080/api/quotes/today')
+        fetch(`${import.meta.env.VITE_API_BASE_URL}/quotes/today`)
             .then(res => res.json())
             .then(data => {
                 if (Array.isArray(data) && data.length > 0) {
