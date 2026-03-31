@@ -1,6 +1,7 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Brain, CaretDown, Check, ArrowRight, ArrowLeft, Trophy } from '@phosphor-icons/react';
 import { useSettings } from '../../context/SettingsContext';
+import { useSearchParams } from 'react-router-dom';
 
 const FAST_API_URL = import.meta.env.VITE_FAST_API_BASE_URL;
 
@@ -94,12 +95,36 @@ export function StudentReview() {
         questions: SubmissionDetailQuestion[];
     }
 
+    const [searchParams, setSearchParams] = useSearchParams();
+    const urlSubject = searchParams.get('subject');
+    const urlQuestions = searchParams.get('questions');
+    const urlApplied = useRef(false);
+
     useEffect(() => {
         fetch(`${FAST_API_URL}/subjects`)
             .then(res => res.json())
             .then(data => {
                 setSubjects(data);
-                if (data.length > 0 && !selectedSubjectId) {
+                // If URL has ?subject=... from chatbot widget, auto-select it
+                if (urlSubject && !urlApplied.current) {
+                    const normalizedUrl = urlSubject.toLowerCase().trim();
+                    const matched = data.find((s: any) => 
+                        s.subject_name.toLowerCase().trim().includes(normalizedUrl) ||
+                        normalizedUrl.includes(s.subject_name.toLowerCase().trim())
+                    );
+                    if (matched) {
+                        setSelectedSubjectId(matched.subject_id);
+                        if (urlQuestions) {
+                            const q = parseInt(urlQuestions);
+                            if (!isNaN(q) && q > 0) setNumQuestions(q);
+                        }
+                        urlApplied.current = true;
+                        // Clean up URL params
+                        setSearchParams({}, { replace: true });
+                    } else if (data.length > 0 && !selectedSubjectId) {
+                        setSelectedSubjectId(data[0].subject_id);
+                    }
+                } else if (data.length > 0 && !selectedSubjectId) {
                     setSelectedSubjectId(data[0].subject_id);
                 }
             })
