@@ -1,5 +1,6 @@
 import { UploadSimple, FileText, Info, CheckCircle, Trash, Eye, ShareNetwork } from '@phosphor-icons/react';
 import { useState, useEffect, useMemo, useRef } from 'react';
+import { createPortal } from 'react-dom';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
 import { Label } from '../ui/label';
 import { Input } from '../ui/input';
@@ -20,10 +21,60 @@ import {
     type TeacherDocumentItem,
 } from '../../services/teacherDocumentService';
 
+function UploadOverlay({ isDark, fileName }: { isDark: boolean; fileName: string }) {
+    return createPortal(
+        <div className="fixed inset-0 z-[9999] flex items-center justify-center" style={{ pointerEvents: 'all' }}>
+            {/* Backdrop */}
+            <div className={`absolute inset-0 backdrop-blur-sm ${isDark ? 'bg-black/70' : 'bg-black/50'}`} />
+
+            {/* Card */}
+            <div
+                className={`relative z-10 rounded-3xl border-2 p-10 flex flex-col items-center gap-5 max-w-md w-full mx-4 shadow-2xl ${
+                    isDark ? 'bg-[#171b20] border-white/10' : 'bg-white border-[#1A1A1A]'
+                }`}
+                style={{ fontFamily: "'Nunito', sans-serif" }}
+            >
+                {/* Spinner */}
+                <div className="w-16 h-16 rounded-full border-4 border-[#FF6B4A]/20 border-t-[#FF6B4A] animate-spin" />
+
+                {/* Title */}
+                <h2 className={`text-xl font-extrabold text-center ${isDark ? 'text-gray-100' : 'text-[#1A1A1A]'}`}>
+                    Đang tải lên tài liệu...
+                </h2>
+
+                {/* File name */}
+                {fileName && (
+                    <div
+                        className={`flex items-center gap-2 px-4 py-2 rounded-2xl border-2 w-full ${
+                            isDark ? 'border-white/10 bg-white/5' : 'border-[#1A1A1A]/10 bg-[#1A1A1A]/5'
+                        }`}
+                    >
+                        <FileText className="w-4 h-4 shrink-0 text-[#FF6B4A]" weight="fill" />
+                        <span className={`text-sm font-bold truncate ${isDark ? 'text-gray-300' : 'text-[#1A1A1A]/70'}`}>
+                            {fileName}
+                        </span>
+                    </div>
+                )}
+
+                {/* Warning */}
+                <p className={`text-sm font-semibold text-center leading-relaxed ${isDark ? 'text-gray-400' : 'text-[#1A1A1A]/60'}`}>
+                    Vui lòng không đóng tab hoặc thoát trang trong khi hệ thống đang xử lý.
+                </p>
+
+                {/* Pulsing progress bar */}
+                <div className={`w-full h-1.5 rounded-full overflow-hidden ${isDark ? 'bg-white/10' : 'bg-[#1A1A1A]/10'}`}>
+                    <div className="h-full bg-[#FF6B4A] rounded-full animate-pulse" />
+                </div>
+            </div>
+        </div>,
+        document.body,
+    );
+}
+
 export function TeacherDocuments() {
     const { theme } = useSettings();
     const isDark = theme === 'dark';
-    const { isAuthenticated } = useAuth();
+    const { isAuthenticated, user } = useAuth();
 
     const [books, setBooks] = useState<TeacherDocumentItem[]>([]);
     const [teacherClassrooms, setTeacherClassrooms] = useState<TeacherClassroomOption[]>([]);
@@ -88,6 +139,17 @@ export function TeacherDocuments() {
     useEffect(() => {
         fetchData();
     }, [isAuthenticated]);
+
+    // Block tab close / navigation while upload is in progress
+    useEffect(() => {
+        if (!uploading) return;
+        const handler = (e: BeforeUnloadEvent) => {
+            e.preventDefault();
+            e.returnValue = '';
+        };
+        window.addEventListener('beforeunload', handler);
+        return () => window.removeEventListener('beforeunload', handler);
+    }, [uploading]);
 
     const selectedClassroom = useMemo(
         () => teacherClassrooms.find((item) => item.classID.toString() === classId),
@@ -542,6 +604,7 @@ export function TeacherDocuments() {
                                         >
                                             <ShareNetwork className="w-4 h-4 inline-block mr-1" weight="bold" /> Phân phối
                                         </button>
+                                        {(user?.role === 'admin' || user?.role === 'teacher') && (
                                         <button
                                             onClick={() => handleDelete(book.id, book.doc_type)}
                                             className="p-2 text-[#FF6B4A] hover:bg-[#FF6B4A]/10 rounded-xl transition-colors"
@@ -549,6 +612,7 @@ export function TeacherDocuments() {
                                         >
                                             <Trash className="w-5 h-5" weight="bold" />
                                         </button>
+                                        )}
                                     </div>
                                 </td>
                             </tr>
@@ -711,6 +775,9 @@ export function TeacherDocuments() {
                     </DialogFooter>
                 </DialogContent>
             </Dialog>
+
+            {/* Full-screen upload overlay — blocks all interaction while uploading */}
+            {uploading && <UploadOverlay isDark={isDark} fileName={selectedFile?.name ?? ''} />}
         </div>
     );
 }

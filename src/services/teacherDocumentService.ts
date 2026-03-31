@@ -13,6 +13,7 @@ export interface TeacherDocumentItem {
   meta: string;
   doc_type: DocType;
   assigned_class_count: number;
+  owner_id?: number;
 }
 
 export interface AssignedClassroom {
@@ -51,6 +52,7 @@ type LegacyBookItem = {
   meta: string;
   doc_type: DocType;
   assigned_class_count?: number;
+  owner_id?: number;
 };
 
 function buildAuthHeader(token: string): HeadersInit {
@@ -84,23 +86,16 @@ function mapLegacyBook(item: LegacyBookItem): TeacherDocumentItem {
     meta: item.meta,
     doc_type: item.doc_type,
     assigned_class_count: item.assigned_class_count ?? 0,
+    owner_id: item.owner_id,
   };
 }
 
 export const teacherDocumentService = {
   async getDocuments(token: string): Promise<TeacherDocumentItem[]> {
-    const authedResponse = await fetch(`${FAST_API_BASE_URL}/books`, {
+    const response = await fetch(`${FAST_API_BASE_URL}/books`, {
       headers: buildAuthHeader(token),
     });
-
-    // Backward compatibility: some AI instances expose /books as public and may reject invalid bearer token.
-    if (authedResponse.status === 401) {
-      const publicResponse = await fetch(`${FAST_API_BASE_URL}/books`);
-      const data = await handleJson<LegacyBookItem[]>(publicResponse);
-      return data.map(mapLegacyBook);
-    }
-
-    const data = await handleJson<LegacyBookItem[]>(authedResponse);
+    const data = await handleJson<LegacyBookItem[]>(response);
     return data.map(mapLegacyBook);
   },
 
