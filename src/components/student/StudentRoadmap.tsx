@@ -102,7 +102,7 @@ export function StudentRoadmap() {
         const autoWeeks = searchParams.get('weeks');
         const autoRun = searchParams.get('auto');
 
-        fetch(`${FAST_API_URL}/subjects`)
+        fetch(`${FAST_API_URL}/subjects/`)
             .then(res => res.ok ? res.json() : Promise.reject(res.status))
             .then(data => { 
                 if (Array.isArray(data)) {
