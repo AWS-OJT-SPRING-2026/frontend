@@ -21,7 +21,7 @@ interface Test {
     dueDate: string;
     status: TestStatus;
     category: TestCategory;
-    score?: number;
+    score?: number | null;
     submittedAt?: string;
     correctCount?: number;
     className?: string;
@@ -190,7 +190,7 @@ function TestCard({ test, onStart, isDark }: { test: Test; onStart: (t: Test) =>
 
                 {/* Score + action */}
                 <div className="shrink-0 flex items-center gap-3">
-                    {isCompleted && test.score !== undefined && (
+                    {isCompleted && test.score != null && (
                         <div className="text-right">
                             <div className={`text-3xl font-extrabold ${isDark ? 'text-white' : 'text-[#1A1A1A]'}'}`}>{test.score.toFixed(1)}</div>
                             <div className="text-[10px] font-extrabold text-gray-400 uppercase tracking-widest">Điểm số</div>
@@ -982,7 +982,7 @@ function apiAssignmentToTest(a: AssignmentResponse, isSubmitted: boolean, submis
         dueDate: dueDateStr,
         status,
         category: a.assignmentType === 'ASSIGNMENT' ? 'homework' : 'exam',
-        score: submission?.score,
+        score: submission?.score ?? undefined,
         submittedAt: submission?.submitTime
             ? (() => { const d = new Date(submission.submitTime); return `${String(d.getDate()).padStart(2,'0')}/${String(d.getMonth()+1).padStart(2,'0')}/${d.getFullYear()}`; })()
             : undefined,
@@ -1027,13 +1027,16 @@ export function StudentTests() {
                 assignmentService.getStudentActiveAssignments(token).catch(() => [] as AssignmentResponse[]),
                 assignmentService.getStudentSubmissions(token).catch(() => [] as SubmissionResponse[]),
             ]);
+            // Only treat rows with submit timestamp as completed; started-but-unsubmitted attempts are not completed.
+            const completedSubmissions = submitted.filter(s => Boolean(s.submittedAt || s.submitTime));
+
             const submittedMap = new Map<number, SubmissionResponse>();
-            submitted.forEach(s => submittedMap.set(s.assignmentId, s));
+            completedSubmissions.forEach(s => submittedMap.set(s.assignmentId, s));
 
             const activeTests = active
                 .filter(a => !submittedMap.has(a.assignmentID))
                 .map(a => apiAssignmentToTest(a, false));
-            const completedTests = submitted
+            const completedTests = completedSubmissions
                 .map(s => {
                     const a = active.find(x => x.assignmentID === s.assignmentId) ?? {
                         assignmentID: s.assignmentId, title: s.assignmentTitle,
