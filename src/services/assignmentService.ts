@@ -88,6 +88,30 @@ export interface SubmissionResponse {
   answers: SubmissionAnswerDetail[];
 }
 
+export interface AssignmentResultResponse {
+  submissionId: number;
+  assignmentId: number;
+  assignmentTitle: string;
+  userId: number;
+  studentName: string;
+  score: number;
+  totalQuestions: number;
+  correctCount: number;
+  timeTaken: number;
+  submitTime: string;
+  questions: AssignmentResultQuestion[];
+}
+
+export interface AssignmentResultQuestion {
+  questionId: number;
+  questionText: string;
+  selectedAnswerRefId: number | null;
+  selectedAnswer: string | null;
+  correctAnswerRefId: number | null;
+  correctAnswer: string | null;
+  isCorrect: boolean;
+}
+
 export interface AssignmentAttemptResponse {
   submissionID: number;
   assignmentId: number;
@@ -188,9 +212,12 @@ export const assignmentService = {
   start: (assignmentId: number, token: string) =>
     api.authPost<ApiWrapper<AssignmentAttemptResponse>>(`/assignments/${assignmentId}/start`, {}, token).then(r => r.result),
 
-  submit: (data: { assignmentId: number; timeTaken: number; answers: { questionId: number; answerRefId: number | null; selectedAnswer: string | null }[] }, token: string) =>
-    api.authPost<ApiWrapper<SubmissionResponse>>('/assignments/submit', data, token).then(r => r.result),
+  submit: (assignmentId: number, data: { timeTaken: number; answers: { questionId: number; answerRefId: number | null; selectedAnswer: string | null }[] }, token: string) =>
+    api.authPost<ApiWrapper<SubmissionResponse>>(`/assignments/${assignmentId}/submit`, data, token).then(r => r.result),
 
   getMySubmission: (assignmentId: number, token: string) =>
     api.get<ApiWrapper<SubmissionResponse>>(`/assignments/${assignmentId}/my-submission`, token).then(r => r.result),
+
+  getResult: (assignmentId: number, token: string) =>
+    api.get<ApiWrapper<AssignmentResultResponse>>(`/assignments/${assignmentId}/results`, token).then(r => r.result),
 };

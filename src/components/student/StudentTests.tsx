@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo, useCallback } from 'react';
+import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import {
     CheckCircle, ClipboardText, Clock, BookOpen, CaretRight,
@@ -6,7 +6,7 @@ import {
     FloppyDisk, Medal, Flag, MagnifyingGlass, Funnel, ListNumbers, XCircle
 } from '@phosphor-icons/react';
 import { useSettings } from '../../context/SettingsContext';
-import { assignmentService, AssignmentResponse, AssignmentDetailResponse, SubmissionResponse, AssignmentAttemptResponse } from '../../services/assignmentService';
+import { assignmentService, AssignmentResponse, AssignmentDetailResponse, SubmissionResponse, AssignmentAttemptResponse, AssignmentResultResponse } from '../../services/assignmentService';
 import { authService } from '../../services/authService';
 
 type TestStatus = 'pending' | 'in_progress' | 'completed';
@@ -45,6 +45,18 @@ function formatDateTime(value?: string | null) {
     });
 }
 
+function formatOpenTime(value?: string | null) {
+    if (!value) return '---';
+    const d = new Date(value);
+    if (Number.isNaN(d.getTime())) return '---';
+    const hh = String(d.getHours()).padStart(2, '0');
+    const mm = String(d.getMinutes()).padStart(2, '0');
+    const dd = String(d.getDate()).padStart(2, '0');
+    const mo = String(d.getMonth() + 1).padStart(2, '0');
+    const yyyy = d.getFullYear();
+    return `${hh}:${mm} ${dd}/${mo}/${yyyy}`;
+}
+
 type ActiveTab = 'available' | 'completed';
 type FilterCategory = 'all' | 'homework' | 'exam';
 type ExerciseViewMode = 'detail' | 'taking' | 'detailedReview';
@@ -74,13 +86,50 @@ function parseDate(dateStr: string) {
     return new Date(parseInt(year), parseInt(month) - 1, parseInt(day), 23, 59, 59);
 }
 
-// Check if due date is within 24 hours from current mock date
-function isUrgent(dateStr: string) {
-    const due = parseDate(dateStr);
-    // Hardcoded mock current date based on mock data (e.g. 11/03/2026) for demo consistency
-    const now = new Date(2026, 2, 11);
-    const diff = due.getTime() - now.getTime();
+function getDueTimestamp(test: Test): number | null {
+    const dueIso = test.deadlineIso;
+    if (dueIso) {
+        const ms = new Date(dueIso).getTime();
+        if (!Number.isNaN(ms)) return ms;
+    }
+    if (test.dueDate) {
+        const ms = parseDate(test.dueDate).getTime();
+        if (!Number.isNaN(ms)) return ms;
+    }
+    return null;
+}
+
+function isUrgent(test: Test, nowMs: number) {
+    const dueMs = getDueTimestamp(test);
+    if (!dueMs) return false;
+    const diff = dueMs - nowMs;
     return diff > 0 && diff <= 24 * 60 * 60 * 1000;
+}
+
+type TimeAlert = 'opening' | 'ending' | 'deadline' | null;
+
+function getTimeAlert(test: Test, nowMs: number): TimeAlert {
+    if (test.status === 'completed') return null;
+
+    if (test.category === 'exam') {
+        const startMs = test.startTimeIso ? new Date(test.startTimeIso).getTime() : NaN;
+        const endMs = test.endTimeIso ? new Date(test.endTimeIso).getTime() : NaN;
+
+        if (!Number.isNaN(startMs) && nowMs < startMs) {
+            const diffToStart = startMs - nowMs;
+            if (diffToStart <= 24 * 60 * 60 * 1000) return 'opening';
+            return null;
+        }
+
+        if (!Number.isNaN(endMs) && nowMs < endMs) {
+            const diffToEnd = endMs - nowMs;
+            if (diffToEnd <= 24 * 60 * 60 * 1000) return 'ending';
+        }
+
+        return null;
+    }
+
+    return isUrgent(test, nowMs) ? 'deadline' : null;
 }
 
 const allTests: Test[] = [
@@ -137,13 +186,24 @@ const reviewQuestionsByTest: Record<number, ReviewQuestion[]> = {
     ],
 };
 
-function TestCard({ test, onStart, isDark }: { test: Test; onStart: (t: Test) => Promise<void>; isDark: boolean }) {
+function TestCard({ test, onStart, isDark, nowMs }: { test: Test; onStart: (t: Test) => Promise<void>; isDark: boolean; nowMs: number }) {
     const bg = SUBJECT_BG[test.subject] ?? '#FCE38A';
     const isCompleted = test.status === 'completed';
-    const urgent = !isCompleted && isUrgent(test.dueDate);
+    const timeAlert = getTimeAlert(test, nowMs);
+    const urgent = !isCompleted && timeAlert !== null;
+    const alertLabel = timeAlert === 'opening' ? 'SẮP MỞ' : timeAlert === 'ending' ? 'SẮP KẾT THÚC' : timeAlert === 'deadline' ? 'SẮP HẾT' : null;
+    const startMs = test.startTimeIso ? new Date(test.startTimeIso).getTime() : NaN;
+    const isLockedUntilOpen = test.category === 'exam' && !isCompleted && !Number.isNaN(startMs) && nowMs < startMs;
+    const openTooltip = isLockedUntilOpen ? `Mở sau: ${formatOpenTime(test.startTimeIso)}` : undefined;
+    const timeLabel = test.category === 'exam'
+        ? (timeAlert === 'opening' ? 'Mở lúc' : 'Kết thúc')
+        : 'Hạn';
+    const timeValue = test.category === 'exam' && timeAlert === 'opening'
+        ? formatOpenTime(test.startTimeIso)
+        : test.dueDate;
 
     return (
-        <div className={`rounded-3xl overflow-hidden transition-all ${isDark ? 'bg-[#1A1A1A] border-2 border-[#EEEEEE] shadow-[4px_4px_0_0_#EEEEEE] hover:shadow-[0_0_15px_#FF6B4A] transition-all duration-300 hover:-translate-y-0.5' : 'bg-white border-2 border-[#1A1A1A] shadow-[4px_4px_0_0_#1A1A1A] hover:shadow-[6px_6px_0_0_#1A1A1A] hover:-translate-y-0.5'} ${urgent ? (isDark ? 'border border-[#686D76] shadow-[4px_4px_0_0_#686D76]' : 'shadow-[4px_4px_0_0_#FF6B4A]') : ''}`}>
+        <div className={`rounded-3xl overflow-hidden transition-all ${isDark ? 'bg-[#1A1A1A] border-2 border-[#EEEEEE] shadow-[4px_4px_0_0_#EEEEEE] hover:shadow-[0_0_15px_#FF6B4A] transition-all duration-300 hover:-translate-y-0.5' : 'bg-white border-2 border-[#1A1A1A] shadow-[4px_4px_0_0_#1A1A1A] hover:shadow-[6px_6px_0_0_#1A1A1A] hover:-translate-y-0.5'} ${urgent ? (isDark ? 'border border-[#ffc39d] shadow-[0_0_0_2px_rgba(255,120,73,0.12)] animate-[pulse_3.6s_ease-in-out_infinite]' : 'border-[#FFB48F] shadow-[0_0_0_2px_rgba(255,107,74,0.14)] animate-[pulse_3.6s_ease-in-out_infinite]') : ''}`}>
             <div className="p-5 flex flex-col sm:flex-row sm:items-center gap-4">
                 {/* Subject icon */}
                 <div className={`w-14 h-14 rounded-2xl flex items-center justify-center shrink-0 relative ${isDark ? 'border border-[#1A1A1A]/20' : 'border-2 border-[#1A1A1A] shadow-[2px_2px_0_0_#1A1A1A]'}`} style={{ backgroundColor: isDark ? `${bg}66` : bg }}>
@@ -162,6 +222,11 @@ function TestCard({ test, onStart, isDark }: { test: Test; onStart: (t: Test) =>
                         <span className={`text-[10px] font-extrabold px-3 py-1 rounded-full ${isDark ? 'border border-[#1A1A1A]/20 text-[#f8fafc] bg-[#2a2a31]' : 'border-2 border-[#1A1A1A] text-[#1A1A1A] shadow-[2px_2px_0_0_#1A1A1A]'}`} style={{ backgroundColor: isDark ? undefined : bg }}>
                             {test.subject}
                         </span>
+                        {timeAlert === 'opening' && (
+                            <span className={`text-[10px] font-extrabold px-2 py-1 rounded-full uppercase ${isDark ? 'bg-[#ff7849]/85 text-white border border-[#ff7849]/45' : 'bg-[#FF6B4A] text-white border-2 border-[#1A1A1A] shadow-[2px_2px_0_0_#1A1A1A]'}`}>
+                                Sắp mở
+                            </span>
+                        )}
                         {test.status === 'in_progress' && (
                             <span className={`text-[10px] font-extrabold px-3 py-1 rounded-full animate-pulse ${isDark ? 'bg-[#ff7849]/85 text-white border border-[#ff7849]/45' : 'bg-[#FF6B4A] text-white border-2 border-[#1A1A1A] shadow-[2px_2px_0_0_#1A1A1A]'}`}>
                                 Đang làm
@@ -181,8 +246,8 @@ function TestCard({ test, onStart, isDark }: { test: Test; onStart: (t: Test) =>
                         ) : (
                             <span className={`flex items-center gap-1 px-2 py-0.5 rounded-md ${urgent ? (isDark ? 'text-[#ff8b63] font-black' : 'text-[#FF6B4A] font-black') : (isDark ? 'text-[#1A1A1A]/50' : 'text-[#1A1A1A]/70')}`}>
                                 {urgent ? <Hourglass className="w-4 h-4 animate-spin-slow" weight="fill" /> : null}
-                                Hạn: {test.dueDate}
-                                {urgent && <span className={`ml-1 text-[10px] uppercase font-extrabold px-1.5 py-0.5 rounded ${isDark ? 'bg-[#d46b5f] text-white border border-[#f2a298]/40' : 'shadow-[2px_2px_0_0_#1A1A1A] bg-[#FF6B4A] text-white border-2 border-[#1A1A1A]'}`}>Sắp hết</span>}
+                                {timeLabel}: {timeValue}
+                                {alertLabel && timeAlert !== 'opening' && <span className={`ml-1 text-[10px] uppercase font-extrabold px-1.5 py-0.5 rounded ${isDark ? 'bg-[#d46b5f] text-white border border-[#f2a298]/40' : 'shadow-[2px_2px_0_0_#1A1A1A] bg-[#FF6B4A] text-white border-2 border-[#1A1A1A]'}`}>{alertLabel}</span>}
                             </span>
                         )}
                     </div>
@@ -198,7 +263,9 @@ function TestCard({ test, onStart, isDark }: { test: Test; onStart: (t: Test) =>
                     )}
                     <button
                         onClick={() => onStart(test)}
-                        className={`h-10 px-5 rounded-2xl font-extrabold text-sm flex items-center gap-1.5 transition-all hover:-translate-y-0.5 ${isCompleted
+                        disabled={isLockedUntilOpen}
+                        title={openTooltip}
+                        className={`h-10 px-5 rounded-2xl font-extrabold text-sm flex items-center gap-1.5 transition-all hover:-translate-y-0.5 disabled:cursor-not-allowed disabled:opacity-60 disabled:hover:translate-y-0 ${isCompleted
                             ? (isDark ? 'bg-white/5 text-gray-100 border border-[#1A1A1A]/20 hover:bg-white/10' : 'border-2 border-[#1A1A1A] bg-[#1A1A1A]/5 text-[#1A1A1A] hover:bg-[#1A1A1A]/10 shadow-[2px_2px_0_0_#1A1A1A]')
                             : (isDark ? 'bg-[#ff7849] text-white border border-[#ff7849]/40 hover:bg-[#ff8b63] shadow-[0_8px_18px_rgba(255,120,73,0.25)]' : 'border-2 border-[#1A1A1A] bg-[#FF6B4A] text-white hover:bg-[#ff5535] shadow-[3px_3px_0_0_#1A1A1A] hover:shadow-[1px_1px_0_0_#1A1A1A]')}`}
                     >
@@ -308,6 +375,7 @@ function TestDetailView({
                         <div>
                             <p className="text-[10px] font-extrabold uppercase tracking-widest text-emerald-700/70 mb-1">Kết quả</p>
                             <p className="text-lg font-extrabold text-emerald-700">{test.correctCount ?? 0}/{test.questionCount} câu đúng - {test.score?.toFixed(1) ?? '0.0'} điểm</p>
+                            <p className="text-sm font-bold text-emerald-700/80 mt-1">Bạn đã làm bài này rồi, không thể bắt đầu làm lại.</p>
                         </div>
                     </div>
                 )}
@@ -342,8 +410,48 @@ function TestDetailView({
     );
 }
 
-function DetailedReviewView({ test, onBack, isDark }: { test: Test; onBack: () => void; isDark: boolean }) {
-    const questions = reviewQuestionsByTest[test.id] ?? [];
+function DetailedReviewView({ test, result, onBack, isDark }: { test: Test; result: AssignmentResultResponse | null; onBack: () => void; isDark: boolean }) {
+    const questions = result
+        ? result.questions.map((q, idx) => {
+            const selectedText = q.selectedAnswer ?? null;
+            const correctText = q.correctAnswer ?? null;
+
+            if (!selectedText && correctText) {
+                return {
+                    id: idx + 1,
+                    question: q.questionText,
+                    options: [correctText],
+                    selected: null,
+                    correct: 0,
+                    explanation: 'Bạn chưa chọn đáp án cho câu này.',
+                    topic: 'Sai',
+                };
+            }
+
+            if (selectedText && correctText && selectedText !== correctText) {
+                return {
+                    id: idx + 1,
+                    question: q.questionText,
+                    options: [selectedText, correctText],
+                    selected: 0,
+                    correct: 1,
+                    explanation: 'Bạn đã chọn đáp án chưa chính xác.',
+                    topic: 'Sai',
+                };
+            }
+
+            const onlyText = selectedText ?? correctText ?? 'Không có đáp án';
+            return {
+                id: idx + 1,
+                question: q.questionText,
+                options: [onlyText],
+                selected: selectedText ? 0 : null,
+                correct: 0,
+                explanation: q.isCorrect ? 'Bạn đã chọn đáp án đúng.' : 'Câu này chưa có dữ liệu đáp án chuẩn.',
+                topic: q.isCorrect ? 'Đúng' : 'Sai',
+            };
+        })
+        : (reviewQuestionsByTest[test.id] ?? []);
 
     return (
         <div className="max-w-5xl mx-auto space-y-6 pb-20">
@@ -358,7 +466,7 @@ function DetailedReviewView({ test, onBack, isDark }: { test: Test; onBack: () =
                         <h1 className="text-2xl md:text-3xl font-black text-[#1A1A1A]">{test.title}</h1>
                     </div>
                     <div className="text-sm font-extrabold text-[#1A1A1A]/70 bg-[#F7F7F2] rounded-xl border-2 border-[#1A1A1A]/10 px-4 py-2">
-                        {test.correctCount ?? 0}/{test.questionCount} câu đúng
+                        {result?.correctCount ?? test.correctCount ?? 0}/{result?.totalQuestions ?? test.questionCount} câu đúng
                     </div>
                 </div>
 
@@ -741,6 +849,7 @@ function RealTestTakingView({ detail, attempt, answerSelections, onSelectAnswer,
 }) {
     const [currentQ, setCurrentQ] = useState(0);
     const [timeLeft, setTimeLeft] = useState(detail.durationMinutes * 60);
+    const autoSubmittedRef = useRef(false);
     const isCriticalTime = timeLeft <= 5 * 60;
 
     useEffect(() => {
@@ -759,7 +868,15 @@ function RealTestTakingView({ detail, attempt, answerSelections, onSelectAnswer,
 
     useEffect(() => {
         setCurrentQ(0);
+        autoSubmittedRef.current = false;
     }, [detail.assignmentID]);
+
+    useEffect(() => {
+        if (timeLeft === 0 && !isSubmitting && !autoSubmittedRef.current) {
+            autoSubmittedRef.current = true;
+            onSubmit();
+        }
+    }, [timeLeft, isSubmitting, onSubmit]);
 
     const questions = detail.questions;
     const total = questions.length;
@@ -769,8 +886,7 @@ function RealTestTakingView({ detail, attempt, answerSelections, onSelectAnswer,
     const secs = timeLeft % 60;
 
     const handleConfirmSubmit = () => {
-        if (timeLeft <= 0) {
-            alert('Đã hết thời gian làm bài.');
+        if (timeLeft <= 0 || isSubmitting) {
             return;
         }
         const unanswered = total - answered;
@@ -1017,7 +1133,15 @@ export function StudentTests() {
     const [attemptInfo, setAttemptInfo] = useState<AssignmentAttemptResponse | null>(null);
     const [answerSelections, setAnswerSelections] = useState<Record<number, number>>({});
     const [isSubmitting, setIsSubmitting] = useState(false);
+    const submitLockRef = useRef(false);
     const [startTime, setStartTime] = useState<number>(Date.now());
+    const [resultDetail, setResultDetail] = useState<AssignmentResultResponse | null>(null);
+    const [nowMs, setNowMs] = useState<number>(Date.now());
+
+    useEffect(() => {
+        const t = setInterval(() => setNowMs(Date.now()), 1000);
+        return () => clearInterval(t);
+    }, []);
 
     const loadApiData = useCallback(async () => {
         const token = authService.getToken();
@@ -1132,15 +1256,20 @@ export function StudentTests() {
             return matchSearch && matchCategory && matchSchedule;
         }).sort((a, b) => {
             if (activeTab === 'available') {
-                // sort by urgency
-                const aUrgent = isUrgent(a.dueDate);
-                const bUrgent = isUrgent(b.dueDate);
-                if (aUrgent && !bUrgent) return -1;
-                if (!aUrgent && bUrgent) return 1;
+                const rank = (t: Test) => {
+                    const alert = getTimeAlert(t, nowMs);
+                    if (alert === 'ending') return 0;
+                    if (alert === 'opening') return 1;
+                    if (alert === 'deadline') return 2;
+                    return 3;
+                };
+
+                const diff = rank(a) - rank(b);
+                if (diff !== 0) return diff;
             }
             return 0;
         });
-    }, [activeTab, availableTests, completedTests, searchQuery, filterCategory, scheduleFilter]);
+    }, [activeTab, availableTests, completedTests, searchQuery, filterCategory, scheduleFilter, nowMs]);
 
     const handleOpenTest = async (test: Test) => {
         setSelectedTest(test);
@@ -1148,6 +1277,7 @@ export function StudentTests() {
         setTakingDetail(null);
         setAttemptInfo(null);
         setAnswerSelections({});
+        setResultDetail(null);
         // Pre-fetch questions for real assignments
         const realId = (test as any)._assignmentId as number | undefined;
         if (realId && test.status !== 'completed') {
@@ -1162,9 +1292,13 @@ export function StudentTests() {
     };
 
     const handleRealSubmit = async () => {
-        if (!takingDetail) return;
+        if (!takingDetail || isSubmitting || submitLockRef.current) return;
+        submitLockRef.current = true;
         const token = authService.getToken();
-        if (!token) return;
+        if (!token) {
+            submitLockRef.current = false;
+            return;
+        }
         const timeTaken = Math.floor((Date.now() - startTime) / 1000);
         const answers = takingDetail.questions.map(q => ({
             questionId: q.id,
@@ -1173,12 +1307,13 @@ export function StudentTests() {
         }));
         setIsSubmitting(true);
         try {
-            const result = await assignmentService.submit({
-                assignmentId: takingDetail.assignmentID,
+            const result = await assignmentService.submit(takingDetail.assignmentID, {
                 timeTaken,
                 answers,
             }, token);
-            setExerciseViewMode('detail');
+            const latestResult = await assignmentService.getResult(takingDetail.assignmentID, token).catch(() => null);
+            setResultDetail(latestResult);
+            setExerciseViewMode('detailedReview');
             setAttemptInfo(null);
             // Refresh API data
             await loadApiData();
@@ -1190,11 +1325,27 @@ export function StudentTests() {
             alert(e.message ?? 'Lỗi nộp bài');
         } finally {
             setIsSubmitting(false);
+            submitLockRef.current = false;
         }
     };
 
     const handleStartTaking = async () => {
         if (!selectedTest) return;
+
+        if (selectedTest.status === 'completed') {
+            const realId = (selectedTest as any)._assignmentId as number | undefined;
+            const token = authService.getToken();
+            if (realId && token) {
+                try {
+                    const result = await assignmentService.getResult(realId, token);
+                    setResultDetail(result);
+                } catch {
+                    setResultDetail(null);
+                }
+            }
+            setExerciseViewMode('detailedReview');
+            return;
+        }
 
         const realId = (selectedTest as any)._assignmentId as number | undefined;
         if (!realId) {
@@ -1219,11 +1370,28 @@ export function StudentTests() {
         navigate('/student/exercises');
     };
 
+    const handleOpenDetailedReview = async () => {
+        if (!selectedTest) return;
+        if (selectedTest.status === 'completed') {
+            const realId = (selectedTest as any)._assignmentId as number | undefined;
+            const token = authService.getToken();
+            if (realId && token) {
+                try {
+                    const result = await assignmentService.getResult(realId, token);
+                    setResultDetail(result);
+                } catch {
+                    setResultDetail(null);
+                }
+            }
+        }
+        setExerciseViewMode('detailedReview');
+    };
+
     if (selectedTest) {
         if (selectedTest.status === 'completed' && exerciseViewMode === 'detailedReview') {
             return (
                 <div className="min-h-screen p-6 lg:p-8" style={{ fontFamily: "'Nunito', sans-serif" }}>
-                    <DetailedReviewView test={selectedTest} onBack={() => setExerciseViewMode('detail')} isDark={isDark} />
+                    <DetailedReviewView test={selectedTest} result={resultDetail} onBack={() => setExerciseViewMode('detail')} isDark={isDark} />
                 </div>
             );
         }
@@ -1236,7 +1404,7 @@ export function StudentTests() {
                         scheduleDate={scheduleFilter?.date}
                         onBack={() => setSelectedTest(null)}
                         onPrimary={handleStartTaking}
-                        onDetailedReview={() => setExerciseViewMode('detailedReview')}
+                        onDetailedReview={handleOpenDetailedReview}
                         isDark={isDark}
                     />
                 </div>
@@ -1341,7 +1509,7 @@ export function StudentTests() {
             {/* Test List */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
                 {filteredTests.length > 0
-                    ? filteredTests.map((t) => <TestCard key={t.id} test={t} onStart={handleOpenTest} isDark={isDark} />)
+                    ? filteredTests.map((t) => <TestCard key={t.id} test={t} onStart={handleOpenTest} isDark={isDark} nowMs={nowMs} />)
                     : <div className={`col-span-1 md:col-span-2 text-center py-20 rounded-3xl border-dashed ${isDark ? 'bg-[#1a1a1f] border-none' : 'bg-white/50 border-2 border-[#1A1A1A]/20'}`}>
                         <Funnel className="w-12 h-12 text-[#1A1A1A]/20 mx-auto mb-3" />
                         <div className={`font-extrabold text-lg ${isDark ? 'text-[#1A1A1A]/50' : 'text-[#1A1A1A]/60'}`}>Không tìm thấy bài tập phù hợp</div>
