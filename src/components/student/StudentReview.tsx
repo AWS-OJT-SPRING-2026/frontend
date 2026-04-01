@@ -108,7 +108,7 @@ export function StudentReview() {
                 // If URL has ?subject=... from chatbot widget, auto-select it
                 if (urlSubject && !urlApplied.current) {
                     const normalizedUrl = urlSubject.toLowerCase().trim();
-                    const matched = data.find((s: any) => 
+                    const matched = data.find((s: any) =>
                         s.subject_name.toLowerCase().trim().includes(normalizedUrl) ||
                         normalizedUrl.includes(s.subject_name.toLowerCase().trim())
                     );
@@ -351,7 +351,7 @@ export function StudentReview() {
                     <div className={`rounded-3xl p-12 space-y-4 ${isDark ? 'bg-[#1A1A1A] border-2 border-[#EEEEEE] shadow-[4px_4px_0_0_#EEEEEE] hover:shadow-[0_0_15px_#FF6B4A] transition-all duration-300' : 'bg-white border-2 border-[#1A1A1A]'}`}>
                         <Brain className="w-16 h-16 text-[#FF6B4A] mx-auto animate-bounce" weight="fill" />
                         <h2 className="text-2xl font-extrabold text-[#1A1A1A]">Không tìm thấy câu hỏi</h2>
-                            <p className={`font-bold ${isDark ? 'text-gray-500' : 'text-gray-500'}`}>Không có câu hỏi nào phù hợp với lựa chọn của bạn. Vui lòng thử chọn bài học khác.</p>
+                        <p className={`font-bold ${isDark ? 'text-gray-500' : 'text-gray-500'}`}>Không có câu hỏi nào phù hợp với lựa chọn của bạn. Vui lòng thử chọn bài học khác.</p>
                         <button
                             onClick={() => setIsReviewing(false)}
                             className="h-12 px-8 bg-[#1A1A1A] text-white rounded-2xl font-extrabold transition-transform hover:scale-[1.02]"
@@ -817,7 +817,7 @@ export function StudentReview() {
 
                     {/* History Section */}
                     {history.length > 0 && (
-                            <div className={`rounded-3xl p-6 space-y-5 ${isDark ? 'bg-[#1A1A1A] border-2 border-[#EEEEEE] shadow-[4px_4px_0_0_#EEEEEE] hover:shadow-[0_0_15px_#FF6B4A] transition-all duration-300' : 'bg-white border-2 border-[#1A1A1A] shadow-[4px_4px_0_0_rgba(26,26,26,1)]'}`}>
+                        <div className={`rounded-3xl p-6 space-y-5 ${isDark ? 'bg-[#1A1A1A] border-2 border-[#EEEEEE] shadow-[4px_4px_0_0_#EEEEEE] hover:shadow-[0_0_15px_#FF6B4A] transition-all duration-300' : 'bg-white border-2 border-[#1A1A1A] shadow-[4px_4px_0_0_rgba(26,26,26,1)]'}`}>
                             <div className="flex items-center justify-between">
                                 <div className="flex items-center gap-3">
                                     <div className="w-8 h-8 rounded-full bg-[#95E1D3] border-2 border-[#1A1A1A] font-extrabold flex items-center justify-center text-sm text-[#1A1A1A]">
