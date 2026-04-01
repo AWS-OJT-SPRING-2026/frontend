@@ -1,195 +1,1175 @@
-import { useState } from 'react';
-import { CalendarBlank, Lightning, Eye, ArrowCounterClockwise, Trash, CaretDown, PaperPlaneTilt } from '@phosphor-icons/react';
+import { useState, useEffect, useCallback } from 'react';
+import {
+    CalendarBlank, Lightning, Eye, Trash, PaperPlaneTilt,
+    Plus, SquaresFour, ChartBar, Clock,
+    BookOpen, Warning, ArrowsClockwise
+} from '@phosphor-icons/react';
 import { Input } from '../ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
 import { useSettings } from '../../context/SettingsContext';
+import { assignmentService, AssignmentResponse, AssignmentDetailResponse, AssignmentReportResponse, QuestionPreviewResponse, QuestionBankResponse } from '../../services/assignmentService';
+import { authService } from '../../services/authService';
+import { classroomService } from '../../services/classroomService';
 
-const DIFF_COLORS: Record<string, string> = {
-    'TRUNG BÌNH': '#FCE38A',
-    'DỄ': '#95E1D3',
-    'KHÓ': '#FFB5B5',
-};
+type View = 'dashboard' | 'create' | 'detail' | 'report';
 
+const DIFF_LABEL: Record<number, string> = { 1: 'DỄ', 2: 'TRUNG BÌNH', 3: 'KHÓ' };
+const DIFF_COLORS_LIGHT: Record<string, string> = { 'TRUNG BÌNH': '#FCE38A', 'DỄ': '#95E1D3', 'KHÓ': '#FFB5B5' };
+const DIFF_COLORS_DARK: Record<string, string> = { 'TRUNG BÌNH': '#9a8b5a', 'DỄ': '#5c9c93', 'KHÓ': '#8f6a73' };
+
+function StatusBadge({ status }: { status: string }) {
+    const map: Record<string, { label: string; cls: string }> = {
+        DRAFT: { label: 'Nháp', cls: 'bg-gray-100 text-gray-600 border-gray-300' },
+        ACTIVE: { label: 'Đang mở', cls: 'bg-green-100 text-green-700 border-green-300' },
+        CLOSED: { label: 'Đã đóng', cls: 'bg-red-100 text-red-600 border-red-300' },
+    };
+    const info = map[status] ?? { label: status, cls: 'bg-gray-100 text-gray-500 border-gray-200' };
+    return (
+        <span className={`text-xs font-extrabold px-2 py-1 rounded-full border ${info.cls}`}>{info.label}</span>
+    );
+}
+
+function formatDeadline(dt: string | null) {
+    if (!dt) return '';
+    const d = new Date(dt);
+    return d.toLocaleString('vi-VN', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' });
+}
+
+function getFormatLabel(format: string) {
+    return format === 'ESSAY' ? 'Tự luận' : 'Trắc nghiệm';
+}
+
+function getAssignmentTypeLabel(assignmentType: string) {
+    return assignmentType === 'ASSIGNMENT' ? 'Bài tập' : 'Bài kiểm tra';
+}
+
+function toLocalDateTime(input: string) {
+    if (!input) return null;
+    return `${input}:00`;
+}
+
+function toDateTimeLocalInput(value: string | null) {
+    if (!value) return '';
+    return value.slice(0, 16);
+}
+
+// ─── Dashboard ───────────────────────────────────────────────────────────────
+function Dashboard({ isDark, onCreateClick, onDetailClick, onReportClick }: {
+    isDark: boolean;
+    onCreateClick: () => void;
+    onDetailClick: (a: AssignmentResponse) => void;
+    onReportClick: (id: number) => void;
+}) {
+    const [assignments, setAssignments] = useState<AssignmentResponse[]>([]);
+    const [loading, setLoading] = useState(true);
+    const [error, setError] = useState('');
+    const [deleting, setDeleting] = useState<number | null>(null);
+    const [publishing, setPublishing] = useState<number | null>(null);
+
+    const load = useCallback(async () => {
+        const token = authService.getToken();
+        if (!token) return;
+        setLoading(true);
+        setError('');
+        try {
+            const data = await assignmentService.getMyAssignments(token);
+            setAssignments(data);
+        } catch (e: any) {
+            setError(e.message ?? 'Lỗi tải dữ liệu');
+        } finally {
+            setLoading(false);
+        }
+    }, []);
+
+    useEffect(() => { load(); }, [load]);
+
+    const handlePublish = async (id: number) => {
+        const token = authService.getToken();
+        if (!token) return;
+        setPublishing(id);
+        try {
+            await assignmentService.publish(id, token);
+            await load();
+        } catch (e: any) {
+            alert(e.message ?? 'Lỗi phát hành');
+        } finally {
+            setPublishing(null);
+        }
+    };
+
+    const handleDelete = async (id: number) => {
+        if (!confirm('Xóa đề kiểm tra này?')) return;
+        const token = authService.getToken();
+        if (!token) return;
+        setDeleting(id);
+        try {
+            await assignmentService.delete(id, token);
+            setAssignments(prev => prev.filter(a => a.assignmentID !== id));
+        } catch (e: any) {
+            alert(e.message ?? 'Lỗi xóa');
+        } finally {
+            setDeleting(null);
+        }
+    };
+
+    const card = `rounded-3xl border-2 p-5 transition-all ${isDark ? 'bg-[#171b20] border-white/10' : 'bg-white border-[#1A1A1A]/15'}`;
+    const txt = isDark ? 'text-gray-100' : 'text-[#1A1A1A]';
+    const sub = isDark ? 'text-gray-400' : 'text-[#1A1A1A]/50';
+
+    if (loading) return <div className={`text-center py-20 font-bold ${sub}`}>Đang tải...</div>;
+    if (error) return <div className="text-center py-20 text-red-500 font-bold">{error}</div>;
+
+    return (
+        <div className="space-y-4">
+            {assignments.length === 0 && (
+                <div className={`${card} flex flex-col items-center py-16 gap-4`}>
+                    <BookOpen className="w-12 h-12 text-gray-300" />
+                    <p className={`font-extrabold text-lg ${sub}`}>Chưa có đề kiểm tra nào</p>
+                    <button onClick={onCreateClick}
+                        className="bg-[#FF6B4A] hover:bg-[#ff5535] text-white font-extrabold px-6 py-2 rounded-2xl text-sm transition-colors">
+                        Tạo đề đầu tiên
+                    </button>
+                </div>
+            )}
+            {assignments.map(a => (
+                <div key={a.assignmentID} className={card}>
+                    <div className="flex items-start justify-between gap-4 flex-wrap">
+                        <div className="flex-1 min-w-0">
+                            <div className="flex items-center gap-2 mb-1 flex-wrap">
+                                <StatusBadge status={a.status} />
+                                <span className={`text-xs font-bold ${sub}`}>{getAssignmentTypeLabel(a.assignmentType)} • {getFormatLabel(a.format)}</span>
+                            </div>
+                            <h3 className={`font-extrabold text-base leading-snug truncate ${txt}`}>{a.title}</h3>
+                            <p className={`text-xs font-semibold mt-0.5 ${sub}`}>
+                                {a.className} {a.subjectName ? `— ${a.subjectName}` : ''}
+                            </p>
+                            <div className={`flex items-center gap-4 mt-2 text-xs font-semibold ${sub}`}>
+                                <span className="flex items-center gap-1"><Clock className="w-3.5 h-3.5" /> {formatDeadline(a.deadline)}</span>
+                                <span>{a.totalQuestions} câu • {a.totalSubmissions} lượt nộp</span>
+                            </div>
+                        </div>
+                        <div className="flex items-center gap-2 flex-wrap">
+                            <button onClick={() => onDetailClick(a)}
+                                className={`px-3 py-1.5 rounded-xl text-xs font-extrabold border-2 transition-colors ${isDark ? 'border-white/15 text-gray-200 hover:bg-white/10' : 'border-[#1A1A1A]/20 text-[#1A1A1A] hover:bg-[#1A1A1A]/5'}`}>
+                                Xem
+                            </button>
+                            {a.status === 'DRAFT' && (
+                                <>
+                                    <button onClick={() => handlePublish(a.assignmentID)}
+                                        disabled={publishing === a.assignmentID}
+                                        className="px-3 py-1.5 rounded-xl text-xs font-extrabold bg-green-500 hover:bg-green-600 text-white transition-colors disabled:opacity-60">
+                                        {publishing === a.assignmentID ? '...' : 'Phát hành'}
+                                    </button>
+                                    <button onClick={() => handleDelete(a.assignmentID)}
+                                        disabled={deleting === a.assignmentID}
+                                        className="px-3 py-1.5 rounded-xl text-xs font-extrabold text-red-500 border-2 border-red-200 hover:bg-red-50 transition-colors disabled:opacity-60">
+                                        {deleting === a.assignmentID ? '...' : 'Xóa'}
+                                    </button>
+                                </>
+                            )}
+                            {a.status === 'CLOSED' && (
+                                <button onClick={() => onReportClick(a.assignmentID)}
+                                    className="px-3 py-1.5 rounded-xl text-xs font-extrabold bg-[#B8B5FF] hover:bg-[#a09dff] text-[#1A1A1A] transition-colors">
+                                    Báo cáo
+                                </button>
+                            )}
+                            {a.status === 'ACTIVE' && (
+                                <button onClick={() => onReportClick(a.assignmentID)}
+                                    className="px-3 py-1.5 rounded-xl text-xs font-extrabold bg-[#B8B5FF] hover:bg-[#a09dff] text-[#1A1A1A] transition-colors">
+                                    Báo cáo
+                                </button>
+                            )}
+                        </div>
+                    </div>
+                </div>
+            ))}
+        </div>
+    );
+}
+
+// ─── Question Card ────────────────────────────────────────────────────────────
+function QuestionCard({ q, index, isDark, onRefresh, onRemove, refreshing }: {
+    q: QuestionPreviewResponse | null;
+    index: number;
+    isDark: boolean;
+    onRefresh?: (idx: number) => void;
+    onRemove?: (idx: number) => void;
+    refreshing: boolean;
+}) {
+    const diffLabel = q ? (DIFF_LABEL[q.difficultyLevel] ?? 'TRUNG BÌNH') : 'TRỐNG';
+    const bg = isDark ? DIFF_COLORS_DARK[diffLabel] : DIFF_COLORS_LIGHT[diffLabel];
+    const canEditQuestion = Boolean(onRefresh && onRemove);
+
+    return (
+        <div className={`rounded-3xl border-2 p-6 ${isDark ? 'bg-[#171b20] border-white/10' : 'bg-white border-[#1A1A1A]'}`}>
+            <div className="flex justify-between items-center mb-5">
+                <span className="text-[11px] font-extrabold px-3 py-1.5 rounded-2xl border-2"
+                    style={{ backgroundColor: bg, borderColor: isDark ? 'rgba(255,255,255,0.15)' : 'rgba(26,26,26,0.2)' }}>
+                    CÂU {index + 1} - {diffLabel}
+                </span>
+                <div className="flex items-start gap-3">
+                    <button
+                        onClick={() => onRefresh?.(index)}
+                        disabled={refreshing || !canEditQuestion}
+                        className="flex flex-col items-center gap-0.5 min-w-[52px] disabled:opacity-40"
+                        title="Đổi câu"
+                    >
+                        <span className="w-8 h-8 rounded-lg bg-sky-100 text-sky-600 border border-sky-200 flex items-center justify-center">
+                            <ArrowsClockwise className={`w-4 h-4 ${refreshing ? 'animate-spin' : ''}`} />
+                        </span>
+                        <span className={`text-[10px] font-extrabold ${isDark ? 'text-sky-300' : 'text-sky-600'}`}>Đổi</span>
+                    </button>
+                    <button
+                        onClick={() => onRemove?.(index)}
+                        disabled={!canEditQuestion}
+                        className="flex flex-col items-center gap-0.5 min-w-[52px] disabled:opacity-40"
+                        title="Xóa câu"
+                    >
+                        <span className="w-8 h-8 rounded-lg bg-red-100 text-red-600 border border-red-200 flex items-center justify-center">
+                            <Trash className="w-4 h-4" />
+                        </span>
+                        <span className={`text-[10px] font-extrabold ${isDark ? 'text-red-300' : 'text-red-600'}`}>Xóa</span>
+                    </button>
+                </div>
+            </div>
+
+            {!q ? (
+                <div className={`rounded-2xl border-2 border-dashed p-4 ${isDark ? 'border-white/20 text-gray-400' : 'border-[#1A1A1A]/20 text-[#1A1A1A]/45'}`}>
+                    <p className="font-extrabold">Câu hỏi đã được xóa khỏi ô này.</p>
+                    <p className="text-sm font-semibold mt-1">Nhấn "Đổi" để lấy một câu hỏi mới từ ngân hàng.</p>
+                </div>
+            ) : (
+                <>
+                    <p className={`font-extrabold mb-5 leading-relaxed ${isDark ? 'text-gray-100' : 'text-[#1A1A1A]'}`}>{q.questionText}</p>
+                    {q.answers.length > 0 && (
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                            {q.answers.map((ans, ai) => (
+                                <div key={ans.id} className={`flex items-center gap-3 p-3 rounded-2xl border-2 ${ans.isCorrect
+                                    ? isDark ? 'border-[#FF6B4A] bg-[#FF6B4A]/15' : 'border-[#FF6B4A] bg-[#FF6B4A]/5'
+                                    : isDark ? 'border-white/10 bg-[#20242b]/30' : 'border-[#1A1A1A]/10'}`}>
+                                    <div className={`w-7 h-7 rounded-full border flex items-center justify-center text-xs font-extrabold shrink-0 ${ans.isCorrect
+                                        ? 'bg-[#FF6B4A] text-white border-[#FF6B4A]'
+                                        : isDark ? 'bg-white/10 text-gray-200 border-white/20' : 'bg-[#1A1A1A]/10 text-[#1A1A1A]/50'}`}>
+                                        {ans.label || ['A', 'B', 'C', 'D'][ai]}
+                                    </div>
+                                    <span className={`text-sm font-bold ${ans.isCorrect ? 'text-[#FF6B4A]' : isDark ? 'text-gray-200' : 'text-[#1A1A1A]/70'}`}>
+                                        {ans.content}
+                                    </span>
+                                </div>
+                            ))}
+                        </div>
+                    )}
+                </>
+            )}
+        </div>
+    );
+}
+
+// ─── Create Test ─────────────────────────────────────────────────────────────
+function CreateTest({ isDark, onSaved }: { isDark: boolean; onSaved: () => void }) {
+    const [classroomId, setClassroomId] = useState('');
+    const [title, setTitle] = useState('');
+    const [assignmentType, setAssignmentType] = useState<'TEST' | 'ASSIGNMENT'>('TEST');
+    const [format, setFormat] = useState<'MULTIPLE_CHOICE' | 'ESSAY'>('MULTIPLE_CHOICE');
+    const [startTime, setStartTime] = useState('');
+    const [endTime, setEndTime] = useState('');
+    const [deadline, setDeadline] = useState('');
+    const [durationMinutes, setDurationMinutes] = useState('30');
+    const [bankId, setBankId] = useState('');
+    const [difficultyLevel, setDifficultyLevel] = useState('');
+    const [limit, setLimit] = useState('10');
+    const [questions, setQuestions] = useState<(QuestionPreviewResponse | null)[]>([]);
+    const [loadingQ, setLoadingQ] = useState(false);
+    const [refreshingIdx, setRefreshingIdx] = useState<number | null>(null);
+    const [saving, setSaving] = useState(false);
+    const [classrooms, setClassrooms] = useState<{ classID: number; className: string; subjectName: string }[]>([]);
+    const [banks, setBanks] = useState<QuestionBankResponse[]>([]);
+    const [error, setError] = useState('');
+
+    useEffect(() => {
+        const token = authService.getToken();
+        if (!token) return;
+        classroomService.getMyClassroomOptions(token).then(data => setClassrooms(data as any)).catch(() => {});
+        assignmentService.getMyBanks(token).then(data => setBanks(data)).catch(() => {});
+    }, []);
+
+    const fetchRandomQuestions = async () => {
+        const token = authService.getToken();
+        if (!token) return;
+        setLoadingQ(true);
+        setError('');
+        try {
+            const data = await assignmentService.getRandomQuestions({
+                bankId: bankId && bankId !== 'all' ? Number(bankId) : undefined,
+                difficultyLevel: difficultyLevel && difficultyLevel !== 'all' ? Number(difficultyLevel) : undefined,
+                limit: Number(limit) || 10,
+            }, token);
+            setQuestions(data);
+        } catch (e: any) {
+            setError(e.message ?? 'Lỗi lấy câu hỏi');
+        } finally {
+            setLoadingQ(false);
+        }
+    };
+
+    const refreshOne = async (idx: number) => {
+        const token = authService.getToken();
+        if (!token) return;
+        setRefreshingIdx(idx);
+        try {
+            const data = await assignmentService.getRandomQuestions({
+                bankId: bankId && bankId !== 'all' ? Number(bankId) : undefined,
+                difficultyLevel: difficultyLevel && difficultyLevel !== 'all' ? Number(difficultyLevel) : undefined,
+                limit: 5,
+            }, token);
+            // Pick a question not already in the list
+            const currentIds = new Set(questions.filter((q): q is QuestionPreviewResponse => q !== null).map(q => q.id));
+            const candidate = data.find(q => !currentIds.has(q.id)) ?? data[0];
+            if (candidate) {
+                setQuestions(prev => prev.map((q, i) => i === idx ? candidate : q));
+            }
+        } catch {
+            // silent
+        } finally {
+            setRefreshingIdx(null);
+        }
+    };
+
+    const removeQuestion = (idx: number) => {
+        setQuestions(prev => prev.map((q, i) => (i === idx ? null : q)));
+    };
+
+    const handleSave = async (publishAfter: boolean) => {
+        const activeQuestions = questions.filter((q): q is QuestionPreviewResponse => q !== null);
+
+        if (!classroomId || !title || activeQuestions.length === 0) {
+            setError('Vui lòng điền đầy đủ thông tin cơ bản và có ít nhất 1 câu hỏi');
+            return;
+        }
+        if (assignmentType === 'TEST' && (!startTime || !endTime)) {
+            setError('Bài kiểm tra yêu cầu thời gian bắt đầu và kết thúc');
+            return;
+        }
+        if (assignmentType === 'ASSIGNMENT' && !deadline) {
+            setError('Bài tập yêu cầu hạn nộp');
+            return;
+        }
+        if (!durationMinutes || Number(durationMinutes) <= 0) {
+            setError('Thời gian làm bài phải lớn hơn 0 phút');
+            return;
+        }
+        const token = authService.getToken();
+        if (!token) return;
+        setSaving(true);
+        setError('');
+        try {
+            const created = await assignmentService.create({
+                classroomId: Number(classroomId),
+                title,
+                assignmentType,
+                format,
+                startTime: assignmentType === 'TEST' ? toLocalDateTime(startTime) : null,
+                endTime: assignmentType === 'TEST' ? toLocalDateTime(endTime) : null,
+                deadline: assignmentType === 'ASSIGNMENT' ? toLocalDateTime(deadline) : null,
+                durationMinutes: Number(durationMinutes),
+                questionIds: activeQuestions.map(q => q.id),
+            }, token);
+            if (publishAfter) {
+                try {
+                    await assignmentService.publish(created.assignmentID, token);
+                } catch (e: any) {
+                    alert(`Đã lưu nhưng phát hành thất bại: ${e.message}`);
+                }
+            }
+            onSaved();
+        } catch (e: any) {
+            setError(e.message ?? 'Lỗi tạo đề');
+        } finally {
+            setSaving(false);
+        }
+    };
+
+    const inp = `border-2 h-11 rounded-2xl font-bold ${isDark ? 'bg-[#20242b] border-white/15 text-gray-100' : 'bg-[#F7F7F2] border-[#1A1A1A]/20'}`;
+    const card = `rounded-3xl border-2 p-6 md:p-8 space-y-5 ${isDark ? 'bg-[#171b20] border-white/10' : 'bg-white border-[#1A1A1A]'}`;
+    const txt = isDark ? 'text-gray-100' : 'text-[#1A1A1A]';
+    const sub = isDark ? 'text-gray-400' : 'text-[#1A1A1A]/50';
+    const label = 'text-xs font-extrabold text-gray-400 uppercase tracking-wider mb-1.5';
+
+    return (
+        <div className="space-y-6 pb-32">
+            {/* Step 1 */}
+            <div className={card}>
+                <div className="flex items-center gap-3">
+                    <div className={`w-8 h-8 rounded-full border-2 font-extrabold flex items-center justify-center text-sm ${isDark ? 'bg-[#9a8b5a] border-white/20 text-[#11151d]' : 'bg-[#FCE38A] border-[#1A1A1A] text-[#1A1A1A]'}`}>1</div>
+                    <h2 className={`text-xl font-extrabold ${txt}`}>Thông tin cơ bản</h2>
+                </div>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
+                    <div>
+                        <p className={label}>Chọn lớp</p>
+                        <Select value={classroomId} onValueChange={setClassroomId}>
+                            <SelectTrigger className={inp}><SelectValue placeholder="Chọn lớp..." /></SelectTrigger>
+                            <SelectContent>
+                                {classrooms.map((c: any) => (
+                                    <SelectItem key={c.classID} value={String(c.classID)}>
+                                        {c.className} {c.subjectName ? `— ${c.subjectName}` : ''}
+                                    </SelectItem>
+                                ))}
+                            </SelectContent>
+                        </Select>
+                    </div>
+                    <div>
+                        <p className={label}>Loại bài</p>
+                        <div className={`flex border-2 p-1 rounded-2xl h-11 gap-1 ${isDark ? 'bg-white/5 border-white/10' : 'bg-[#1A1A1A]/5 border-[#1A1A1A]/10'}`}>
+                            {[['TEST', 'Bài kiểm tra'], ['ASSIGNMENT', 'Bài tập']].map(([v, l]) => (
+                                <button key={v} onClick={() => setAssignmentType(v as 'TEST' | 'ASSIGNMENT')}
+                                    className={`flex-1 text-xs font-extrabold rounded-xl transition-all ${assignmentType === v ? 'bg-[#FF6B4A] text-white shadow-sm' : isDark ? 'text-gray-400 hover:text-gray-100' : 'text-[#1A1A1A]/50 hover:text-[#1A1A1A]'}`}>
+                                    {l}
+                                </button>
+                            ))}
+                        </div>
+                    </div>
+                    <div>
+                        <p className={label}>Hình thức</p>
+                        <div className={`flex border-2 p-1 rounded-2xl h-11 gap-1 ${isDark ? 'bg-white/5 border-white/10' : 'bg-[#1A1A1A]/5 border-[#1A1A1A]/10'}`}>
+                            {[['MULTIPLE_CHOICE', 'Trắc nghiệm'], ['ESSAY', 'Tự luận']].map(([v, l]) => (
+                                <button key={v} onClick={() => setFormat(v as 'MULTIPLE_CHOICE' | 'ESSAY')}
+                                    className={`flex-1 text-xs font-extrabold rounded-xl transition-all ${format === v ? 'bg-[#FF6B4A] text-white shadow-sm' : isDark ? 'text-gray-400 hover:text-gray-100' : 'text-[#1A1A1A]/50 hover:text-[#1A1A1A]'}`}>
+                                    {l}
+                                </button>
+                            ))}
+                        </div>
+                    </div>
+                </div>
+                {assignmentType === 'TEST' ? (
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+                        <div>
+                            <p className={label}>Thời gian bắt đầu</p>
+                            <div className="relative">
+                                <Input type="datetime-local" value={startTime} onChange={e => setStartTime(e.target.value)}
+                                    className={`w-full ${inp} pr-10`} />
+                                <CalendarBlank className="absolute right-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400 pointer-events-none" />
+                            </div>
+                        </div>
+                        <div>
+                            <p className={label}>Thời gian kết thúc</p>
+                            <div className="relative">
+                                <Input type="datetime-local" value={endTime} onChange={e => setEndTime(e.target.value)}
+                                    className={`w-full ${inp} pr-10`} />
+                                <CalendarBlank className="absolute right-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400 pointer-events-none" />
+                            </div>
+                        </div>
+                    </div>
+                ) : (
+                    <div>
+                        <p className={label}>Hạn nộp</p>
+                        <div className="relative">
+                            <Input type="datetime-local" value={deadline} onChange={e => setDeadline(e.target.value)}
+                                className={`w-full ${inp} pr-10`} />
+                            <CalendarBlank className="absolute right-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400 pointer-events-none" />
+                        </div>
+                    </div>
+                )}
+                <div>
+                    <p className={label}>Thời gian làm bài (phút)</p>
+                    <Input
+                        type="number"
+                        min="1"
+                        value={durationMinutes}
+                        onChange={e => setDurationMinutes(e.target.value)}
+                        className={`w-full ${inp}`}
+                    />
+                </div>
+                <div>
+                    <p className={label}>Tiêu đề đề kiểm tra</p>
+                    <Input value={title} onChange={e => setTitle(e.target.value)}
+                        placeholder="Nhập tiêu đề..." className={`w-full ${inp}`} />
+                </div>
+            </div>
+
+            {/* Step 2 */}
+            <div className={`${card} border-l-[6px]`}>
+                <div className="flex items-center gap-3">
+                    <div className={`w-8 h-8 rounded-full border-2 font-extrabold flex items-center justify-center text-sm ${isDark ? 'bg-[#7873b8] border-white/20 text-[#11151d]' : 'bg-[#B8B5FF] border-[#1A1A1A] text-[#1A1A1A]'}`}>2</div>
+                    <h2 className={`text-xl font-extrabold ${txt}`}>Phương thức lấy câu hỏi</h2>
+                </div>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
+                    <div>
+                        <p className={label}>Ngân hàng câu hỏi</p>
+                        <Select value={bankId} onValueChange={setBankId}>
+                            <SelectTrigger className={inp}><SelectValue placeholder="Tất cả ngân hàng" /></SelectTrigger>
+                            <SelectContent>
+                                <SelectItem value="all">Tất cả ngân hàng</SelectItem>
+                                {banks.map(b => (
+                                    <SelectItem key={b.id} value={String(b.id)}>{b.bankName}</SelectItem>
+                                ))}
+                            </SelectContent>
+                        </Select>
+                    </div>
+                    <div>
+                        <p className={label}>Độ khó</p>
+                        <Select value={difficultyLevel} onValueChange={setDifficultyLevel}>
+                            <SelectTrigger className={inp}><SelectValue placeholder="Tất cả độ khó" /></SelectTrigger>
+                            <SelectContent>
+                                <SelectItem value="all">Tất cả</SelectItem>
+                                <SelectItem value="1">Dễ</SelectItem>
+                                <SelectItem value="2">Trung bình</SelectItem>
+                                <SelectItem value="3">Khó</SelectItem>
+                            </SelectContent>
+                        </Select>
+                    </div>
+                    <div>
+                        <p className={label}>Số lượng</p>
+                        <Input type="number" value={limit} onChange={e => setLimit(e.target.value)} min="1" max="50"
+                            className={inp} />
+                    </div>
+                </div>
+                <div className="flex justify-center pt-2">
+                    <button onClick={fetchRandomQuestions} disabled={loadingQ}
+                        className="flex items-center gap-2 bg-[#FF6B4A] hover:bg-[#ff5535] text-white font-extrabold h-12 px-8 rounded-2xl shadow-md transition-colors text-base disabled:opacity-60">
+                        <Lightning className="w-5 h-5" weight="fill" />
+                        {loadingQ ? 'Đang tạo...' : 'Tạo đề tự động'}
+                    </button>
+                </div>
+            </div>
+
+            {/* Preview */}
+            {questions.length > 0 && (
+                <>
+                    <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                            <Eye className="w-5 h-5 text-[#FF6B4A]" weight="fill" />
+                            <h3 className={`font-extrabold text-lg ${txt}`}>
+                                Xem trước <span className={`font-bold ${sub}`}>(Đã random)</span>
+                            </h3>
+                        </div>
+                        <span className={`text-sm font-extrabold ${sub}`}>Tổng: {questions.filter((q): q is QuestionPreviewResponse => q !== null).length} câu</span>
+                    </div>
+                    <div className="space-y-4">
+                        {questions.map((q, idx) => (
+                            <QuestionCard key={`${q?.id ?? 'empty'}-${idx}`} q={q} index={idx} isDark={isDark}
+                                onRefresh={refreshOne} onRemove={removeQuestion}
+                                refreshing={refreshingIdx === idx} />
+                        ))}
+                    </div>
+                </>
+            )}
+
+            {error && (
+                <div className="flex items-center gap-2 text-red-500 font-bold text-sm">
+                    <Warning className="w-4 h-4" /> {error}
+                </div>
+            )}
+
+            {/* Footer */}
+            <div className="fixed bottom-0 left-0 md:left-20 right-0 p-4 z-30">
+                <div className={`max-w-4xl mx-auto border-2 rounded-3xl p-4 flex items-center justify-between shadow-xl ${isDark ? 'bg-[#171b20] border-white/10' : 'bg-white border-[#1A1A1A]'}`}>
+                    <div>
+                        <div className="text-[10px] font-extrabold text-gray-400 uppercase tracking-widest mb-0.5">Trạng thái</div>
+                        <div className={`font-extrabold text-sm ${txt}`}>
+                            {questions.filter((q): q is QuestionPreviewResponse => q !== null).length > 0
+                                ? `✅ ${questions.filter((q): q is QuestionPreviewResponse => q !== null).length} câu hỏi đã chọn`
+                                : '⚠️ Chưa có câu hỏi nào'}
+                        </div>
+                    </div>
+                    <div className="flex gap-3">
+                        <button onClick={() => handleSave(false)} disabled={saving}
+                            className={`h-11 px-6 font-extrabold text-sm border-2 rounded-2xl transition-colors disabled:opacity-60 ${isDark ? 'border-white/15 hover:bg-white/10 text-gray-100' : 'border-[#1A1A1A]/20 hover:bg-[#1A1A1A]/5 text-[#1A1A1A]'}`}>
+                            {saving ? '...' : 'Lưu nháp'}
+                        </button>
+                        <button onClick={() => handleSave(true)} disabled={saving}
+                            className="h-11 px-6 font-extrabold text-sm bg-[#FF6B4A] hover:bg-[#ff5535] text-white rounded-2xl flex items-center gap-2 transition-colors shadow-md disabled:opacity-60">
+                            <PaperPlaneTilt className="w-4 h-4" weight="fill" />
+                            {saving ? '...' : 'Phát hành ngay'}
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    );
+}
+
+// ─── Detail View ──────────────────────────────────────────────────────────────
+function DetailView({ id, isDark, onReport, onDeleted }: { id: number; isDark: boolean; onReport: () => void; onDeleted: () => void }) {
+    const [detail, setDetail] = useState<AssignmentDetailResponse | null>(null);
+    const [loading, setLoading] = useState(true);
+    const [error, setError] = useState('');
+    const [closing, setClosing] = useState(false);
+    const [deleting, setDeleting] = useState(false);
+    const [saving, setSaving] = useState(false);
+    const [isEditing, setIsEditing] = useState(false);
+    const [editAssignmentType, setEditAssignmentType] = useState<'TEST' | 'ASSIGNMENT'>('TEST');
+    const [editTitle, setEditTitle] = useState('');
+    const [editDuration, setEditDuration] = useState('30');
+    const [editStartTime, setEditStartTime] = useState('');
+    const [editEndTime, setEditEndTime] = useState('');
+    const [editDeadline, setEditDeadline] = useState('');
+    const [editQuestions, setEditQuestions] = useState<(QuestionPreviewResponse | null)[]>([]);
+    const [refreshingQuestionIdx, setRefreshingQuestionIdx] = useState<number | null>(null);
+    const [addingQuestion, setAddingQuestion] = useState(false);
+
+    useEffect(() => {
+        const token = authService.getToken();
+        if (!token) return;
+        setLoading(true);
+        assignmentService.getDetail(id, token)
+            .then(d => setDetail(d))
+            .catch(e => setError(e.message ?? 'Lỗi'))
+            .finally(() => setLoading(false));
+    }, [id]);
+
+    const handleClose = async () => {
+        if (!detail) return;
+        const confirmMsg = detail.status === 'CLOSED'
+            ? 'Mở lại đề kiểm tra này?'
+            : 'Đóng đề kiểm tra này?';
+        if (!confirm(confirmMsg)) return;
+        const token = authService.getToken();
+        if (!token) return;
+        setClosing(true);
+        try {
+            const updated = await assignmentService.close(id, token);
+            setDetail(prev => prev ? { ...prev, status: updated.status } : prev);
+        } catch (e: any) {
+            alert(e.message ?? 'Lỗi cập nhật trạng thái đề');
+        } finally {
+            setClosing(false);
+        }
+    };
+
+    const beginEdit = () => {
+        if (!detail) return;
+        setEditAssignmentType(detail.assignmentType);
+        setEditTitle(detail.title);
+        setEditDuration(String(detail.durationMinutes ?? 30));
+        setEditStartTime(toDateTimeLocalInput(detail.startTime));
+        setEditEndTime(toDateTimeLocalInput(detail.endTime));
+        setEditDeadline(toDateTimeLocalInput(detail.deadline));
+        setEditQuestions(detail.questions);
+        setIsEditing(true);
+    };
+
+    const refreshQuestion = async (idx: number) => {
+        const token = authService.getToken();
+        if (!token) return;
+        setRefreshingQuestionIdx(idx);
+        try {
+            const random = await assignmentService.getRandomQuestions({ limit: 8 }, token);
+            const existingIds = new Set(editQuestions.filter((q): q is QuestionPreviewResponse => q !== null).map(q => q.id));
+            const candidate = random.find(q => !existingIds.has(q.id)) ?? random[0];
+            if (candidate) {
+                setEditQuestions(prev => prev.map((q, i) => (i === idx ? candidate : q)));
+            }
+        } catch {
+            // keep silent to match current UX
+        } finally {
+            setRefreshingQuestionIdx(null);
+        }
+    };
+
+    const clearQuestionSlot = (idx: number) => {
+        setEditQuestions(prev => prev.map((q, i) => (i === idx ? null : q)));
+    };
+
+    const appendRandomQuestion = async () => {
+        const token = authService.getToken();
+        if (!token) return;
+        setAddingQuestion(true);
+        try {
+            const random = await assignmentService.getRandomQuestions({ limit: 12 }, token);
+            const existingIds = new Set(editQuestions.filter((q): q is QuestionPreviewResponse => q !== null).map(q => q.id));
+            const candidate = random.find(q => !existingIds.has(q.id));
+            if (candidate) {
+                setEditQuestions(prev => [...prev, candidate]);
+            }
+        } catch {
+            // keep silent to match current UX
+        } finally {
+            setAddingQuestion(false);
+        }
+    };
+
+    const handleSaveEdit = async () => {
+        if (!detail) return;
+        if (!editTitle.trim()) {
+            alert('Tiêu đề không được để trống');
+            return;
+        }
+        if (!editDuration || Number(editDuration) <= 0) {
+            alert('Thời gian làm bài phải lớn hơn 0 phút');
+            return;
+        }
+        if (editAssignmentType === 'TEST' && (!editStartTime || !editEndTime)) {
+            alert('Bài kiểm tra yêu cầu thời gian bắt đầu và kết thúc');
+            return;
+        }
+        if (editAssignmentType === 'ASSIGNMENT' && !editDeadline) {
+            alert('Bài tập yêu cầu hạn nộp');
+            return;
+        }
+
+        const activeQuestionIds = editQuestions
+            .filter((q): q is QuestionPreviewResponse => q !== null)
+            .map(q => q.id);
+        if (activeQuestionIds.length === 0) {
+            alert('Đề kiểm tra cần ít nhất 1 câu hỏi');
+            return;
+        }
+
+        const token = authService.getToken();
+        if (!token) return;
+        setSaving(true);
+        try {
+            const updated = await assignmentService.update(id, {
+                title: editTitle.trim(),
+                assignmentType: editAssignmentType,
+                durationMinutes: Number(editDuration),
+                startTime: editAssignmentType === 'TEST' ? toLocalDateTime(editStartTime) : null,
+                endTime: editAssignmentType === 'TEST' ? toLocalDateTime(editEndTime) : null,
+                deadline: editAssignmentType === 'ASSIGNMENT' ? toLocalDateTime(editDeadline) : null,
+                questionIds: activeQuestionIds,
+            }, token);
+            setDetail(updated);
+            setEditQuestions(updated.questions);
+            setIsEditing(false);
+        } catch (e: any) {
+            alert(e.message ?? 'Lỗi cập nhật đề');
+        } finally {
+            setSaving(false);
+        }
+    };
+
+    const handleDelete = async () => {
+        if (!confirm('Xóa đề này?')) return;
+        const token = authService.getToken();
+        if (!token) return;
+        setDeleting(true);
+        try {
+            await assignmentService.delete(id, token);
+            onDeleted();
+        } catch (e: any) {
+            alert(e.message ?? 'Lỗi xóa đề');
+        } finally {
+            setDeleting(false);
+        }
+    };
+
+    const txt = isDark ? 'text-gray-100' : 'text-[#1A1A1A]';
+    const sub = isDark ? 'text-gray-400' : 'text-[#1A1A1A]/50';
+    if (loading) return <div className={`text-center py-20 font-bold ${sub}`}>Đang tải...</div>;
+    if (error || !detail) return <div className="text-center py-20 text-red-500 font-bold">{error || 'Không tìm thấy'}</div>;
+    const displayAssignmentType = isEditing ? editAssignmentType : detail.assignmentType;
+
+    return (
+        <div className="space-y-4 pb-8">
+            <div className={`rounded-3xl border-2 p-6 ${isDark ? 'bg-[#171b20] border-white/10' : 'bg-white border-[#1A1A1A]'}`}>
+                <div className="grid grid-cols-1 xl:grid-cols-12 gap-6">
+                    <div className="xl:col-span-8 space-y-4">
+                        <div className="flex items-center gap-2 flex-wrap">
+                            <StatusBadge status={detail.status} />
+                            {isEditing ? (
+                                <div className={`flex border p-1 rounded-xl gap-1 ${isDark ? 'border-white/20 bg-white/5' : 'border-[#1A1A1A]/15 bg-[#1A1A1A]/5'}`}>
+                                    {[['TEST', 'Bài kiểm tra'], ['ASSIGNMENT', 'Bài tập']].map(([v, l]) => (
+                                        <button
+                                            key={v}
+                                            onClick={() => setEditAssignmentType(v as 'TEST' | 'ASSIGNMENT')}
+                                            className={`px-2 py-1 rounded-lg text-[11px] font-extrabold ${editAssignmentType === v
+                                                ? 'bg-[#FF6B4A] text-white'
+                                                : isDark ? 'text-gray-300 hover:text-white' : 'text-[#1A1A1A]/60 hover:text-[#1A1A1A]'}`}
+                                        >
+                                            {l}
+                                        </button>
+                                    ))}
+                                </div>
+                            ) : (
+                                <span className={`text-xs font-bold ${sub}`}>{getAssignmentTypeLabel(detail.assignmentType)} • {getFormatLabel(detail.format)}</span>
+                            )}
+                        </div>
+
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div className="md:col-span-2">
+                                <p className={`text-xs font-extrabold mb-1.5 ${sub}`}>Tên đề thi</p>
+                                {isEditing ? (
+                                    <Input
+                                        value={editTitle}
+                                        onChange={e => setEditTitle(e.target.value)}
+                                        className={isDark ? 'bg-[#20242b] border-white/15 text-gray-100' : 'bg-[#F7F7F2] border-[#1A1A1A]/20'}
+                                    />
+                                ) : (
+                                    <Input
+                                        value={detail.title}
+                                        readOnly
+                                        className={isDark ? 'bg-[#20242b] border-white/10 text-gray-100' : 'bg-[#F7F7F2] border-[#1A1A1A]/15'}
+                                    />
+                                )}
+                            </div>
+
+                            <div>
+                                <p className={`text-xs font-extrabold mb-1.5 ${sub}`}>Môn học</p>
+                                <Input
+                                    value={detail.subjectName ?? 'Chưa cập nhật'}
+                                    readOnly
+                                    className={isDark ? 'bg-[#20242b] border-white/10 text-gray-100' : 'bg-[#F7F7F2] border-[#1A1A1A]/15'}
+                                />
+                            </div>
+                            <div>
+                                <p className={`text-xs font-extrabold mb-1.5 ${sub}`}>Lớp</p>
+                                <Input
+                                    value={detail.className}
+                                    readOnly
+                                    className={isDark ? 'bg-[#20242b] border-white/10 text-gray-100' : 'bg-[#F7F7F2] border-[#1A1A1A]/15'}
+                                />
+                            </div>
+
+                            {displayAssignmentType === 'TEST' ? (
+                                <>
+                                    <div>
+                                        <p className={`text-xs font-extrabold mb-1.5 ${sub}`}>Thời gian bắt đầu</p>
+                                        {isEditing ? (
+                                            <Input type="datetime-local" value={editStartTime} onChange={e => setEditStartTime(e.target.value)} className={isDark ? 'bg-[#20242b] border-white/15 text-gray-100' : 'bg-[#F7F7F2] border-[#1A1A1A]/20'} />
+                                        ) : (
+                                            <Input readOnly value={formatDeadline(detail.startTime || '')} className={isDark ? 'bg-[#20242b] border-white/10 text-gray-100' : 'bg-[#F7F7F2] border-[#1A1A1A]/15'} />
+                                        )}
+                                    </div>
+                                    <div>
+                                        <p className={`text-xs font-extrabold mb-1.5 ${sub}`}>Thời gian kết thúc</p>
+                                        {isEditing ? (
+                                            <Input type="datetime-local" value={editEndTime} onChange={e => setEditEndTime(e.target.value)} className={isDark ? 'bg-[#20242b] border-white/15 text-gray-100' : 'bg-[#F7F7F2] border-[#1A1A1A]/20'} />
+                                        ) : (
+                                            <Input readOnly value={formatDeadline(detail.endTime || '')} className={isDark ? 'bg-[#20242b] border-white/10 text-gray-100' : 'bg-[#F7F7F2] border-[#1A1A1A]/15'} />
+                                        )}
+                                    </div>
+                                </>
+                            ) : (
+                                <div className="md:col-span-2">
+                                    <p className={`text-xs font-extrabold mb-1.5 ${sub}`}>Hạn nộp</p>
+                                    {isEditing ? (
+                                        <Input type="datetime-local" value={editDeadline} onChange={e => setEditDeadline(e.target.value)} className={isDark ? 'bg-[#20242b] border-white/15 text-gray-100' : 'bg-[#F7F7F2] border-[#1A1A1A]/20'} />
+                                    ) : (
+                                        <Input readOnly value={formatDeadline(detail.deadline || '')} className={isDark ? 'bg-[#20242b] border-white/10 text-gray-100' : 'bg-[#F7F7F2] border-[#1A1A1A]/15'} />
+                                    )}
+                                </div>
+                            )}
+
+                            <div className={displayAssignmentType === 'ASSIGNMENT' ? 'md:col-span-2' : ''}>
+                                <p className={`text-xs font-extrabold mb-1.5 ${sub}`}>Thời lượng (phút)</p>
+                                {isEditing ? (
+                                    <Input type="number" min="1" value={editDuration} onChange={e => setEditDuration(e.target.value)} className={isDark ? 'bg-[#20242b] border-white/15 text-gray-100' : 'bg-[#F7F7F2] border-[#1A1A1A]/20'} />
+                                ) : (
+                                    <Input readOnly value={`${detail.durationMinutes} phút`} className={isDark ? 'bg-[#20242b] border-white/10 text-gray-100' : 'bg-[#F7F7F2] border-[#1A1A1A]/15'} />
+                                )}
+                            </div>
+                        </div>
+                    </div>
+
+                    <div className="xl:col-span-4 flex flex-col gap-4 xl:items-end">
+                        <div className="grid grid-cols-2 gap-3 xl:justify-end">
+                            <div className={`rounded-2xl border-2 px-5 py-4 min-w-[98px] min-h-[110px] flex flex-col justify-center text-center ${isDark ? 'border-white/10 bg-[#20242b]' : 'border-[#1A1A1A]/10 bg-[#F8F8F4]'}`}>
+                                <p className={`text-3xl font-extrabold leading-tight ${txt}`}>{isEditing ? editQuestions.filter((q): q is QuestionPreviewResponse => q !== null).length : detail.totalQuestions}</p>
+                                <p className={`text-[11px] font-semibold ${sub}`}>Câu hỏi</p>
+                            </div>
+                            <div className={`rounded-2xl border-2 px-5 py-4 min-w-[98px] min-h-[110px] flex flex-col justify-center text-center ${isDark ? 'border-white/10 bg-[#20242b]' : 'border-[#1A1A1A]/10 bg-[#F8F8F4]'}`}>
+                                <p className={`text-3xl font-extrabold leading-tight ${txt}`}>{detail.totalSubmissions}</p>
+                                <p className={`text-[11px] font-semibold ${sub}`}>Lượt nộp</p>
+                            </div>
+                        </div>
+
+                        {isEditing ? (
+                            <div className="flex gap-2 justify-start xl:justify-end w-full mt-auto">
+                                <button onClick={() => setIsEditing(false)} className="px-4 py-2 rounded-2xl text-xs font-extrabold border border-gray-300 text-gray-600 hover:bg-gray-100">
+                                    Hủy
+                                </button>
+                                <button onClick={handleSaveEdit} disabled={saving}
+                                    className="px-4 py-2 rounded-2xl text-xs font-extrabold bg-green-500 text-white hover:bg-green-600 disabled:opacity-60">
+                                    {saving ? '...' : 'Lưu sửa'}
+                                </button>
+                            </div>
+                        ) : (
+                            <>
+                                <div className="flex gap-2 justify-start xl:justify-end w-full">
+                                    <button onClick={onReport}
+                                        className="px-4 py-2 rounded-2xl text-xs font-extrabold bg-[#B8B5FF] text-[#1A1A1A] hover:bg-[#a09dff]">
+                                        Xem báo cáo
+                                    </button>
+                                    {(detail.status === 'ACTIVE' || detail.status === 'CLOSED') && (
+                                        <button onClick={handleClose} disabled={closing || saving || deleting}
+                                            className="px-4 py-2 rounded-2xl text-xs font-extrabold bg-red-100 text-red-600 hover:bg-red-200 border border-red-300 disabled:opacity-60">
+                                            {closing ? '...' : detail.status === 'CLOSED' ? 'Mở lại' : 'Đóng đề'}
+                                        </button>
+                                    )}
+                                </div>
+                                <div className="flex gap-2 justify-start xl:justify-end w-full">
+                                    <button onClick={beginEdit}
+                                        className="px-4 py-2 rounded-2xl text-xs font-extrabold border border-blue-300 text-blue-600 hover:bg-blue-50">
+                                        Sửa
+                                    </button>
+                                    <button onClick={handleDelete} disabled={deleting}
+                                        className="px-4 py-2 rounded-2xl text-xs font-extrabold border border-red-300 text-red-600 hover:bg-red-50 disabled:opacity-50">
+                                        {deleting ? '...' : 'Xóa'}
+                                    </button>
+                                </div>
+                            </>
+                        )}
+                    </div>
+                </div>
+            </div>
+
+            <div className="flex items-center justify-between gap-2 flex-wrap">
+                <div className="flex items-center gap-2">
+                    <Eye className="w-5 h-5 text-[#FF6B4A]" weight="fill" />
+                    <h3 className={`font-extrabold text-base ${txt}`}>Danh sách câu hỏi</h3>
+                </div>
+                {isEditing && (
+                    <button
+                        onClick={appendRandomQuestion}
+                        disabled={addingQuestion}
+                        className="px-4 py-2 rounded-2xl text-xs font-extrabold bg-[#FF6B4A] text-white hover:bg-[#ff5535] disabled:opacity-60"
+                    >
+                        {addingQuestion ? '...' : 'Thêm câu hỏi'}
+                    </button>
+                )}
+            </div>
+
+            <div className="space-y-4">
+                {(isEditing ? editQuestions : detail.questions).map((q, idx) => (
+                    <QuestionCard
+                        key={`${q?.id ?? 'empty'}-${idx}`}
+                        q={q}
+                        index={idx}
+                        isDark={isDark}
+                        onRefresh={isEditing ? refreshQuestion : undefined}
+                        onRemove={isEditing ? clearQuestionSlot : undefined}
+                        refreshing={refreshingQuestionIdx === idx}
+                    />
+                ))}
+            </div>
+        </div>
+    );
+}
+
+// ─── Report View ──────────────────────────────────────────────────────────────
+function ReportView({ id, isDark }: { id: number; isDark: boolean }) {
+    const [report, setReport] = useState<AssignmentReportResponse | null>(null);
+    const [loading, setLoading] = useState(true);
+    const [error, setError] = useState('');
+
+    useEffect(() => {
+        const token = authService.getToken();
+        if (!token) return;
+        setLoading(true);
+        assignmentService.getReport(id, token)
+            .then(r => setReport(r))
+            .catch(e => setError(e.message ?? 'Lỗi'))
+            .finally(() => setLoading(false));
+    }, [id]);
+
+    const txt = isDark ? 'text-gray-100' : 'text-[#1A1A1A]';
+    const sub = isDark ? 'text-gray-400' : 'text-[#1A1A1A]/50';
+    const card = `rounded-3xl border-2 p-6 ${isDark ? 'bg-[#171b20] border-white/10' : 'bg-white border-[#1A1A1A]'}`;
+
+    if (loading) return <div className={`text-center py-20 font-bold ${sub}`}>Đang tải...</div>;
+    if (error || !report) return <div className="text-center py-20 text-red-500 font-bold">{error || 'Không tìm thấy'}</div>;
+
+    const DIFF_MAP: Record<number, string> = { 1: 'Dễ', 2: 'Trung bình', 3: 'Khó' };
+
+    return (
+        <div className="space-y-6 pb-8">
+            {/* Stats row */}
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                {[
+                    { label: 'Tổng nộp', val: report.totalSubmissions },
+                    { label: 'TB', val: report.averageScore?.toFixed(2) ?? '—' },
+                    { label: 'Cao nhất', val: report.highestScore?.toFixed(2) ?? '—' },
+                    { label: 'Thấp nhất', val: report.lowestScore?.toFixed(2) ?? '—' },
+                ].map(s => (
+                    <div key={s.label} className={`${card} text-center`}>
+                        <p className={`text-2xl font-extrabold ${txt}`}>{s.val}</p>
+                        <p className={`text-xs font-semibold ${sub}`}>{s.label}</p>
+                    </div>
+                ))}
+            </div>
+
+            {/* Student results */}
+            <div className={card}>
+                <h3 className={`font-extrabold text-base mb-4 ${txt}`}>Bảng điểm học sinh</h3>
+                <div className="overflow-x-auto">
+                    <table className="w-full text-sm">
+                        <thead>
+                            <tr className={`text-xs font-extrabold uppercase tracking-wider ${sub}`}>
+                                <th className="text-left pb-3">STT</th>
+                                <th className="text-left pb-3">Họ tên</th>
+                                <th className="text-center pb-3">Điểm</th>
+                                <th className="text-center pb-3">Thời gian</th>
+                                <th className="text-right pb-3">Nộp lúc</th>
+                            </tr>
+                        </thead>
+                        <tbody className="divide-y divide-[#1A1A1A]/5">
+                            {report.studentResults.map((s, i) => (
+                                <tr key={s.submissionId}>
+                                    <td className={`py-2 font-bold ${sub}`}>{i + 1}</td>
+                                    <td className={`py-2 font-bold ${txt}`}>{s.studentName}</td>
+                                    <td className={`py-2 text-center font-extrabold ${s.score >= 8 ? 'text-green-600' : s.score >= 5 ? 'text-yellow-600' : 'text-red-500'}`}>
+                                        {s.score?.toFixed(2)}
+                                    </td>
+                                    <td className={`py-2 text-center font-semibold ${sub}`}>
+                                        {s.timeTaken ? `${Math.floor(s.timeTaken / 60)}:${String(s.timeTaken % 60).padStart(2, '0')}` : '—'}
+                                    </td>
+                                    <td className={`py-2 text-right font-semibold ${sub}`}>{formatDeadline(s.submitTime)}</td>
+                                </tr>
+                            ))}
+                            {report.studentResults.length === 0 && (
+                                <tr><td colSpan={5} className={`py-8 text-center font-bold ${sub}`}>Chưa có học sinh nộp bài</td></tr>
+                            )}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            {/* Question stats */}
+            <div className={card}>
+                <h3 className={`font-extrabold text-base mb-4 ${txt}`}>Thống kê từng câu hỏi</h3>
+                <div className="space-y-4">
+                    {report.questionStats.map((qs, i) => (
+                        <div key={qs.questionId}>
+                            <div className="flex items-center justify-between mb-1 flex-wrap gap-1">
+                                <p className={`text-sm font-bold flex-1 ${txt}`}>
+                                    <span className={`mr-2 text-xs ${sub}`}>Câu {i + 1}</span>
+                                    {qs.questionText.length > 80 ? qs.questionText.slice(0, 80) + '…' : qs.questionText}
+                                </p>
+                                <div className="flex items-center gap-2 shrink-0">
+                                    <span className={`text-xs font-semibold ${sub}`}>{DIFF_MAP[qs.difficultyLevel] ?? '—'}</span>
+                                    <span className={`text-sm font-extrabold ${qs.accuracyRate >= 70 ? 'text-green-600' : qs.accuracyRate >= 40 ? 'text-yellow-600' : 'text-red-500'}`}>
+                                        {qs.accuracyRate?.toFixed(1)}%
+                                    </span>
+                                </div>
+                            </div>
+                            <div className={`w-full rounded-full h-2 ${isDark ? 'bg-white/10' : 'bg-[#1A1A1A]/10'}`}>
+                                <div className={`h-2 rounded-full transition-all ${qs.accuracyRate >= 70 ? 'bg-green-500' : qs.accuracyRate >= 40 ? 'bg-yellow-500' : 'bg-red-500'}`}
+                                    style={{ width: `${qs.accuracyRate}%` }} />
+                            </div>
+                            <p className={`text-xs font-semibold mt-0.5 ${sub}`}>{qs.correctCount}/{qs.totalAnswered} đúng</p>
+                        </div>
+                    ))}
+                    {report.questionStats.length === 0 && (
+                        <p className={`text-center py-6 font-bold ${sub}`}>Chưa có dữ liệu</p>
+                    )}
+                </div>
+            </div>
+        </div>
+    );
+}
+
+// ─── Main Component ───────────────────────────────────────────────────────────
 export function TeacherMakeTest() {
     const { theme } = useSettings();
     const isDark = theme === 'dark';
-    const [testType, setTestType] = useState('trac-nghiem');
+    const [view, setView] = useState<View>('dashboard');
+    const [selectedId, setSelectedId] = useState<number | null>(null);
 
-    const diffChipPalette = isDark
-        ? { 'TRUNG BÌNH': '#9a8b5a', 'DỄ': '#5c9c93', 'KHÓ': '#8f6a73' }
-        : DIFF_COLORS;
+    const goDetail = (a: AssignmentResponse) => { setSelectedId(a.assignmentID); setView('detail'); };
+    const goReport = (id: number) => { setSelectedId(id); setView('report'); };
+    const goBack = () => { setSelectedId(null); setView('dashboard'); };
+    const goCreate = () => setView('create');
+
+    const txt = isDark ? 'text-gray-100' : 'text-[#1A1A1A]';
+    const sub = isDark ? 'text-gray-400' : 'text-[#1A1A1A]/50';
+
+    const BREADCRUMB: Record<View, string> = {
+        dashboard: 'Tổng quan',
+        create: 'Tạo đề mới',
+        detail: 'Chi tiết đề',
+        report: 'Báo cáo',
+    };
+
+    const breadcrumbItems: Array<{ key: View | 'root'; label: string; active: boolean; onClick?: () => void }> = [
+        {
+            key: 'root',
+            label: 'Đề kiểm tra',
+            active: view === 'dashboard',
+            onClick: view === 'dashboard' ? undefined : goBack,
+        },
+    ];
+
+    if (view !== 'dashboard') {
+        breadcrumbItems.push({
+            key: view,
+            label: BREADCRUMB[view],
+            active: true,
+        });
+    }
 
     return (
-        <div className={`min-h-screen pb-32 ${isDark ? 'bg-[#11151d]' : 'bg-[#F7F7F2]'}`} style={{ fontFamily: "'Nunito', sans-serif" }}>
+        <div className={`min-h-screen pb-8 ${isDark ? 'bg-[#11151d]' : 'bg-[#F7F7F2]'}`} style={{ fontFamily: "'Nunito', sans-serif" }}>
             {/* Header */}
             <header className={`border-b-2 px-8 py-3 flex items-center justify-between sticky top-0 z-20 ${isDark ? 'bg-[#171b20] border-white/10' : 'bg-white border-[#1A1A1A]/10'}`}>
                 <div className="flex items-center gap-4">
                     <div className={`w-9 h-9 rounded-2xl flex items-center justify-center ${isDark ? 'bg-[#20242b]' : 'bg-[#1A1A1A]'}`}>
                         <span className="text-white font-extrabold text-base">M</span>
                     </div>
-                    <h2 className={`font-extrabold text-lg ${isDark ? 'text-gray-100' : 'text-[#1A1A1A]'}`}>SmartTest <span className={isDark ? 'text-gray-500 font-bold' : 'text-[#1A1A1A]/40 font-bold'}>Builder</span></h2>
+                    <h2 className={`font-extrabold text-lg ${txt}`}>SmartTest <span className={`font-bold ${sub}`}>Builder</span></h2>
                 </div>
                 <nav className="hidden md:flex items-center gap-2">
-                    {['Tổng quan', 'Ngân hàng câu hỏi', 'Lớp học', 'Báo cáo'].map((item) => (
-                        <button key={item} className={`px-4 py-2 text-sm font-extrabold rounded-2xl transition-colors ${isDark ? 'text-gray-400 hover:text-gray-100 hover:bg-white/10' : 'text-[#1A1A1A]/50 hover:text-[#1A1A1A] hover:bg-[#1A1A1A]/5'}`}>
-                            {item}
+                    {[
+                        { label: 'Tổng quan', icon: <SquaresFour className="w-4 h-4" />, v: 'dashboard' as View },
+                        { label: 'Báo cáo', icon: <ChartBar className="w-4 h-4" />, v: 'report' as View },
+                    ].map(item => (
+                        <button key={item.v} onClick={() => { if (item.v === 'report' && selectedId) goReport(selectedId); else setView(item.v as View); }}
+                            className={`flex items-center gap-1.5 px-4 py-2 text-sm font-extrabold rounded-2xl transition-colors ${view === item.v
+                                ? isDark ? 'bg-white/10 text-gray-100' : 'bg-[#1A1A1A]/10 text-[#1A1A1A]'
+                                : isDark ? 'text-gray-400 hover:text-gray-100 hover:bg-white/10' : 'text-[#1A1A1A]/50 hover:text-[#1A1A1A] hover:bg-[#1A1A1A]/5'}`}>
+                            {item.icon}{item.label}
                         </button>
                     ))}
-                    <button className="ml-2 bg-[#FF6B4A] hover:bg-[#ff5535] text-white font-extrabold px-4 h-9 rounded-2xl text-sm transition-colors">Tạo mới</button>
+                    <button onClick={goCreate}
+                        className="ml-2 flex items-center gap-1.5 bg-[#FF6B4A] hover:bg-[#ff5535] text-white font-extrabold px-4 h-9 rounded-2xl text-sm transition-colors">
+                        <Plus className="w-4 h-4" />Tạo mới
+                    </button>
                 </nav>
             </header>
 
             <div className="max-w-4xl mx-auto p-6 md:p-8 space-y-6">
+                {/* Breadcrumb + back */}
                 <div>
-                    <p className="text-xs font-extrabold text-gray-400 uppercase tracking-widest mb-1">Bảng điều khiển / Tạo bài kiểm tra</p>
-                    <h1 className={`text-3xl font-extrabold ${isDark ? 'text-gray-100' : 'text-[#1A1A1A]'}`}>Thiết lập Đề kiểm tra</h1>
-                    <p className={`font-semibold mt-1 ${isDark ? 'text-gray-400' : 'text-[#1A1A1A]/50'}`}>Tự động tạo đề từ ngân hàng câu hỏi chuẩn hóa.</p>
-                </div>
-
-                {/* Step 1: Basic info */}
-                <div className={`rounded-3xl border-2 p-6 md:p-8 space-y-5 ${isDark ? 'bg-[#171b20] border-white/10' : 'bg-white border-[#1A1A1A]'}`}>
-                    <div className="flex items-center gap-3">
-                        <div className={`w-8 h-8 rounded-full border-2 font-extrabold flex items-center justify-center text-sm ${isDark ? 'bg-[#9a8b5a] border-white/20 text-[#11151d]' : 'bg-[#FCE38A] border-[#1A1A1A] text-[#1A1A1A]'}`}>1</div>
-                        <h2 className={`text-xl font-extrabold ${isDark ? 'text-gray-100' : 'text-[#1A1A1A]'}`}>Thông tin cơ bản</h2>
-                    </div>
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
-                        <div>
-                            <p className="text-xs font-extrabold text-gray-400 uppercase tracking-wider mb-1.5">Chọn lớp</p>
-                            <Select defaultValue="10a1">
-                                <SelectTrigger className={`rounded-2xl border-2 h-11 font-bold ${isDark ? 'bg-[#20242b] border-white/15 text-gray-100' : 'bg-[#F7F7F2] border-[#1A1A1A]/20'}`}>
-                                    <SelectValue />
-                                </SelectTrigger>
-                                <SelectContent>
-                                    <SelectItem value="10a1">Lớp 10A1 - Toán</SelectItem>
-                                </SelectContent>
-                            </Select>
-                        </div>
-                        <div>
-                            <p className="text-xs font-extrabold text-gray-400 uppercase tracking-wider mb-1.5">Hạn nộp</p>
-                            <div className="relative">
-                                <Input type="datetime-local" className={`w-full border-2 h-11 rounded-2xl font-semibold pr-10 ${isDark ? 'bg-[#20242b] border-white/15 text-gray-100' : 'bg-[#F7F7F2] border-[#1A1A1A]/20'}`} />
-                                <CalendarBlank className="absolute right-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400 pointer-events-none" />
-                            </div>
-                        </div>
-                        <div>
-                            <p className="text-xs font-extrabold text-gray-400 uppercase tracking-wider mb-1.5">Hình thức</p>
-                            <div className={`flex border-2 p-1 rounded-2xl h-11 gap-1 ${isDark ? 'bg-white/5 border-white/10' : 'bg-[#1A1A1A]/5 border-[#1A1A1A]/10'}`}>
-                                {[['trac-nghiem', 'Trắc nghiệm'], ['tu-luan', 'Tự luận']].map(([v, l]) => (
-                                    <button key={v} className={`flex-1 text-xs font-extrabold rounded-xl transition-all ${testType === v ? 'bg-[#FF6B4A] text-white shadow-sm' : isDark ? 'text-gray-400 hover:text-gray-100' : 'text-[#1A1A1A]/50 hover:text-[#1A1A1A]'}`} onClick={() => setTestType(v)}>
-                                        {l}
+                    <div className="flex items-center gap-1.5 flex-wrap">
+                        {breadcrumbItems.map((item, idx) => (
+                            <div key={item.key} className="flex items-center gap-1.5">
+                                {item.onClick ? (
+                                    <button
+                                        onClick={item.onClick}
+                                        className={`text-xs font-extrabold uppercase tracking-widest px-2.5 py-1 rounded-xl border transition-colors ${isDark
+                                            ? 'border-white/10 text-gray-300 hover:text-white hover:bg-white/10'
+                                            : 'border-[#1A1A1A]/15 text-[#1A1A1A]/60 hover:text-[#1A1A1A] hover:bg-[#1A1A1A]/5'}`}
+                                    >
+                                        {item.label}
                                     </button>
-                                ))}
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
-                {/* Step 2: Question source */}
-                <div className={`rounded-3xl border-2 p-6 md:p-8 space-y-5 ${isDark ? 'bg-[#171b20] border-white/10' : 'bg-white border-[#1A1A1A]'}`} style={{ borderLeftWidth: '6px' }}>
-                    <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-3">
-                            <div className={`w-8 h-8 rounded-full border-2 font-extrabold flex items-center justify-center text-sm ${isDark ? 'bg-[#7873b8] border-white/20 text-[#11151d]' : 'bg-[#B8B5FF] border-[#1A1A1A] text-[#1A1A1A]'}`}>2</div>
-                            <h2 className={`text-xl font-extrabold ${isDark ? 'text-gray-100' : 'text-[#1A1A1A]'}`}>Phương thức lấy câu hỏi</h2>
-                        </div>
-                        <span className={`text-xs font-extrabold border-2 px-3 py-1.5 rounded-full ${isDark ? 'text-gray-100 bg-[#7873b8]/30 border-white/15' : 'text-[#1A1A1A] bg-[#B8B5FF] border-[#1A1A1A]/20'}`}>Từ ngân hàng</span>
-                    </div>
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
-                        {[
-                            { label: 'Chương/Chủ đề', options: [['c1', 'Chương 1: Mệnh đề']] },
-                            { label: 'Độ khó', options: [['de', 'Dễ (Nhận biết)']] },
-                        ].map(f => (
-                            <div key={f.label}>
-                                <p className="text-xs font-extrabold text-gray-400 uppercase tracking-wider mb-1.5">{f.label}</p>
-                                <Select defaultValue={f.options[0][0]}>
-                                    <SelectTrigger className={`rounded-2xl border-2 h-11 font-bold ${isDark ? 'bg-[#20242b] border-white/15 text-gray-100' : 'bg-[#F7F7F2] border-[#1A1A1A]/20'}`}>
-                                        <SelectValue />
-                                    </SelectTrigger>
-                                    <SelectContent>
-                                        {f.options.map(([v, l]) => <SelectItem key={v} value={v}>{l}</SelectItem>)}
-                                    </SelectContent>
-                                </Select>
+                                ) : (
+                                    <span
+                                        aria-current={item.active ? 'page' : undefined}
+                                        className={`text-xs font-extrabold uppercase tracking-widest px-2.5 py-1 rounded-xl border ${item.active
+                                            ? isDark ? 'border-[#FF6B4A]/60 bg-[#FF6B4A]/20 text-[#FFB8A8]' : 'border-[#FF6B4A]/40 bg-[#FF6B4A]/10 text-[#d64b2e]'
+                                            : isDark ? 'border-white/10 text-gray-300' : 'border-[#1A1A1A]/15 text-[#1A1A1A]/60'}`}
+                                    >
+                                        {item.label}
+                                    </span>
+                                )}
+                                {idx < breadcrumbItems.length - 1 && <span className={`text-xs font-extrabold ${sub}`}>/</span>}
                             </div>
                         ))}
-                        <div>
-                            <p className="text-xs font-extrabold text-gray-400 uppercase tracking-wider mb-1.5">Số lượng</p>
-                            <Input type="number" defaultValue="10" className={`border-2 h-11 rounded-2xl font-bold ${isDark ? 'bg-[#20242b] border-white/15 text-gray-100' : 'bg-[#F7F7F2] border-[#1A1A1A]/20'}`} />
-                        </div>
                     </div>
-                    <div className="flex justify-center pt-2">
-                        <button className="flex items-center gap-2 bg-[#FF6B4A] hover:bg-[#ff5535] text-white font-extrabold h-12 px-8 rounded-2xl shadow-md transition-colors text-base">
-                            <Lightning className="w-5 h-5" weight="fill" /> Tạo đề tự động
-                        </button>
-                    </div>
+                    <h1 className={`text-3xl font-extrabold mt-1 ${txt}`}>{BREADCRUMB[view]}</h1>
                 </div>
 
-                {/* Preview */}
-                <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-2">
-                        <Eye className="w-5 h-5 text-[#FF6B4A]" weight="fill" />
-                        <h3 className={`font-extrabold text-lg ${isDark ? 'text-gray-100' : 'text-[#1A1A1A]'}`}>Xem trước danh sách câu hỏi <span className={isDark ? 'text-gray-500 font-bold' : 'text-[#1A1A1A]/40 font-bold'}>(Đã random)</span></h3>
-                    </div>
-                    <span className="text-sm font-extrabold text-gray-400">Tổng: 10 câu</span>
-                </div>
-
-                <div className="space-y-4">
-                    {[
-                        { label: 'TRUNG BÌNH', q: 'Cho tập hợp A = {x ∈ R | x² - 4 = 0}. Viết dưới dạng liệt kê phần tử là:', opts: ['{2}', '{-2; 2}', '{-2}', '{4; -4}'], correct: 1 },
-                        { label: 'DỄ', q: 'Phát biểu nào sau đây là một mệnh đề toán học?', opts: ['3 là số nguyên tố', 'Trời hôm nay đẹp quá!', 'Bạn có đi học không?', 'x + 1 = 2'], correct: 0 },
-                    ].map((qCard, qi) => {
-                        const bg = diffChipPalette[qCard.label] ?? '#FCE38A';
-                        return (
-                            <div key={qi} className={`rounded-3xl border-2 p-6 ${isDark ? 'bg-[#171b20] border-white/10' : 'bg-white border-[#1A1A1A]'}`}>
-                                <div className="flex justify-between items-center mb-5">
-                                    <span className={`text-[11px] font-extrabold px-3 py-1.5 rounded-2xl border-2 ${isDark ? 'border-white/15 text-[#11151d]' : 'border-[#1A1A1A]/20'}`} style={{ backgroundColor: bg }}>
-                                        CÂU {qi + 1} - {qCard.label}
-                                    </span>
-                                    <div className="flex gap-3">
-                                        <button className={`transition-colors ${isDark ? 'text-gray-500 hover:text-gray-200' : 'text-[#1A1A1A]/30 hover:text-[#1A1A1A]'}`}><ArrowCounterClockwise className="w-4 h-4" /></button>
-                                        <button className={`transition-colors ${isDark ? 'text-gray-500 hover:text-[#FF6B4A]' : 'text-[#1A1A1A]/30 hover:text-[#FF6B4A]'}`}><Trash className="w-4 h-4" /></button>
-                                    </div>
-                                </div>
-                                <p className={`font-extrabold mb-5 leading-relaxed ${isDark ? 'text-gray-100' : 'text-[#1A1A1A]'}`}>{qCard.q}</p>
-                                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                                    {qCard.opts.map((opt, oi) => (
-                                        <label key={oi} className={`flex items-center gap-3 p-4 rounded-2xl border-2 cursor-pointer transition-colors ${oi === qCard.correct
-                                            ? isDark ? 'border-[#FF6B4A] bg-[#FF6B4A]/15' : 'border-[#FF6B4A] bg-[#FF6B4A]/5'
-                                            : isDark ? 'border-white/10 hover:border-white/20 bg-[#20242b]/30' : 'border-[#1A1A1A]/10 hover:border-[#1A1A1A]/25'
-                                            }`}>
-                                            <div className={`w-7 h-7 rounded-full border flex items-center justify-center text-xs font-extrabold shrink-0 ${oi === qCard.correct
-                                                ? 'bg-[#FF6B4A] text-white border-[#FF6B4A]'
-                                                : isDark ? 'bg-white/10 text-gray-200 border-white/20' : 'bg-[#1A1A1A]/10 text-[#1A1A1A]/50 border-transparent'
-                                                }`}>
-                                                {['A', 'B', 'C', 'D'][oi]}
-                                            </div>
-                                            <span className={`font-bold ${oi === qCard.correct ? 'text-[#FF6B4A]' : isDark ? 'text-gray-200' : 'text-[#1A1A1A]/70'}`}>{opt}</span>
-                                        </label>
-                                    ))}
-                                </div>
-                            </div>
-                        );
-                    })}
-                    <div className="flex justify-center pt-2">
-                        <button className="flex items-center gap-2 text-sm font-extrabold text-[#FF6B4A] hover:text-[#ff5535]">
-                            Xem thêm 8 câu hỏi <CaretDown className="w-4 h-4" />
-                        </button>
-                    </div>
-                </div>
-            </div>
-
-            {/* Floating action bar */}
-            <div className="fixed bottom-0 left-0 md:left-20 right-0 p-4 z-30">
-                <div className={`max-w-4xl mx-auto border-2 rounded-3xl p-4 flex items-center justify-between shadow-xl ${isDark ? 'bg-[#171b20] border-white/10' : 'bg-white border-[#1A1A1A]'}`}>
-                    <div>
-                        <div className="text-[10px] font-extrabold text-gray-400 uppercase tracking-widest mb-0.5">Trạng thái</div>
-                        <div className={`font-extrabold ${isDark ? 'text-gray-100' : 'text-[#1A1A1A]'}`}>✅ Đã sẵn sàng phát hành</div>
-                    </div>
-                    <div className="flex gap-3">
-                        <button className={`h-11 px-6 font-extrabold text-sm border-2 rounded-2xl transition-colors ${isDark ? 'border-white/15 hover:bg-white/10 text-gray-100' : 'border-[#1A1A1A]/20 hover:bg-[#1A1A1A]/5 text-[#1A1A1A]'}`}>Lưu nháp</button>
-                        <button className="h-11 px-6 font-extrabold text-sm bg-[#FF6B4A] hover:bg-[#ff5535] text-white rounded-2xl flex items-center gap-2 transition-colors shadow-md">
-                            <PaperPlaneTilt className="w-4 h-4" weight="fill" /> Phát hành ngay
-                        </button>
-                    </div>
-                </div>
+                {view === 'dashboard' && (
+                    <Dashboard isDark={isDark} onCreateClick={goCreate} onDetailClick={goDetail} onReportClick={goReport} />
+                )}
+                {view === 'create' && (
+                    <CreateTest isDark={isDark} onSaved={goBack} />
+                )}
+                {view === 'detail' && selectedId && (
+                    <DetailView id={selectedId} isDark={isDark} onReport={() => goReport(selectedId)} onDeleted={goBack} />
+                )}
+                {view === 'report' && selectedId && (
+                    <ReportView id={selectedId} isDark={isDark} />
+                )}
             </div>
         </div>
     );

@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useCallback } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import {
     CheckCircle, ClipboardText, Clock, BookOpen, CaretRight,
@@ -6,6 +6,8 @@ import {
     FloppyDisk, Medal, Flag, MagnifyingGlass, Funnel, ListNumbers, XCircle
 } from '@phosphor-icons/react';
 import { useSettings } from '../../context/SettingsContext';
+import { assignmentService, AssignmentResponse, AssignmentDetailResponse, SubmissionResponse, AssignmentAttemptResponse } from '../../services/assignmentService';
+import { authService } from '../../services/authService';
 
 type TestStatus = 'pending' | 'in_progress' | 'completed';
 type TestCategory = 'homework' | 'exam';
@@ -26,6 +28,21 @@ interface Test {
     lessonKey?: string;
     lessonLabel?: string;
     lessonDate?: string;
+    startTimeIso?: string | null;
+    endTimeIso?: string | null;
+    deadlineIso?: string | null;
+    _assignmentId?: number;
+}
+
+function formatDateTime(value?: string | null) {
+    if (!value) return '---';
+    return new Date(value).toLocaleString('vi-VN', {
+        day: '2-digit',
+        month: '2-digit',
+        year: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit',
+    });
 }
 
 type ActiveTab = 'available' | 'completed';
@@ -120,7 +137,7 @@ const reviewQuestionsByTest: Record<number, ReviewQuestion[]> = {
     ],
 };
 
-function TestCard({ test, onStart, isDark }: { test: Test; onStart: (t: Test) => void; isDark: boolean }) {
+function TestCard({ test, onStart, isDark }: { test: Test; onStart: (t: Test) => Promise<void>; isDark: boolean }) {
     const bg = SUBJECT_BG[test.subject] ?? '#FCE38A';
     const isCompleted = test.status === 'completed';
     const urgent = !isCompleted && isUrgent(test.dueDate);
@@ -215,6 +232,14 @@ function TestDetailView({
     const isInProgress = test.status === 'in_progress';
     const statusLabel = isCompleted ? 'Đã hoàn thành' : isInProgress ? 'Đang làm dở' : 'Chưa làm';
     const lessonDate = test.lessonDate ?? scheduleDate;
+    const isExam = test.category === 'exam';
+    const testNotStarted = Boolean(
+        isExam &&
+        test.startTimeIso &&
+        !isCompleted &&
+        !isInProgress &&
+        Date.now() < new Date(test.startTimeIso).getTime()
+    );
 
     return (
         <div className="max-w-4xl mx-auto space-y-6 pb-20">
@@ -251,10 +276,23 @@ function TestDetailView({
                         <p className="text-[10px] font-extrabold uppercase tracking-widest text-[#1A1A1A]/50 mb-1">Số câu hỏi</p>
                         <p className="text-lg font-extrabold text-[#1A1A1A]">{test.questionCount} câu</p>
                     </div>
-                    <div className={`rounded-2xl p-4 ${isDark ? 'border border-[#1A1A1A]/20 bg-white/[0.02]' : 'border-2 border-[#1A1A1A]/10 bg-[#F7F7F2]'}`}>
-                        <p className="text-[10px] font-extrabold uppercase tracking-widest text-[#1A1A1A]/50 mb-1">Hạn nộp</p>
-                        <p className="text-lg font-extrabold text-[#1A1A1A]">{test.dueDate}</p>
-                    </div>
+                    {isExam ? (
+                        <>
+                            <div className={`rounded-2xl p-4 ${isDark ? 'border border-[#1A1A1A]/20 bg-white/[0.02]' : 'border-2 border-[#1A1A1A]/10 bg-[#F7F7F2]'}`}>
+                                <p className="text-[10px] font-extrabold uppercase tracking-widest text-[#1A1A1A]/50 mb-1">Thời gian bắt đầu</p>
+                                <p className="text-lg font-extrabold text-[#1A1A1A]">{formatDateTime(test.startTimeIso)}</p>
+                            </div>
+                            <div className={`rounded-2xl p-4 ${isDark ? 'border border-[#1A1A1A]/20 bg-white/[0.02]' : 'border-2 border-[#1A1A1A]/10 bg-[#F7F7F2]'}`}>
+                                <p className="text-[10px] font-extrabold uppercase tracking-widest text-[#1A1A1A]/50 mb-1">Thời gian kết thúc</p>
+                                <p className="text-lg font-extrabold text-[#1A1A1A]">{formatDateTime(test.endTimeIso)}</p>
+                            </div>
+                        </>
+                    ) : (
+                        <div className={`rounded-2xl p-4 ${isDark ? 'border border-[#1A1A1A]/20 bg-white/[0.02]' : 'border-2 border-[#1A1A1A]/10 bg-[#F7F7F2]'}`}>
+                            <p className="text-[10px] font-extrabold uppercase tracking-widest text-[#1A1A1A]/50 mb-1">Hạn nộp</p>
+                            <p className="text-lg font-extrabold text-[#1A1A1A]">{test.dueDate}</p>
+                        </div>
+                    )}
                     <div className={`rounded-2xl p-4 ${isDark ? 'border border-[#1A1A1A]/20 bg-white/[0.02]' : 'border-2 border-[#1A1A1A]/10 bg-[#F7F7F2]'}`}>
                         <p className="text-[10px] font-extrabold uppercase tracking-widest text-[#1A1A1A]/50 mb-1">Lớp/Tiết học</p>
                         <p className="text-lg font-extrabold text-[#1A1A1A]">{test.className ?? '---'} {test.lessonLabel ? `- ${test.lessonLabel}` : ''}</p>
@@ -288,11 +326,17 @@ function TestDetailView({
                             </button>
                         </>
                     ) : (
-                        <button onClick={onPrimary} className="h-11 px-6 rounded-2xl bg-[#FF6B4A] text-white font-extrabold hover:bg-[#ff5535] transition-colors">
+                        <button onClick={onPrimary} disabled={testNotStarted}
+                            className="h-11 px-6 rounded-2xl bg-[#FF6B4A] text-white font-extrabold hover:bg-[#ff5535] transition-colors disabled:opacity-60 disabled:cursor-not-allowed">
                             {isInProgress ? 'Tiếp tục làm bài' : 'Bắt đầu làm bài'}
                         </button>
                     )}
                 </div>
+                {testNotStarted && (
+                    <p className="text-sm font-bold text-amber-600">
+                        Bài kiểm tra chưa đến thời gian bắt đầu, vui lòng quay lại sau.
+                    </p>
+                )}
             </div>
         </div>
     );
@@ -684,6 +728,273 @@ function TestTakingView({ test, onBack, onOpenDetailedReview, isDark }: { test: 
     );
 }
 
+// ─── Real API Test Taking View ────────────────────────────────────────────────
+function RealTestTakingView({ detail, attempt, answerSelections, onSelectAnswer, onBack, onSubmit, isSubmitting, isDark }: {
+    detail: AssignmentDetailResponse;
+    attempt: AssignmentAttemptResponse | null;
+    answerSelections: Record<number, number>;
+    onSelectAnswer: (questionId: number, answerId: number) => void;
+    onBack: () => void;
+    onSubmit: () => void;
+    isSubmitting: boolean;
+    isDark: boolean;
+}) {
+    const [currentQ, setCurrentQ] = useState(0);
+    const [timeLeft, setTimeLeft] = useState(detail.durationMinutes * 60);
+    const isCriticalTime = timeLeft <= 5 * 60;
+
+    useEffect(() => {
+        const recalcLeftSeconds = () => {
+            if (attempt?.expiredAt) {
+                const diff = Math.floor((new Date(attempt.expiredAt).getTime() - Date.now()) / 1000);
+                return Math.max(0, diff);
+            }
+            return detail.durationMinutes * 60;
+        };
+
+        setTimeLeft(recalcLeftSeconds());
+        const t = setInterval(() => setTimeLeft(recalcLeftSeconds()), 1000);
+        return () => clearInterval(t);
+    }, [attempt?.expiredAt, detail.durationMinutes]);
+
+    useEffect(() => {
+        setCurrentQ(0);
+    }, [detail.assignmentID]);
+
+    const questions = detail.questions;
+    const total = questions.length;
+    const answered = questions.filter(q => answerSelections[q.id] != null).length;
+    const question = questions[currentQ];
+    const mins = Math.floor(timeLeft / 60);
+    const secs = timeLeft % 60;
+
+    const handleConfirmSubmit = () => {
+        if (timeLeft <= 0) {
+            alert('Đã hết thời gian làm bài.');
+            return;
+        }
+        const unanswered = total - answered;
+        if (unanswered > 0 && !confirm(`Bạn còn ${unanswered} câu chưa trả lời. Xác nhận nộp bài?`)) return;
+        onSubmit();
+    };
+
+    if (!question) return null;
+
+    return (
+        <div className="max-w-6xl mx-auto pb-20 flex flex-col lg:flex-row gap-6" style={{ fontFamily: "'Nunito', sans-serif" }}>
+            <div className="flex-1 space-y-5">
+                <button onClick={onBack} className={`flex items-center gap-2 font-extrabold text-sm transition-colors ${isDark ? 'text-gray-400 hover:text-[#1A1A1A]' : 'text-gray-400 hover:text-[#1A1A1A]'}`}>
+                    ← Thoát làm bài
+                </button>
+
+                {/* Header */}
+                <div className={`rounded-3xl p-6 flex flex-col md:flex-row justify-between gap-5 transition-colors ${isDark ? 'bg-[#1A1A1A] border-2 border-[#EEEEEE] shadow-[4px_4px_0_0_#EEEEEE] hover:shadow-[0_0_15px_#FF6B4A] transition-all duration-300' : 'bg-white border-2 border-[#1A1A1A]'} ${isCriticalTime ? (isDark ? 'border-red-400/60 bg-red-500/10' : 'border-red-500 bg-red-50') : ''}`}>
+                    <div className="flex-1 space-y-3">
+                        <div className="flex items-center gap-3">
+                            <span className="text-[10px] font-extrabold bg-[#FF6B4A] text-white px-3 py-1 rounded-full uppercase">ĐANG DIỄN RA</span>
+                            <h1 className={`text-xl font-extrabold ${isDark ? 'text-[#1A1A1A]' : 'text-[#1A1A1A]'}`}>{detail.title}</h1>
+                        </div>
+                        <div>
+                            <div className={`flex justify-between text-sm font-extrabold mb-1 ${isDark ? 'text-[#1A1A1A]' : 'text-[#1A1A1A]'}`}>
+                                <span>Tiến độ làm bài</span>
+                                <span className={isCriticalTime ? 'text-red-500' : 'text-[#FF6B4A]'}>
+                                    {answered}/{total} câu
+                                </span>
+                            </div>
+                            <div className="h-3 w-full bg-[#1A1A1A]/10 rounded-full border border-[#1A1A1A]/20 overflow-hidden">
+                                <div
+                                    className={`h-full rounded-full transition-all ${isCriticalTime ? 'bg-red-500' : 'bg-[#FF6B4A]'}`}
+                                    style={{ width: `${total > 0 ? (answered / total) * 100 : 0}%` }}
+                                />
+                            </div>
+                        </div>
+                    </div>
+                    <div className={`flex items-center gap-3 rounded-2xl p-4 shrink-0 transition-all ${isCriticalTime ? 'bg-red-500 shadow-[0_4px_0_0_#991b1b] animate-pulse' : 'bg-[#1A1A1A] shadow-[0_4px_0_0_#000]'}`}>
+                        <div className="text-center"><div className="text-3xl font-extrabold text-white">{mins.toString().padStart(2, '0')}</div><div className="text-[9px] text-white/70 font-extrabold uppercase tracking-wider">PHÚT</div></div>
+                        <div className="text-white/50 text-2xl font-bold pb-2">:</div>
+                        <div className="text-center">
+                            <div className={`text-3xl font-extrabold ${isCriticalTime ? 'text-white' : 'text-[#FF6B4A]'}`}>{secs.toString().padStart(2, '0')}</div>
+                            <div className="text-[9px] text-white/70 font-extrabold uppercase tracking-wider">GIÂY</div>
+                        </div>
+                    </div>
+                </div>
+
+                {/* Question */}
+                <div className={`rounded-3xl overflow-hidden ${isDark ? 'bg-[#1A1A1A] border-2 border-[#EEEEEE] shadow-[4px_4px_0_0_#EEEEEE] hover:shadow-[0_0_15px_#FF6B4A] transition-all duration-300' : 'bg-white border-2 border-[#1A1A1A] shadow-[4px_4px_0_0_rgba(26,26,26,1)]'}`}>
+                    <div className={`p-6 relative ${isDark ? 'border-b border-[#1A1A1A]/20' : 'border-b-2 border-[#1A1A1A]/10'}`}>
+                        <div className="flex justify-between items-start gap-2">
+                            <div>
+                                <div className="text-xs font-extrabold text-[#FF6B4A] tracking-widest uppercase mb-3">
+                                    Câu hỏi {currentQ + 1}
+                                </div>
+                                <h2 className={`text-xl font-extrabold leading-relaxed ${isDark ? 'text-[#1A1A1A]' : 'text-[#1A1A1A]'}`}>
+                                    {question.questionText}
+                                </h2>
+                            </div>
+                            {question.difficultyLabel && (
+                                <span className={`text-xs font-semibold ${isDark ? 'text-[#1A1A1A]/60' : 'text-[#1A1A1A]/45'}`}>{question.difficultyLabel}</span>
+                            )}
+                        </div>
+                    </div>
+
+                    <div className="p-6 space-y-4">
+                        {question.answers.length > 0 ? question.answers.map((ans) => {
+                            const isSelected = answerSelections[question.id] === ans.id;
+                            const answerLabel = ans.label?.trim() || String.fromCharCode(65 + (question.answers.findIndex(a => a.id === ans.id) % 26));
+                            return (
+                                <button
+                                    key={ans.id}
+                                    onClick={() => onSelectAnswer(question.id, ans.id)}
+                                    className={`w-full relative p-4 rounded-2xl text-left border-2 transition-all hover:translate-x-1 ${isSelected ? (isDark ? 'border-[#ff8b63] bg-[#ff7849]/10' : 'border-[#FF6B4A] bg-[#FF6B4A]/5') : (isDark ? 'border-[#1A1A1A]/20 bg-white/[0.02] hover:border-white/35' : 'border-[#1A1A1A]/20 bg-white hover:border-[#1A1A1A]/40')}`}
+                                >
+                                    <div className="flex items-start gap-4">
+                                        <div className={`w-6 h-6 rounded-full border-2 flex items-center justify-center shrink-0 mt-0.5 transition-colors ${isSelected ? 'bg-[#FF6B4A] border-[#FF6B4A]' : (isDark ? 'border-white/45 bg-[#1a1a1f]' : 'border-[#1A1A1A]/30 bg-white')}`}>
+                                            {isSelected && <div className="w-2.5 h-2.5 rounded-full bg-white" />}
+                                        </div>
+                                        <div>
+                                            <div className={`font-extrabold text-sm mb-1 transition-colors ${isSelected ? 'text-[#FF6B4A]' : (isDark ? 'text-gray-500' : 'text-[#1A1A1A]/55')}`}>Đáp án {answerLabel}</div>
+                                            <p className={`font-semibold text-[15px] ${isDark ? 'text-[#f3f4f6]' : 'text-[#1A1A1A]'}`}>{ans.content}</p>
+                                        </div>
+                                    </div>
+                                </button>
+                            );
+                        }) : (
+                            <div className={`pt-2 ${isDark ? 'text-[#1A1A1A]' : 'text-[#1A1A1A]'}`}>
+                                <label className="text-sm font-extrabold">Câu trả lời bổ sung (Tự luận ngắn):</label>
+                                <textarea
+                                    className={`mt-2 w-full h-32 rounded-2xl p-4 font-semibold focus:outline-none focus:border-[#FF6B4A] resize-none transition-colors ${isDark ? 'bg-[#F7F7F2] border-2 border-[#1A1A1A]/20 text-[#1A1A1A]' : 'bg-[#F7F7F2] border-2 border-[#1A1A1A]/20 text-[#1A1A1A]'}`}
+                                    placeholder="Nhập suy nghĩ của bạn..."
+                                />
+                            </div>
+                        )}
+                    </div>
+
+                    <div className={`p-5 flex items-center justify-between ${isDark ? 'bg-[#1a1a1f] border-t border-[#1A1A1A]/20' : 'bg-gray-50 border-t-2 border-[#1A1A1A]/10'}`}>
+                        <button
+                            onClick={() => setCurrentQ(p => Math.max(0, p - 1))}
+                            disabled={currentQ === 0}
+                            className={`flex items-center gap-2 font-extrabold transition-colors px-4 py-2 rounded-xl disabled:opacity-40 ${isDark ? 'text-[#1A1A1A]/60 hover:text-[#1A1A1A] bg-white border-2 border-[#1A1A1A]/10' : 'text-[#1A1A1A]/60 hover:text-[#1A1A1A] bg-white border-2 border-[#1A1A1A]/10'}`}
+                        >
+                            ← Câu trước
+                        </button>
+                        <div className="flex gap-3">
+                            {currentQ < total - 1 ? (
+                                <button
+                                    onClick={() => setCurrentQ(p => Math.min(total - 1, p + 1))}
+                                    className="px-8 h-11 bg-[#FF6B4A] hover:bg-[#ff5535] text-white font-extrabold rounded-2xl text-sm transition-all shadow-[0_4px_0_0_#A83F2A] hover:translate-y-0.5 hover:shadow-[0_2px_0_0_#A83F2A] flex items-center gap-2"
+                                >
+                                    Câu tiếp <CaretRight weight="bold" />
+                                </button>
+                            ) : (
+                                <button
+                                    onClick={handleConfirmSubmit}
+                                    disabled={isSubmitting}
+                                    className="px-8 h-11 bg-green-500 hover:bg-green-600 text-white font-extrabold rounded-2xl text-sm transition-all shadow-[0_4px_0_0_#166534] hover:translate-y-0.5 hover:shadow-[0_2px_0_0_#166534] disabled:opacity-60 flex items-center gap-2"
+                                >
+                                    <CheckCircle className="w-4 h-4" weight="fill" />
+                                    {isSubmitting ? 'Đang nộp...' : 'Nộp bài'}
+                                </button>
+                            )}
+                        </div>
+                    </div>
+                </div>
+
+                <div className="text-center">
+                    <button
+                        onClick={handleConfirmSubmit}
+                        disabled={isSubmitting}
+                        className="text-sm font-extrabold text-green-600 hover:text-green-700 disabled:opacity-60"
+                    >
+                        Nộp bài sớm
+                    </button>
+                </div>
+            </div>
+
+            {/* Navigation Panel */}
+            <div className="w-full lg:w-80 shrink-0">
+                <div className={`rounded-3xl p-6 sticky top-6 ${isDark ? 'bg-[#1A1A1A] border-2 border-[#EEEEEE] shadow-[4px_4px_0_0_#EEEEEE] hover:shadow-[0_0_15px_#FF6B4A] transition-all duration-300' : 'bg-white border-2 border-[#1A1A1A] shadow-[4px_4px_0_0_rgba(26,26,26,1)]'}`}>
+                    <h3 className={`font-extrabold text-lg mb-4 flex items-center gap-2 ${isDark ? 'text-[#1A1A1A]' : 'text-[#1A1A1A]'}`}>
+                        <ListNumbers className="w-5 h-5 text-[#FF6B4A]" weight="fill" />
+                        Danh sách câu hỏi
+                    </h3>
+
+                    <div className="grid grid-cols-5 gap-2.5">
+                        {questions.map((q, i) => {
+                            const isAnswered = answerSelections[q.id] != null;
+                            let btnClass = isDark
+                                ? 'border-[#1A1A1A]/20 bg-[#17171d] text-gray-500 hover:border-white/40'
+                                : 'border-[#1A1A1A]/20 bg-gray-50 text-gray-500 hover:border-[#1A1A1A]/50';
+
+                            if (isAnswered) {
+                                btnClass = 'bg-emerald-100 border-emerald-300 text-emerald-700 font-black';
+                            }
+                            if (i === currentQ) {
+                                btnClass += ' ring-4 ring-[#FF6B4A]/30 border-[#FF6B4A] !bg-[#FF6B4A] !text-white';
+                            }
+
+                            return (
+                                <button
+                                    key={q.id}
+                                    onClick={() => setCurrentQ(i)}
+                                    className={`w-full aspect-square rounded-xl border-2 flex flex-col items-center justify-center font-extrabold text-sm transition-all hover:scale-105 ${btnClass}`}
+                                >
+                                    {i + 1}
+                                </button>
+                            );
+                        })}
+                    </div>
+
+                    <div className={`mt-6 pt-5 space-y-3 ${isDark ? 'border-t border-[#1A1A1A]/20' : 'border-t-2 border-[#1A1A1A]/10'}`}>
+                        <div className={`flex items-center gap-3 text-sm font-bold ${isDark ? 'text-gray-500' : 'text-[#1A1A1A]/60'}`}>
+                            <span className={`w-4 h-4 rounded-md border-2 flex-shrink-0 ${isDark ? 'border-emerald-300/60 bg-emerald-400/20' : 'border-emerald-300 bg-emerald-100'}`} />
+                            Câu đã làm
+                        </div>
+                        <div className={`flex items-center gap-3 text-sm font-bold ${isDark ? 'text-gray-500' : 'text-[#1A1A1A]/60'}`}>
+                            <span className={`w-4 h-4 rounded-md border-2 flex-shrink-0 ${isDark ? 'border-white/25 bg-[#17171d]' : 'border-[#1A1A1A]/20 bg-gray-50'}`} />
+                            Câu chưa làm
+                        </div>
+                        <div className={`flex items-center gap-3 text-sm font-bold ${isDark ? 'text-gray-500' : 'text-[#1A1A1A]/60'}`}>
+                            <span className="w-4 h-4 rounded-md border-2 border-[#FF6B4A] bg-[#FF6B4A]/20 flex-shrink-0" />
+                            Câu hiện tại
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    );
+}
+
+// Map API assignment to Test interface
+function apiAssignmentToTest(a: AssignmentResponse, isSubmitted: boolean, submission?: SubmissionResponse): Test {
+    const dueDateSource = a.assignmentType === 'TEST' ? a.endTime : a.deadline;
+    const dueDate = dueDateSource ? new Date(dueDateSource) : null;
+    const dueDateStr = dueDate
+        ? `${String(dueDate.getDate()).padStart(2, '0')}/${String(dueDate.getMonth() + 1).padStart(2, '0')}/${dueDate.getFullYear()}`
+        : '';
+    const status: TestStatus = isSubmitted ? 'completed' : 'pending';
+    const correctCount = submission ? submission.answers.filter(ans => ans.isCorrect).length : undefined;
+    return {
+        id: a.assignmentID,
+        title: a.title,
+        subject: a.subjectName ?? a.className ?? 'Đề kiểm tra',
+        duration: a.durationMinutes,
+        questionCount: a.totalQuestions,
+        dueDate: dueDateStr,
+        status,
+        category: a.assignmentType === 'ASSIGNMENT' ? 'homework' : 'exam',
+        score: submission?.score,
+        submittedAt: submission?.submitTime
+            ? (() => { const d = new Date(submission.submitTime); return `${String(d.getDate()).padStart(2,'0')}/${String(d.getMonth()+1).padStart(2,'0')}/${d.getFullYear()}`; })()
+            : undefined,
+        correctCount,
+        className: a.className,
+        startTimeIso: a.startTime,
+        endTimeIso: a.endTime,
+        deadlineIso: a.deadline,
+        _assignmentId: a.assignmentID,
+    } as Test & { _assignmentId: number };
+}
+
 export function StudentTests() {
     const { theme } = useSettings();
     const isDark = theme === 'dark';
@@ -695,6 +1006,57 @@ export function StudentTests() {
     const [exerciseViewMode, setExerciseViewMode] = useState<ExerciseViewMode>('detail');
     const [searchQuery, setSearchQuery] = useState('');
     const [filterCategory, setFilterCategory] = useState<FilterCategory>('all');
+
+    // API data state
+    const [apiActiveAssignments, setApiActiveAssignments] = useState<Test[]>([]);
+    const [apiCompletedTests, setApiCompletedTests] = useState<Test[]>([]);
+    const [apiLoaded, setApiLoaded] = useState(false);
+
+    // Real test-taking state
+    const [takingDetail, setTakingDetail] = useState<AssignmentDetailResponse | null>(null);
+    const [attemptInfo, setAttemptInfo] = useState<AssignmentAttemptResponse | null>(null);
+    const [answerSelections, setAnswerSelections] = useState<Record<number, number>>({});
+    const [isSubmitting, setIsSubmitting] = useState(false);
+    const [startTime, setStartTime] = useState<number>(Date.now());
+
+    const loadApiData = useCallback(async () => {
+        const token = authService.getToken();
+        if (!token) return;
+        try {
+            const [active, submitted] = await Promise.all([
+                assignmentService.getStudentActiveAssignments(token).catch(() => [] as AssignmentResponse[]),
+                assignmentService.getStudentSubmissions(token).catch(() => [] as SubmissionResponse[]),
+            ]);
+            const submittedMap = new Map<number, SubmissionResponse>();
+            submitted.forEach(s => submittedMap.set(s.assignmentId, s));
+
+            const activeTests = active
+                .filter(a => !submittedMap.has(a.assignmentID))
+                .map(a => apiAssignmentToTest(a, false));
+            const completedTests = submitted
+                .map(s => {
+                    const a = active.find(x => x.assignmentID === s.assignmentId) ?? {
+                        assignmentID: s.assignmentId, title: s.assignmentTitle,
+                        assignmentType: 'TEST', format: 'MULTIPLE_CHOICE', status: 'CLOSED',
+                        startTime: null, endTime: null, deadline: null,
+                        durationMinutes: 45,
+                        createdAt: '', updatedAt: '', classroomId: 0,
+                        className: '', subjectName: null,
+                        totalQuestions: s.answers.length, totalSubmissions: 0,
+                    } as AssignmentResponse;
+                    return apiAssignmentToTest(a, true, s);
+                });
+
+            setApiActiveAssignments(activeTests);
+            setApiCompletedTests(completedTests);
+        } catch {
+            // silent - fall back to mock data
+        } finally {
+            setApiLoaded(true);
+        }
+    }, []);
+
+    useEffect(() => { loadApiData(); }, [loadApiData]);
 
     const scheduleFilter = useMemo(() => {
         const params = new URLSearchParams(location.search);
@@ -736,8 +1098,20 @@ export function StudentTests() {
         }
     }, [location.search]);
 
-    const availableTests = allTests.filter(t => t.status !== 'completed');
-    const completedTests = allTests.filter(t => t.status === 'completed');
+    // Merge API data with mock data; API data takes precedence
+    const apiIds = new Set([
+        ...apiActiveAssignments.map(t => t.id),
+        ...apiCompletedTests.map(t => t.id),
+    ]);
+    const mockAvailable = allTests.filter(t => t.status !== 'completed' && !apiIds.has(t.id));
+    const mockCompleted = allTests.filter(t => t.status === 'completed' && !apiIds.has(t.id));
+
+    const availableTests = apiLoaded
+        ? [...apiActiveAssignments, ...mockAvailable]
+        : allTests.filter(t => t.status !== 'completed');
+    const completedTests = apiLoaded
+        ? [...apiCompletedTests, ...mockCompleted]
+        : allTests.filter(t => t.status === 'completed');
 
 
     // Apply filters
@@ -765,9 +1139,77 @@ export function StudentTests() {
         });
     }, [activeTab, availableTests, completedTests, searchQuery, filterCategory, scheduleFilter]);
 
-    const handleOpenTest = (test: Test) => {
+    const handleOpenTest = async (test: Test) => {
         setSelectedTest(test);
         setExerciseViewMode('detail');
+        setTakingDetail(null);
+        setAttemptInfo(null);
+        setAnswerSelections({});
+        // Pre-fetch questions for real assignments
+        const realId = (test as any)._assignmentId as number | undefined;
+        if (realId && test.status !== 'completed') {
+            const token = authService.getToken();
+            if (token) {
+                try {
+                    const detail = await assignmentService.getDetail(realId, token);
+                    setTakingDetail(detail);
+                } catch { /* silent */ }
+            }
+        }
+    };
+
+    const handleRealSubmit = async () => {
+        if (!takingDetail) return;
+        const token = authService.getToken();
+        if (!token) return;
+        const timeTaken = Math.floor((Date.now() - startTime) / 1000);
+        const answers = takingDetail.questions.map(q => ({
+            questionId: q.id,
+            answerRefId: answerSelections[q.id] ?? null,
+            selectedAnswer: null as string | null,
+        }));
+        setIsSubmitting(true);
+        try {
+            const result = await assignmentService.submit({
+                assignmentId: takingDetail.assignmentID,
+                timeTaken,
+                answers,
+            }, token);
+            setExerciseViewMode('detail');
+            setAttemptInfo(null);
+            // Refresh API data
+            await loadApiData();
+            // Update selectedTest to completed
+            if (selectedTest) {
+                setSelectedTest({ ...selectedTest, status: 'completed', score: result.score });
+            }
+        } catch (e: any) {
+            alert(e.message ?? 'Lỗi nộp bài');
+        } finally {
+            setIsSubmitting(false);
+        }
+    };
+
+    const handleStartTaking = async () => {
+        if (!selectedTest) return;
+
+        const realId = (selectedTest as any)._assignmentId as number | undefined;
+        if (!realId) {
+            setExerciseViewMode('taking');
+            return;
+        }
+
+        const token = authService.getToken();
+        if (!token) return;
+
+        try {
+            const attempt = await assignmentService.start(realId, token);
+            setAttemptInfo(attempt);
+            setStartTime(new Date(attempt.startedAt).getTime());
+            setExerciseViewMode('taking');
+        } catch (e: any) {
+            alert(e.message ?? 'Không thể bắt đầu làm bài');
+        }
     };
 
     const clearScheduleFilter = () => {
@@ -790,8 +1232,26 @@ export function StudentTests() {
                         test={selectedTest}
                         scheduleDate={scheduleFilter?.date}
                         onBack={() => setSelectedTest(null)}
-                        onPrimary={() => setExerciseViewMode('taking')}
+                        onPrimary={handleStartTaking}
                         onDetailedReview={() => setExerciseViewMode('detailedReview')}
+                        isDark={isDark}
+                    />
+                </div>
+            );
+        }
+
+        // Real API test taking
+        if (takingDetail) {
+            return (
+                <div className="min-h-screen p-6 lg:p-8" style={{ fontFamily: "'Nunito', sans-serif" }}>
+                    <RealTestTakingView
+                        detail={takingDetail}
+                        attempt={attemptInfo}
+                        answerSelections={answerSelections}
+                        onSelectAnswer={(qId, answerId) => setAnswerSelections(prev => ({ ...prev, [qId]: answerId }))}
+                        onBack={() => setExerciseViewMode('detail')}
+                        onSubmit={handleRealSubmit}
+                        isSubmitting={isSubmitting}
                         isDark={isDark}
                     />
                 </div>

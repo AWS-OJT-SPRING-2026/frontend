@@ -101,7 +101,7 @@ export function StudentReview() {
     const urlApplied = useRef(false);
 
     useEffect(() => {
-        fetch(`${FAST_API_URL}/subjects`)
+        fetch(`${FAST_API_URL}/subjects/`)
             .then(res => res.json())
             .then(data => {
                 setSubjects(data);
