@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { Gear, Sun, Moon, Translate, SidebarSimple, X } from '@phosphor-icons/react';
 import { useSettings } from '../context/SettingsContext';
 import { cn } from '../lib/utils';
@@ -14,12 +15,15 @@ export function SettingsPanel({ labelsVisible, labelClassName }: SettingsPanelPr
   const { theme, language, sidebarMode, setTheme, setLanguage, setSidebarMode, t } = useSettings();
   const [isOpen, setIsOpen] = useState(false);
   const panelRef = useRef<HTMLDivElement>(null);
+  const modalRef = useRef<HTMLDivElement>(null);
   const isDark = theme === 'dark';
 
   // Close on click-outside
   useEffect(() => {
     const handler = (e: MouseEvent) => {
-      if (panelRef.current && !panelRef.current.contains(e.target as Node)) {
+      const target = e.target as Node;
+      if (modalRef.current?.contains(target)) return;
+      if (panelRef.current && !panelRef.current.contains(target)) {
         setIsOpen(false);
       }
     };
@@ -49,13 +53,14 @@ export function SettingsPanel({ labelsVisible, labelClassName }: SettingsPanelPr
       </button>
 
       {/* Centered modal */}
-      {isOpen && (
+      {isOpen && typeof document !== 'undefined' && createPortal((
         <div
-          className="fixed inset-0 z-[100] bg-black/55 backdrop-blur-sm animate-in fade-in duration-200"
+          className="fixed inset-0 z-[9999] bg-black/55 backdrop-blur-sm animate-in fade-in duration-200"
           onClick={() => setIsOpen(false)}
         >
           <div className="h-full w-full flex items-center justify-center p-4 sm:p-6">
             <div
+              ref={modalRef}
               className={cn(
                 "w-full max-w-4xl rounded-3xl shadow-2xl overflow-hidden",
                 isDark ? "bg-[#171717] border border-white/10" : "bg-[#FDFDFD] border-2 border-[#1A1A1A]/15"
@@ -181,7 +186,7 @@ export function SettingsPanel({ labelsVisible, labelClassName }: SettingsPanelPr
             </div>
           </div>
         </div>
-      )}
+      ), document.body)}
     </div>
   );
 }
