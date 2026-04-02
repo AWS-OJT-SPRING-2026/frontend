@@ -11,6 +11,11 @@ export class ApiError extends Error {
   }
 }
 
+export interface BlobResult {
+  blob: Blob;
+  headers: Headers;
+}
+
 function isLogoutEndpoint(endpoint: string): boolean {
   const normalized = endpoint.split('?')[0].replace(/\/+$/, '');
   return normalized === '/auth/logout';
@@ -156,5 +161,26 @@ export const api = {
       body: JSON.stringify(data),
     });
     return handleResponse<T>(response);
+  },
+
+  async authPostBlob(endpoint: string, data: unknown, token: string): Promise<BlobResult> {
+    const response = await fetch(`${API_BASE_URL}${endpoint}`, {
+      method: 'POST',
+      headers: buildAuthHeaders(token, endpoint),
+      body: JSON.stringify(data),
+    });
+
+    if (!response.ok) {
+      if (response.status === 401) {
+        const isQuickDemoSession = localStorage.getItem(QUICK_DEMO_SESSION_KEY) === '1';
+        if (!isQuickDemoSession) {
+          window.dispatchEvent(new CustomEvent(SESSION_EXPIRED_EVENT));
+        }
+      }
+      const msg = await parseErrorMessage(response);
+      throw new ApiError(response.status, msg || `HTTP Error: ${response.status}`);
+    }
+
+    return { blob: await response.blob(), headers: response.headers };
   },
 };

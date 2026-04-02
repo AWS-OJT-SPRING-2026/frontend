@@ -209,6 +209,7 @@ function AppRoutes() {
       <Route path="/teacher" element={<ProtectedRoute role="teacher"><TeacherLayout /></ProtectedRoute>}>
         <Route index element={<TeacherDashboard />} />
         <Route path="classes" element={<TeacherClassList />} />
+        <Route path="classes/:classId" element={<TeacherClassList />} />
         <Route path="tests" element={<TeacherMakeTest />} />
         <Route path="documents" element={<TeacherDocuments />} />
         <Route path="schedule" element={<TeacherSchedule />} />

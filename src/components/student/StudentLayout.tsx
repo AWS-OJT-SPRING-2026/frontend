@@ -5,12 +5,14 @@ import {
     SquaresFour, CalendarBlank, ClipboardText, Books, MapTrifold, BookOpen, ChatCircle, SignOut,
 } from '@phosphor-icons/react';
 import { cn } from '../../lib/utils';
+import { useActivityPing } from '../../lib/useActivityPing';
 import { UserMenu } from '../UserMenu';
 import { SettingsPanel } from '../SettingsPanel';
 
 export function StudentLayout() {
     const { logout } = useAuth();
     const { theme, sidebarMode, t } = useSettings();
+    useActivityPing();
 
     const isDark = theme === 'dark';
     const isExpanded = sidebarMode === 'visible';
