@@ -3,7 +3,7 @@ import { useLocation, useNavigate } from 'react-router-dom';
 import {
     CheckCircle, ClipboardText, Clock, BookOpen, CaretRight,
     ArrowCounterClockwise, Star, Hourglass, WarningCircle,
-    FloppyDisk, Medal, Flag, MagnifyingGlass, Funnel, ListNumbers, XCircle
+    Medal, MagnifyingGlass, Funnel, ListNumbers, XCircle
 } from '@phosphor-icons/react';
 import { useSettings } from '../../context/SettingsContext';
 import { assignmentService, AssignmentResponse, AssignmentDetailResponse, SubmissionResponse, AssignmentAttemptResponse, AssignmentResultResponse } from '../../services/assignmentService';
@@ -191,15 +191,17 @@ function TestCard({ test, onStart, isDark, nowMs }: { test: Test; onStart: (t: T
     const isCompleted = test.status === 'completed';
     const timeAlert = getTimeAlert(test, nowMs);
     const urgent = !isCompleted && timeAlert !== null;
-    const alertLabel = timeAlert === 'opening' ? 'SẮP MỞ' : timeAlert === 'ending' ? 'SẮP KẾT THÚC' : timeAlert === 'deadline' ? 'SẮP HẾT' : null;
+    const alertLabel = timeAlert === 'opening' ? 'SẮP MỞ' : timeAlert === 'deadline' ? 'SẮP HẾT' : null;
     const startMs = test.startTimeIso ? new Date(test.startTimeIso).getTime() : NaN;
     const isLockedUntilOpen = test.category === 'exam' && !isCompleted && !Number.isNaN(startMs) && nowMs < startMs;
     const openTooltip = isLockedUntilOpen ? `Mở sau: ${formatOpenTime(test.startTimeIso)}` : undefined;
     const timeLabel = test.category === 'exam'
         ? (timeAlert === 'opening' ? 'Mở lúc' : 'Kết thúc')
         : 'Hạn';
-    const timeValue = test.category === 'exam' && timeAlert === 'opening'
-        ? formatOpenTime(test.startTimeIso)
+    const timeValue = test.category === 'exam'
+        ? (timeAlert === 'opening'
+            ? formatOpenTime(test.startTimeIso)
+            : (test.endTimeIso ? formatOpenTime(test.endTimeIso) : test.dueDate))
         : test.dueDate;
 
     return (
@@ -257,7 +259,7 @@ function TestCard({ test, onStart, isDark, nowMs }: { test: Test; onStart: (t: T
                 <div className="shrink-0 flex items-center gap-3">
                     {isCompleted && test.score != null && (
                         <div className="text-right">
-                            <div className={`text-3xl font-extrabold ${isDark ? 'text-white' : 'text-[#1A1A1A]'}'}`}>{test.score.toFixed(1)}</div>
+                            <div className={`text-3xl font-extrabold ${isDark ? 'text-white' : 'text-[#1A1A1A]'}'`}>{test.score.toFixed(1)}</div>
                             <div className="text-[10px] font-extrabold text-gray-400 uppercase tracking-widest">Điểm số</div>
                         </div>
                     )}
@@ -410,48 +412,64 @@ function TestDetailView({
     );
 }
 
-function DetailedReviewView({ test, result, onBack, isDark }: { test: Test; result: AssignmentResultResponse | null; onBack: () => void; isDark: boolean }) {
+function DetailedReviewView({ test, result, detail, onBack, isDark }: {
+    test: Test;
+    result: AssignmentResultResponse | null;
+    detail: AssignmentDetailResponse | null;
+    onBack: () => void;
+    isDark: boolean;
+}) {
+    const detailQuestionMap = useMemo(() => {
+        const map = new Map<number, AssignmentDetailResponse['questions'][number]>();
+        (detail?.questions ?? []).forEach(question => map.set(question.id, question));
+        return map;
+    }, [detail]);
+
     const questions = result
         ? result.questions.map((q, idx) => {
-            const selectedText = q.selectedAnswer ?? null;
-            const correctText = q.correctAnswer ?? null;
+            const detailQuestion = detailQuestionMap.get(q.questionId);
+            const fullChoices = (detailQuestion?.answers ?? []).map((ans, answerIdx) => ({
+                label: ans.label?.trim() || String.fromCharCode(65 + (answerIdx % 26)),
+                text: ans.content,
+                isSelected: q.selectedAnswerRefId === ans.id,
+                isCorrect: q.correctAnswerRefId === ans.id || ans.isCorrect,
+            }));
 
-            if (!selectedText && correctText) {
-                return {
-                    id: idx + 1,
-                    question: q.questionText,
-                    options: [correctText],
-                    selected: null,
-                    correct: 0,
-                    explanation: 'Bạn chưa chọn đáp án cho câu này.',
-                    topic: 'Sai',
-                };
-            }
+            const fallbackChoices = [q.selectedAnswer, q.correctAnswer]
+                .filter((text, i, arr): text is string => Boolean(text) && arr.findIndex(v => v === text) === i)
+                .map((text, choiceIdx) => ({
+                    label: String.fromCharCode(65 + (choiceIdx % 26)),
+                    text,
+                    isSelected: choiceIdx === 0 && q.selectedAnswer != null,
+                    isCorrect: text === q.correctAnswer,
+                }));
 
-            if (selectedText && correctText && selectedText !== correctText) {
-                return {
-                    id: idx + 1,
-                    question: q.questionText,
-                    options: [selectedText, correctText],
-                    selected: 0,
-                    correct: 1,
-                    explanation: 'Bạn đã chọn đáp án chưa chính xác.',
-                    topic: 'Sai',
-                };
-            }
+            const status: 'correct' | 'wrong' | 'skipped' = q.selectedAnswerRefId == null
+                ? 'skipped'
+                : (q.isCorrect ? 'correct' : 'wrong');
 
-            const onlyText = selectedText ?? correctText ?? 'Không có đáp án';
             return {
                 id: idx + 1,
                 question: q.questionText,
-                options: [onlyText],
-                selected: selectedText ? 0 : null,
-                correct: 0,
-                explanation: q.isCorrect ? 'Bạn đã chọn đáp án đúng.' : 'Câu này chưa có dữ liệu đáp án chuẩn.',
-                topic: q.isCorrect ? 'Đúng' : 'Sai',
+                choices: fullChoices.length > 0 ? fullChoices : fallbackChoices,
+                explanation: status === 'skipped'
+                    ? 'Bạn chưa chọn đáp án cho câu này.'
+                    : (status === 'correct' ? 'Bạn đã chọn đáp án đúng.' : 'Bạn đã chọn đáp án chưa chính xác.'),
+                status,
             };
         })
-        : (reviewQuestionsByTest[test.id] ?? []);
+        : (reviewQuestionsByTest[test.id] ?? []).map((q) => ({
+            id: q.id,
+            question: q.question,
+            choices: q.options.map((opt, idx) => ({
+                label: String.fromCharCode(65 + (idx % 26)),
+                text: opt,
+                isSelected: q.selected === idx,
+                isCorrect: q.correct === idx,
+            })),
+            explanation: q.explanation,
+            status: q.selected == null ? 'skipped' : (q.selected === q.correct ? 'correct' : 'wrong') as 'correct' | 'wrong' | 'skipped',
+        }));
 
     return (
         <div className="max-w-5xl mx-auto space-y-6 pb-20">
@@ -477,29 +495,31 @@ function DetailedReviewView({ test, result, onBack, isDark }: { test: Test; resu
                 ) : (
                     <div className="space-y-4">
                         {questions.map((q) => {
-                            const isCorrect = q.selected === q.correct;
-                            const isSkipped = q.selected === null;
+                            const isCorrect = q.status === 'correct';
+                            const isSkipped = q.status === 'skipped';
+                            const questionBadgeClass = isSkipped
+                                ? 'bg-amber-100 text-amber-700 border-amber-300'
+                                : (isCorrect ? 'bg-emerald-100 text-emerald-700 border-emerald-300' : 'bg-rose-100 text-rose-700 border-rose-300');
 
                             return (
                                 <div key={q.id} className="rounded-2xl border-2 border-[#1A1A1A]/10 p-4 md:p-5 bg-[#FDFDFD]">
                                     <div className="flex flex-wrap items-center gap-2 mb-3">
-                                        <span className="text-[10px] font-extrabold px-2 py-1 rounded-full bg-[#1A1A1A] text-white border-2 border-[#1A1A1A] shadow-[2px_2px_0_0_#1A1A1A]">Câu {q.id}</span>
-                                        <span className="text-[10px] font-extrabold px-2 py-1 rounded-full border-2 border-[#1A1A1A] text-[#1A1A1A] shadow-[2px_2px_0_0_#1A1A1A] bg-white">{q.topic}</span>
+                                        <span className={`text-[10px] font-extrabold px-2.5 py-1 rounded-full border ${questionBadgeClass}`}>Câu {q.id}</span>
                                         {isSkipped ? (
-                                            <span className="text-[10px] font-extrabold px-2 py-1 rounded-full bg-amber-100 text-amber-700 border-2 border-[#1A1A1A] shadow-[2px_2px_0_0_#1A1A1A]">Bỏ trống</span>
+                                            <span className="text-[10px] font-extrabold px-2 py-1 rounded-full bg-amber-100 text-amber-700 border border-amber-300">Bỏ trống</span>
                                         ) : isCorrect ? (
-                                            <span className="text-[10px] font-extrabold px-2 py-1 rounded-full bg-emerald-100 text-emerald-700 border-2 border-[#1A1A1A] shadow-[2px_2px_0_0_#1A1A1A]">Đúng</span>
+                                            <span className="text-[10px] font-extrabold px-2 py-1 rounded-full bg-emerald-100 text-emerald-700 border border-emerald-300">Đúng</span>
                                         ) : (
-                                            <span className="text-[10px] font-extrabold px-2 py-1 rounded-full bg-red-100 text-red-700 border-2 border-[#1A1A1A] shadow-[2px_2px_0_0_#1A1A1A]">Sai</span>
+                                            <span className="text-[10px] font-extrabold px-2 py-1 rounded-full bg-rose-100 text-rose-700 border border-rose-300">Sai</span>
                                         )}
                                     </div>
 
                                     <p className="font-extrabold text-[#1A1A1A] mb-4">{q.question}</p>
 
                                     <div className="grid grid-cols-1 md:grid-cols-2 gap-2.5">
-                                        {q.options.map((option, idx) => {
-                                            const selected = q.selected === idx;
-                                            const correct = q.correct === idx;
+                                        {q.choices.map((choice) => {
+                                            const selected = choice.isSelected;
+                                            const correct = choice.isCorrect;
                                             const className = correct
                                                 ? 'border-emerald-400 bg-emerald-50'
                                                 : selected
@@ -507,10 +527,10 @@ function DetailedReviewView({ test, result, onBack, isDark }: { test: Test; resu
                                                     : 'border-[#1A1A1A]/10 bg-white';
 
                                             return (
-                                                <div key={idx} className={`rounded-xl border-2 px-3 py-2.5 text-sm font-bold text-[#1A1A1A] ${className}`}>
+                                                <div key={`${q.id}-${choice.label}`} className={`rounded-xl border-2 px-3 py-2.5 text-sm font-bold text-[#1A1A1A] ${className}`}>
                                                     <div className="flex items-start gap-2">
-                                                        <span className="font-black">{String.fromCharCode(65 + idx)}.</span>
-                                                        <span>{option}</span>
+                                                        <span className="font-black">{choice.label}.</span>
+                                                        <span>{choice.text}</span>
                                                     </div>
                                                 </div>
                                             );
@@ -531,41 +551,6 @@ function DetailedReviewView({ test, result, onBack, isDark }: { test: Test; resu
 }
 
 function TestTakingView({ test, onBack, onOpenDetailedReview, isDark }: { test: Test; onBack: () => void; onOpenDetailedReview: () => void; isDark: boolean }) {
-    const [timeLeft, setTimeLeft] = useState(14 * 60 + 25); // 14 mins 25 secs mock
-    const [currentQ, setCurrentQ] = useState(7);
-    const [autoSaveState, setAutoSaveState] = useState<'idle' | 'saving' | 'saved'>('idle');
-    const [textInput, setTextInput] = useState('');
-
-    // Mock answers state: 0=unanswered, 1=answered, 2=flagged
-    const [answersMap, setAnswersMap] = useState<Record<number, number>>({
-        1: 1, 2: 1, 3: 1, 4: 2, 5: 1, 6: 1, 7: 1
-    });
-
-    const isCriticalTime = timeLeft <= 5 * 60; // Less than 5 mins
-
-    // Mock timer countdown
-    useEffect(() => {
-        const t = setInterval(() => {
-            setTimeLeft(prev => prev > 0 ? prev - 1 : 0);
-        }, 1000);
-        return () => clearInterval(t);
-    }, []);
-
-    // Mock auto-save
-    useEffect(() => {
-        if (!textInput) return;
-        setAutoSaveState('saving');
-        const t = setTimeout(() => {
-            setAutoSaveState('saved');
-            setTimeout(() => setAutoSaveState('idle'), 2000);
-        }, 1000);
-        return () => clearTimeout(t);
-    }, [textInput]);
-
-    const handleFlag = () => {
-        setAnswersMap(prev => ({ ...prev, [currentQ]: prev[currentQ] === 2 ? 1 : 2 }));
-    };
-
     if (test.status === 'completed') {
         const bg = SUBJECT_BG[test.subject] ?? '#FCE38A';
         return (
@@ -661,179 +646,9 @@ function TestTakingView({ test, onBack, onOpenDetailedReview, isDark }: { test: 
                     </div>
                 </div>
             </div>
-        );
-    }
-
-    const mins = Math.floor(timeLeft / 60);
-    const secs = timeLeft % 60;
-
-    return (
-        <div className="max-w-6xl mx-auto pb-20 flex flex-col lg:flex-row gap-6">
-            <div className="flex-1 space-y-5">
-                <button onClick={onBack} className={`flex items-center gap-2 font-extrabold text-sm transition-colors ${isDark ? 'text-gray-400 hover:text-[#1A1A1A]' : 'text-gray-400 hover:text-[#1A1A1A]'}`}>← Thoát làm bài</button>
-
-                {/* Header */}
-                <div className={`rounded-3xl p-6 flex flex-col md:flex-row justify-between gap-5 transition-colors ${isDark ? 'bg-[#1A1A1A] border-2 border-[#EEEEEE] shadow-[4px_4px_0_0_#EEEEEE] hover:shadow-[0_0_15px_#FF6B4A] transition-all duration-300' : 'bg-white border-2 border-[#1A1A1A]'} ${isCriticalTime ? (isDark ? 'border-red-400/60 bg-red-500/10' : 'border-red-500 bg-red-50') : ''}`}>
-                    <div className="flex-1 space-y-3">
-                        <div className="flex items-center gap-3">
-                            <span className="text-[10px] font-extrabold bg-[#FF6B4A] text-white px-3 py-1 rounded-full uppercase">Đang diễn ra</span>
-                            <h1 className={`text-xl font-extrabold ${isDark ? 'text-[#1A1A1A]' : 'text-[#1A1A1A]'}`}>{test.title}</h1>
-                        </div>
-                        <div>
-                            <div className={`flex justify-between text-sm font-extrabold mb-1 ${isDark ? 'text-[#1A1A1A]' : 'text-[#1A1A1A]'}`}>
-                                <span>Tiến độ làm bài</span>
-                                <span className={isCriticalTime ? 'text-red-500' : 'text-[#FF6B4A]'}>
-                                    {Object.values(answersMap).filter(v => v !== 0).length}/{test.questionCount} câu
-                                </span>
-                            </div>
-                            <div className="h-3 w-full bg-[#1A1A1A]/10 rounded-full border border-[#1A1A1A]/20 overflow-hidden">
-                                <div className={`h-full rounded-full transition-all ${isCriticalTime ? 'bg-red-500' : 'bg-[#FF6B4A]'}`} style={{ width: `${(Object.values(answersMap).filter(v => v !== 0).length / test.questionCount) * 100}%` }} />
-                            </div>
-                        </div>
-                    </div>
-                    {/* Timer */}
-                    <div className={`flex items-center gap-3 rounded-2xl p-4 shrink-0 transition-all ${isCriticalTime ? 'bg-red-500 shadow-[0_4px_0_0_#991b1b] animate-pulse' : 'bg-[#1A1A1A] shadow-[0_4px_0_0_#000]'}`}>
-                        <div className="text-center"><div className="text-3xl font-extrabold text-white">{mins.toString().padStart(2, '0')}</div><div className="text-[9px] text-white/70 font-extrabold uppercase tracking-wider">Phút</div></div>
-                        <div className="text-white/50 text-2xl font-bold pb-2">:</div>
-                        <div className="text-center">
-                            <div className={`text-3xl font-extrabold ${isCriticalTime ? 'text-white' : 'text-[#FF6B4A]'}`}>{secs.toString().padStart(2, '0')}</div>
-                            <div className="text-[9px] text-white/70 font-extrabold uppercase tracking-wider">Giây</div>
-                        </div>
-                    </div>
-                </div>
-
-                {/* Question */}
-                <div className={`rounded-3xl overflow-hidden ${isDark ? 'bg-[#1A1A1A] border-2 border-[#EEEEEE] shadow-[4px_4px_0_0_#EEEEEE] hover:shadow-[0_0_15px_#FF6B4A] transition-all duration-300' : 'bg-white border-2 border-[#1A1A1A] shadow-[4px_4px_0_0_rgba(26,26,26,1)]'}`}>
-                    <div className={`p-6 relative ${isDark ? 'border-b border-[#1A1A1A]/20' : 'border-b-2 border-[#1A1A1A]/10'}`}>
-                        <div className="flex justify-between items-start">
-                            <div>
-                                <div className="text-xs font-extrabold text-[#FF6B4A] tracking-widest uppercase mb-3 flex items-center gap-2">
-                                    Câu hỏi {currentQ}
-                                    {answersMap[currentQ] === 2 && <span className="bg-amber-100 text-amber-600 px-2 flex items-center gap-1 rounded uppercase tracking-wider text-[10px] py-1 border border-amber-200"><Flag weight="fill" /> Cần xem lại</span>}
-                                </div>
-                                <h2 className={`text-xl font-extrabold leading-relaxed ${isDark ? 'text-[#1A1A1A]' : 'text-[#1A1A1A]'}`}>
-                                    Phân tích ý nghĩa nhân đạo sâu sắc của "Vợ nhặt" qua chi tiết bữa cơm ngày đói?
-                                </h2>
-                            </div>
-                            <button
-                                onClick={handleFlag}
-                                className={`shrink-0 p-2 rounded-xl transition-colors border-2 ${answersMap[currentQ] === 2 ? 'bg-amber-100 border-amber-300 text-amber-600' : (isDark ? 'hover:bg-gray-100 border-transparent text-gray-400' : 'hover:bg-gray-100 border-transparent text-gray-400')}`}
-                                title="Đánh dấu câu hỏi này cân xem lại"
-                            >
-                                <Flag className="w-6 h-6 " weight={answersMap[currentQ] === 2 ? 'fill' : 'regular'} />
-                            </button>
-                        </div>
-                    </div>
-                    <div className="p-6 space-y-4">
-                        {[
-                            { label: 'A', text: 'Thể hiện khát vọng sống mãnh liệt, tình yêu thương giữa người nghèo trong hoàn cảnh éo le.', selected: true },
-                            { label: 'B', text: 'Tố cáo tội ác của thực dân phát xít gây ra nạn đói thảm khốc.', selected: false },
-                            { label: 'C', text: 'Ca ngợi vẻ đẹp tiềm ẩn của người nông dân trước cách mạng.', selected: false },
-                            { label: 'D', text: 'Làm nổi bật tiếng khóc xót xa của Kim Lân trước số phận con người.', selected: false },
-                        ].map((opt) => (
-                            <div key={opt.label} className={`relative p-4 rounded-2xl cursor-pointer border-2 transition-all hover:translate-x-1 ${opt.selected ? (isDark ? 'border-[#ff8b63] bg-[#ff7849]/10' : 'border-[#FF6B4A] bg-[#FF6B4A]/5') : (isDark ? 'border-[#1A1A1A]/20 bg-white/[0.02] hover:border-white/35' : 'border-[#1A1A1A]/20 bg-white hover:border-[#1A1A1A]/40')}`}>
-                                <div className="flex items-start gap-4">
-                                    <div className={`w-6 h-6 rounded-full border-2 flex items-center justify-center shrink-0 mt-0.5 transition-colors ${opt.selected ? 'bg-[#FF6B4A] border-[#FF6B4A]' : (isDark ? 'border-white/45 bg-[#1a1a1f]' : 'border-[#1A1A1A]/30 bg-white')}`}>
-                                        {opt.selected && <div className="w-2.5 h-2.5 rounded-full bg-white" />}
-                                    </div>
-                                    <div>
-                                        <div className={`font-extrabold text-sm mb-1 transition-colors ${opt.selected ? 'text-[#FF6B4A]' : (isDark ? 'text-gray-500' : 'text-[#1A1A1A]/55')}`}>Đáp án {opt.label}</div>
-                                        <p className={`font-semibold text-[15px] ${isDark ? 'text-[#f3f4f6]' : 'text-[#1A1A1A]'}`}>{opt.text}</p>
-                                    </div>
-                                </div>
-                            </div>
-                        ))}
-
-                        <div className={`pt-4 mt-4 border-t-2 border-dashed ${isDark ? 'border-[#1A1A1A]/20' : 'border-[#1A1A1A]/10'}`}>
-                            <div className="flex justify-between items-end mb-2">
-                                <label className={`text-sm font-extrabold ${isDark ? 'text-[#1A1A1A]' : 'text-[#1A1A1A]'}`}>Câu trả lời bổ sung (Tự luận ngắn):</label>
-                                <div className="text-[11px] font-extrabold text-gray-400 flex items-center gap-1 min-w-[100px] justify-end">
-                                    {autoSaveState === 'saving' && <><Hourglass className="animate-spin-slow" /> Đang lưu...</>}
-                                    {autoSaveState === 'saved' && <><CheckCircle className="text-emerald-500" weight="fill" /> Đã tự động lưu</>}
-                                </div>
-                            </div>
-                            <textarea
-                                value={textInput}
-                                onChange={(e) => setTextInput(e.target.value)}
-                                className={`w-full h-32 rounded-2xl p-4 font-semibold focus:outline-none focus:border-[#FF6B4A] resize-none transition-colors ${isDark ? 'bg-[#F7F7F2] border-2 border-[#1A1A1A]/20 text-[#1A1A1A]' : 'bg-[#F7F7F2] border-2 border-[#1A1A1A]/20 text-[#1A1A1A]'}`}
-                                placeholder="Nhập suy nghĩ của bạn..."
-                            />
-                        </div>
-                    </div>
-                    <div className={`p-5 flex items-center justify-between ${isDark ? 'bg-[#1a1a1f] border-t border-[#1A1A1A]/20' : 'bg-gray-50 border-t-2 border-[#1A1A1A]/10'}`}>
-                        <button className={`flex items-center gap-2 font-extrabold transition-colors px-4 py-2 rounded-xl ${isDark ? 'text-[#1A1A1A]/60 hover:text-[#1A1A1A] bg-white border-2 border-[#1A1A1A]/10' : 'text-[#1A1A1A]/60 hover:text-[#1A1A1A] bg-white border-2 border-[#1A1A1A]/10'}`}>
-                            ← Câu trước
-                        </button>
-                        <div className="flex gap-3">
-                            <button className={`flex items-center gap-2 px-5 h-11 font-extrabold text-sm rounded-2xl transition-all ${isDark ? 'border-2 border-[#1A1A1A]/20 hover:bg-white text-[#1A1A1A] hover:border-[#1A1A1A] bg-transparent' : 'border-2 border-[#1A1A1A]/20 hover:bg-white text-[#1A1A1A] hover:border-[#1A1A1A] bg-transparent'}`}>
-                                <FloppyDisk className="w-4 h-4" /> Lưu nháp
-                            </button>
-                            <button className="px-8 h-11 bg-[#FF6B4A] hover:bg-[#ff5535] text-white font-extrabold rounded-2xl text-sm transition-all shadow-[0_4px_0_0_#A83F2A] hover:translate-y-0.5 hover:shadow-[0_2px_0_0_#A83F2A] flex items-center gap-2">
-                                Nộp bài <CaretRight weight="bold" />
-                            </button>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            {/* Navigation Panel */}
-            <div className="w-full lg:w-80 shrink-0">
-                <div className={`rounded-3xl p-6 sticky top-6 ${isDark ? 'bg-[#1A1A1A] border-2 border-[#EEEEEE] shadow-[4px_4px_0_0_#EEEEEE] hover:shadow-[0_0_15px_#FF6B4A] transition-all duration-300' : 'bg-white border-2 border-[#1A1A1A] shadow-[4px_4px_0_0_rgba(26,26,26,1)]'}`}>
-                    <h3 className={`font-extrabold text-lg mb-4 flex items-center gap-2 ${isDark ? 'text-[#1A1A1A]' : 'text-[#1A1A1A]'}`}>
-                        <ListNumbers className="w-5 h-5 text-[#FF6B4A]" weight="fill" />
-                        Danh sách câu hỏi
-                    </h3>
-
-                    <div className="grid grid-cols-5 gap-2.5">
-                        {Array.from({ length: test.questionCount }).map((_, i) => {
-                            const qNum = i + 1;
-                            const status = answersMap[qNum] || 0;
-                            // 0 = gray, 1 = blue/green (answered), 2 = yellow (flagged)
-                            let btnClass = isDark
-                                ? "border-[#1A1A1A]/20 bg-[#17171d] text-gray-500 hover:border-white/40"
-                                : "border-[#1A1A1A]/20 bg-gray-50 text-gray-500 hover:border-[#1A1A1A]/50"; // default
-
-                            if (status === 1) {
-                                btnClass = "bg-emerald-100 border-emerald-300 text-emerald-700 font-black"; // answered
-                            } else if (status === 2) {
-                                btnClass = "bg-amber-200 border-amber-400 text-amber-800 font-black"; // flagged
-                            }
-
-                            if (qNum === currentQ) {
-                                btnClass += " ring-4 ring-[#FF6B4A]/30 border-[#FF6B4A] !bg-[#FF6B4A] !text-white";
-                            }
-
-                            return (
-                                <button
-                                    key={qNum}
-                                    onClick={() => setCurrentQ(qNum)}
-                                    className={`w-full aspect-square rounded-xl border-2 flex flex-col items-center justify-center font-extrabold text-sm transition-all hover:scale-105 ${btnClass}`}
-                                >
-                                    {qNum}
-                                    {status === 2 && qNum !== currentQ && <div className="w-1.5 h-1.5 rounded-full bg-amber-600 mt-0.5" />}
-                                </button>
-                            );
-                        })}
-                    </div>
-
-                    <div className={`mt-6 pt-5 space-y-3 ${isDark ? 'border-t border-[#1A1A1A]/20' : 'border-t-2 border-[#1A1A1A]/10'}`}>
-                        <div className={`flex items-center gap-3 text-sm font-bold ${isDark ? 'text-gray-500' : 'text-[#1A1A1A]/60'}`}>
-                            <span className={`w-4 h-4 rounded-md border-2 flex-shrink-0 ${isDark ? 'border-emerald-300/60 bg-emerald-400/20' : 'border-emerald-300 bg-emerald-100'}`} />
-                            Câu đã làm
-                        </div>
-                        <div className={`flex items-center gap-3 text-sm font-bold ${isDark ? 'text-gray-500' : 'text-[#1A1A1A]/60'}`}>
-                            <span className={`w-4 h-4 rounded-md border-2 flex-shrink-0 ${isDark ? 'border-white/25 bg-[#17171d]' : 'border-[#1A1A1A]/20 bg-gray-50'}`} />
-                            Câu chưa làm
-                        </div>
-                        <div className={`flex items-center gap-3 text-sm font-bold ${isDark ? 'text-gray-500' : 'text-[#1A1A1A]/60'}`}>
-                            <span className={`w-4 h-4 rounded-md border-2 flex-shrink-0 ${isDark ? 'border-amber-300/60 bg-amber-300/25' : 'border-amber-400 bg-amber-200'}`} />
-                            Đang phân vân
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
     );
+}
+
 }
 
 // ─── Real API Test Taking View ────────────────────────────────────────────────
@@ -925,6 +740,7 @@ function RealTestTakingView({ detail, attempt, answerSelections, onSelectAnswer,
                             </div>
                         </div>
                     </div>
+                    {/* Timer */}
                     <div className={`flex items-center gap-3 rounded-2xl p-4 shrink-0 transition-all ${isCriticalTime ? 'bg-red-500 shadow-[0_4px_0_0_#991b1b] animate-pulse' : 'bg-[#1A1A1A] shadow-[0_4px_0_0_#000]'}`}>
                         <div className="text-center"><div className="text-3xl font-extrabold text-white">{mins.toString().padStart(2, '0')}</div><div className="text-[9px] text-white/70 font-extrabold uppercase tracking-wider">PHÚT</div></div>
                         <div className="text-white/50 text-2xl font-bold pb-2">:</div>
@@ -938,7 +754,7 @@ function RealTestTakingView({ detail, attempt, answerSelections, onSelectAnswer,
                 {/* Question */}
                 <div className={`rounded-3xl overflow-hidden ${isDark ? 'bg-[#1A1A1A] border-2 border-[#EEEEEE] shadow-[4px_4px_0_0_#EEEEEE] hover:shadow-[0_0_15px_#FF6B4A] transition-all duration-300' : 'bg-white border-2 border-[#1A1A1A] shadow-[4px_4px_0_0_rgba(26,26,26,1)]'}`}>
                     <div className={`p-6 relative ${isDark ? 'border-b border-[#1A1A1A]/20' : 'border-b-2 border-[#1A1A1A]/10'}`}>
-                        <div className="flex justify-between items-start gap-2">
+                        <div className="flex justify-between items-start">
                             <div>
                                 <div className="text-xs font-extrabold text-[#FF6B4A] tracking-widest uppercase mb-3">
                                     Câu hỏi {currentQ + 1}
@@ -1070,8 +886,8 @@ function RealTestTakingView({ detail, attempt, answerSelections, onSelectAnswer,
                             Câu chưa làm
                         </div>
                         <div className={`flex items-center gap-3 text-sm font-bold ${isDark ? 'text-gray-500' : 'text-[#1A1A1A]/60'}`}>
-                            <span className="w-4 h-4 rounded-md border-2 border-[#FF6B4A] bg-[#FF6B4A]/20 flex-shrink-0" />
-                            Câu hiện tại
+                            <span className={`w-4 h-4 rounded-md border-2 flex-shrink-0 ${isDark ? 'border-amber-300/60 bg-amber-300/25' : 'border-amber-400 bg-amber-200'}`} />
+                            Đang phân vân
                         </div>
                     </div>
                 </div>
@@ -1343,7 +1159,7 @@ export function StudentTests() {
                     setResultDetail(null);
                 }
             }
-            setExerciseViewMode('detailedReview');
+            setExerciseViewMode('taking');
             return;
         }
 
@@ -1377,9 +1193,12 @@ export function StudentTests() {
             const token = authService.getToken();
             if (realId && token) {
                 try {
+                    const detail = await assignmentService.getDetail(realId, token).catch(() => null);
+                    setTakingDetail(detail);
                     const result = await assignmentService.getResult(realId, token);
                     setResultDetail(result);
                 } catch {
+                    setTakingDetail(null);
                     setResultDetail(null);
                 }
             }
@@ -1391,7 +1210,7 @@ export function StudentTests() {
         if (selectedTest.status === 'completed' && exerciseViewMode === 'detailedReview') {
             return (
                 <div className="min-h-screen p-6 lg:p-8" style={{ fontFamily: "'Nunito', sans-serif" }}>
-                    <DetailedReviewView test={selectedTest} result={resultDetail} onBack={() => setExerciseViewMode('detail')} isDark={isDark} />
+                    <DetailedReviewView test={selectedTest} result={resultDetail} detail={takingDetail} onBack={() => setExerciseViewMode('detail')} isDark={isDark} />
                 </div>
             );
         }
