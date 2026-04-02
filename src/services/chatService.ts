@@ -1,9 +1,10 @@
 import { api } from './api';
 import { authService } from './authService';
 import type { ApiResponse } from './timetableService';
+import { FAST_API_BASE_URL } from './env';
 
-// Uses Vite proxy: /agent -> http://localhost:8081
-const AGENT_BASE_URL = import.meta.env.VITE_AGENT_BASE_URL;// || '/agent';
+// Chat proxy qua AI service (FastAPI trên App Runner)
+const CHAT_URL = FAST_API_BASE_URL; // → /api/v1
 
 export interface ChatMessagePayload {
   role: 'user' | 'assistant';
@@ -40,7 +41,7 @@ export async function streamChatMessage(
 
   const user = authService.getUser() as any;
 
-  const response = await fetch(`${AGENT_BASE_URL}/invocations`, {
+  const response = await fetch(`${CHAT_URL}/chat`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
