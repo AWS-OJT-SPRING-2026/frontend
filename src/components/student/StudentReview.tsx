@@ -100,6 +100,20 @@ export function StudentReview() {
     const urlQuestions = searchParams.get('questions');
     const urlApplied = useRef(false);
 
+    const resolveCurrentUserId = (): number => {
+        try {
+            const rawUser = localStorage.getItem('user');
+            if (!rawUser) return 1;
+            const parsed = JSON.parse(rawUser);
+            const candidate = Number(parsed?.id);
+            return Number.isFinite(candidate) && candidate > 0 ? candidate : 1;
+        } catch {
+            return 1;
+        }
+    };
+
+    const currentUserId = resolveCurrentUserId();
+
     useEffect(() => {
         fetch(`${FAST_API_URL}/subjects/`)
             .then(res => res.json())
@@ -135,7 +149,7 @@ export function StudentReview() {
 
     const fetchHistory = async () => {
         try {
-            const res = await fetch(`${FAST_API_URL}/subjects/submissions/1`); // Placeholder userid
+            const res = await fetch(`${FAST_API_URL}/subjects/submissions/${currentUserId}`);
             if (res.ok) {
                 const data = await res.json();
                 setHistory(data);
@@ -216,11 +230,14 @@ export function StudentReview() {
                     lesson_ids: selectedLessonIds,
                     num_questions: numQuestions,
                     ai_questions: aiQuestions,
-                    userid: 1
+                    userid: currentUserId
                 })
             });
 
-            if (!response.ok) throw new Error("Failed to fetch questions");
+            if (!response.ok) {
+                const errBody = await response.json().catch(() => ({}));
+                throw new Error(errBody?.detail || "Failed to fetch questions");
+            }
 
             const data = await response.json();
             setQuestions(data);
@@ -251,7 +268,7 @@ export function StudentReview() {
         const timeTaken = startTime ? Math.floor((Date.now() - startTime) / 1000) : 0;
 
         const submissionData = {
-            userid: 1, // Placeholder
+            userid: currentUserId,
             score: scoreVal,
             time_taken: timeTaken,
             answers: answers.map((ans, idx) => ({
