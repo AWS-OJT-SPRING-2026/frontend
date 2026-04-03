@@ -163,9 +163,9 @@ const en: Translations = {
 
   // ── User Support ──
   userMenu: {
-    supportTitle: 'EduCare Support',
+    supportTitle: 'SlothubEdu Support',
     adminOnline: 'Admin is online',
-    supportGreeting: 'Hello! How can EduCare help you?',
+    supportGreeting: 'Hello! How can SlothubEdu help you?',
     thankYou: 'Thank you. Your request is being processed.',
     hotline: 'Hotline 24/7',
     callNow: 'Call now',

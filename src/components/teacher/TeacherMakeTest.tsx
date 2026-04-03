@@ -7,9 +7,10 @@ import {
 import { Input } from '../ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
 import { useSettings } from '../../context/SettingsContext';
-import { assignmentService, AssignmentResponse, AssignmentDetailResponse, AssignmentReportResponse, QuestionPreviewResponse, QuestionBankResponse } from '../../services/assignmentService';
+import { assignmentService, AssignmentResponse, AssignmentDetailResponse, AssignmentReportResponse, QuestionPreviewResponse, QuestionBankResponse, SubmissionResponse } from '../../services/assignmentService';
 import { authService } from '../../services/authService';
 import { classroomService } from '../../services/classroomService';
+import { ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip, LabelList } from 'recharts';
 
 type View = 'dashboard' | 'create' | 'detail' | 'report';
 
@@ -33,6 +34,39 @@ function formatDeadline(dt: string | null) {
     if (!dt) return '';
     const d = new Date(dt);
     return d.toLocaleString('vi-VN', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' });
+}
+
+function formatRelativeTime(dt: string | null) {
+    if (!dt) return 'Chưa nộp';
+    const target = new Date(dt);
+    if (Number.isNaN(target.getTime())) return formatDeadline(dt);
+
+    const diffMs = Date.now() - target.getTime();
+    const absMs = Math.abs(diffMs);
+    if (absMs < 60_000) return 'Vừa xong';
+
+    const rtf = new Intl.RelativeTimeFormat('vi', { numeric: 'auto' });
+    if (absMs < 3_600_000) return rtf.format(-Math.round(diffMs / 60_000), 'minute');
+    if (absMs < 86_400_000) return rtf.format(-Math.round(diffMs / 3_600_000), 'hour');
+    return rtf.format(-Math.round(diffMs / 86_400_000), 'day');
+}
+
+function getSubmissionTimingTag(status?: 'ON_TIME' | 'LATE' | 'MISSING' | null) {
+    if (status === 'ON_TIME') return { label: 'Nộp đúng hạn', cls: 'bg-green-50 text-green-700 border-green-200' };
+    if (status === 'LATE') return { label: 'Nộp muộn', cls: 'bg-yellow-50 text-yellow-700 border-yellow-200' };
+    return { label: 'Không nộp', cls: 'bg-red-50 text-red-700 border-red-200' };
+}
+
+function getAccuracyColorClass(rate: number) {
+    if (rate >= 70) return 'bg-green-500';
+    if (rate >= 40) return 'bg-yellow-500';
+    return 'bg-red-500';
+}
+
+function getDifficultyTagClass(level: number | null | undefined) {
+    if (level === 1) return 'bg-green-100 text-green-700 border-green-200';
+    if (level === 2) return 'bg-yellow-100 text-yellow-700 border-yellow-200';
+    return 'bg-red-100 text-red-700 border-red-200';
 }
 
 function getFormatLabel(format: string) {
@@ -951,16 +985,42 @@ function ReportView({ id, isDark }: { id: number; isDark: boolean }) {
     const [report, setReport] = useState<AssignmentReportResponse | null>(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState('');
+    const [expandedDistractors, setExpandedDistractors] = useState<Record<number, boolean>>({});
+    const [submissionLoadingId, setSubmissionLoadingId] = useState<number | null>(null);
+    const [selectedSubmission, setSelectedSubmission] = useState<SubmissionResponse | null>(null);
+    const [detailFilter, setDetailFilter] = useState<'all' | 'wrong'>('all');
 
     useEffect(() => {
         const token = authService.getToken();
         if (!token) return;
         setLoading(true);
+        setExpandedDistractors({});
+        setSelectedSubmission(null);
+        setDetailFilter('all');
         assignmentService.getReport(id, token)
             .then(r => setReport(r))
             .catch(e => setError(e.message ?? 'Lỗi'))
             .finally(() => setLoading(false));
     }, [id]);
+
+    const handleViewSubmission = async (submissionId: number) => {
+        const token = authService.getToken();
+        if (!token) return;
+        setSubmissionLoadingId(submissionId);
+        try {
+            const detail = await assignmentService.getSubmissionDetailForTeacher(submissionId, token);
+            setSelectedSubmission(detail);
+            setDetailFilter('all');
+        } catch (e: any) {
+            alert(e.message ?? 'Không thể tải chi tiết bài nộp');
+        } finally {
+            setSubmissionLoadingId(null);
+        }
+    };
+
+    const handleDownloadDetailPdf = () => {
+        window.print();
+    };
 
     const txt = isDark ? 'text-gray-100' : 'text-[#1A1A1A]';
     const sub = isDark ? 'text-gray-400' : 'text-[#1A1A1A]/50';
@@ -970,22 +1030,88 @@ function ReportView({ id, isDark }: { id: number; isDark: boolean }) {
     if (error || !report) return <div className="text-center py-20 text-red-500 font-bold">{error || 'Không tìm thấy'}</div>;
 
     const DIFF_MAP: Record<number, string> = { 1: 'Dễ', 2: 'Trung bình', 3: 'Khó' };
+    const completionRate = Math.max(0, Math.min(100, report.completionRate ?? 0));
+    const circleRadius = 32;
+    const circleCircumference = 2 * Math.PI * circleRadius;
+    const circleOffset = circleCircumference - (completionRate / 100) * circleCircumference;
+    const scoreDistribution = report.scoreDistribution ?? [0, 0, 0];
+    const passRate = Math.max(0, Math.min(100, report.passRate ?? 0));
+    const distributionData = [
+        { label: '<5', count: scoreDistribution[0] ?? 0, color: '#ef4444' },
+        { label: '5-8', count: scoreDistribution[1] ?? 0, color: '#f59e0b' },
+        { label: '>8', count: scoreDistribution[2] ?? 0, color: '#22c55e' },
+    ];
+    const questionAnalysis = report.questionAnalysis?.length
+        ? report.questionAnalysis
+        : report.questionStats.map(q => ({ ...q, options: [] }));
 
     return (
         <div className="space-y-6 pb-8">
             {/* Stats row */}
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
                 {[
-                    { label: 'Tổng nộp', val: report.totalSubmissions },
+                    { label: 'Đã nộp / Sĩ số', val: `${report.totalSubmissions} / ${report.totalStudents ?? report.totalSubmissions}` },
                     { label: 'TB', val: report.averageScore?.toFixed(2) ?? '—' },
-                    { label: 'Cao nhất', val: report.highestScore?.toFixed(2) ?? '—' },
-                    { label: 'Thấp nhất', val: report.lowestScore?.toFixed(2) ?? '—' },
+                    { label: 'Trên trung bình (>= 5.0)', val: `${passRate.toFixed(1)}%` },
                 ].map(s => (
-                    <div key={s.label} className={`${card} text-center`}>
+                    <div key={s.label} className={`${card} text-center lg:col-span-1`}>
                         <p className={`text-2xl font-extrabold ${txt}`}>{s.val}</p>
                         <p className={`text-xs font-semibold ${sub}`}>{s.label}</p>
                     </div>
                 ))}
+
+                <div className={`${card} lg:col-span-1`}>
+                    <p className={`text-xs font-semibold ${sub}`}>Tỉ lệ hoàn thành</p>
+                    <div className="mt-3 flex items-center justify-center">
+                        <div className="relative w-20 h-20">
+                            <svg className="w-20 h-20 -rotate-90" viewBox="0 0 80 80">
+                                <circle cx="40" cy="40" r={circleRadius} stroke={isDark ? '#2a2f36' : '#f1f5f9'} strokeWidth="8" fill="none" />
+                                <circle
+                                    cx="40"
+                                    cy="40"
+                                    r={circleRadius}
+                                    stroke="#FF6B4A"
+                                    strokeWidth="8"
+                                    fill="none"
+                                    strokeLinecap="round"
+                                    strokeDasharray={circleCircumference}
+                                    strokeDashoffset={circleOffset}
+                                />
+                            </svg>
+                            <div className="absolute inset-0 flex items-center justify-center">
+                                <span className={`text-sm font-extrabold ${txt}`}>{completionRate.toFixed(1)}%</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div className={`${card} lg:col-span-2`}>
+                    <p className={`text-xs font-semibold mb-2 ${sub}`}>Phân bố điểm</p>
+                    <div className="h-28">
+                        <ResponsiveContainer width="100%" height="100%">
+                            <BarChart data={distributionData} margin={{ top: 8, right: 0, left: -20, bottom: 0 }}>
+                                <defs>
+                                    <linearGradient id="scoreGradient" x1="0" y1="0" x2="0" y2="1">
+                                        <stop offset="0%" stopColor="#FFB3A0" />
+                                        <stop offset="100%" stopColor="#FF8C5A" />
+                                    </linearGradient>
+                                </defs>
+                                <XAxis dataKey="label" tick={{ fill: isDark ? '#9ca3af' : '#6b7280', fontSize: 12 }} axisLine={false} tickLine={false} />
+                                <YAxis
+                                    allowDecimals={false}
+                                    tick={{ fill: isDark ? '#9ca3af' : '#9ca3af', fontSize: 11 }}
+                                    axisLine={{ stroke: isDark ? '#334155' : '#e5e7eb' }}
+                                    tickLine={false}
+                                    width={24}
+                                />
+                                <Tooltip cursor={{ fill: isDark ? '#ffffff10' : '#1A1A1A08' }} formatter={(value: number) => [`${value} học sinh`, 'Số lượng']} />
+                                <Bar dataKey="count" radius={[8, 8, 0, 0]} fill="url(#scoreGradient)">
+                                    <LabelList dataKey="count" position="top" fill={isDark ? '#e5e7eb' : '#374151'} fontSize={11} />
+                                </Bar>
+                            </BarChart>
+                        </ResponsiveContainer>
+                    </div>
+                </div>
             </div>
 
             {/* Student results */}
@@ -999,25 +1125,51 @@ function ReportView({ id, isDark }: { id: number; isDark: boolean }) {
                                 <th className="text-left pb-3">Họ tên</th>
                                 <th className="text-center pb-3">Điểm</th>
                                 <th className="text-center pb-3">Thời gian</th>
+                                <th className="text-center pb-3">Trạng thái</th>
                                 <th className="text-right pb-3">Nộp lúc</th>
+                                <th className="text-right pb-3">Chi tiết</th>
                             </tr>
                         </thead>
                         <tbody className="divide-y divide-[#1A1A1A]/5">
                             {report.studentResults.map((s, i) => (
-                                <tr key={s.submissionId}>
+                                <tr key={s.submissionId} className={Number(s.score ?? 0) === 0 ? 'bg-red-50/60' : ''}>
                                     <td className={`py-2 font-bold ${sub}`}>{i + 1}</td>
-                                    <td className={`py-2 font-bold ${txt}`}>{s.studentName}</td>
-                                    <td className={`py-2 text-center font-extrabold ${s.score >= 8 ? 'text-green-600' : s.score >= 5 ? 'text-yellow-600' : 'text-red-500'}`}>
-                                        {s.score?.toFixed(2)}
+                                    <td className={`py-2 font-bold ${Number(s.score ?? 0) === 0 ? 'text-red-600' : txt}`}>{s.studentName}</td>
+                                    <td className={`py-2 text-center font-extrabold ${Number(s.score ?? 0) === 0 ? 'text-red-600' : (s.score >= 8 ? 'text-green-600' : s.score >= 5 ? 'text-yellow-600' : 'text-red-500')}`}>
+                                        {s.score?.toFixed(2) ?? '0.00'}
                                     </td>
                                     <td className={`py-2 text-center font-semibold ${sub}`}>
-                                        {s.timeTaken ? `${Math.floor(s.timeTaken / 60)}:${String(s.timeTaken % 60).padStart(2, '0')}` : '—'}
+                                        {s.submissionTimingStatus === 'MISSING'
+                                            ? 'N/A'
+                                            : (s.timeTaken ? `${Math.floor(s.timeTaken / 60)}:${String(s.timeTaken % 60).padStart(2, '0')}` : '—')}
                                     </td>
-                                    <td className={`py-2 text-right font-semibold ${sub}`}>{formatDeadline(s.submitTime)}</td>
+                                    <td className="py-2 text-center">
+                                        <span className={`inline-flex items-center text-[11px] font-extrabold px-2.5 py-1 rounded-xl border ${getSubmissionTimingTag(s.submissionTimingStatus).cls}`}>
+                                            {getSubmissionTimingTag(s.submissionTimingStatus).label}
+                                        </span>
+                                    </td>
+                                    <td className={`py-2 text-right font-semibold ${sub}`}>
+                                        {s.submitTime ? (
+                                            <span title={formatDeadline(s.submitTime)}>{formatRelativeTime(s.submitTime)}</span>
+                                        ) : 'Chưa nộp'}
+                                    </td>
+                                    <td className="py-2 text-right">
+                                        <button
+                                            onClick={() => handleViewSubmission(s.submissionId)}
+                                            className="inline-flex items-center justify-center w-8 h-8 rounded-xl border border-[#FF6B4A]/30 text-[#d64b2e] hover:bg-[#FF6B4A]/10"
+                                            title="Xem chi tiết bài làm"
+                                        >
+                                            {submissionLoadingId === s.submissionId ? (
+                                                <span className="text-[10px] font-bold">...</span>
+                                            ) : (
+                                                <Eye className="w-4 h-4" weight="bold" />
+                                            )}
+                                        </button>
+                                    </td>
                                 </tr>
                             ))}
                             {report.studentResults.length === 0 && (
-                                <tr><td colSpan={5} className={`py-8 text-center font-bold ${sub}`}>Chưa có học sinh nộp bài</td></tr>
+                                <tr><td colSpan={7} className={`py-8 text-center font-bold ${sub}`}>Chưa có học sinh nộp bài</td></tr>
                             )}
                         </tbody>
                     </table>
@@ -1026,9 +1178,17 @@ function ReportView({ id, isDark }: { id: number; isDark: boolean }) {
 
             {/* Question stats */}
             <div className={card}>
-                <h3 className={`font-extrabold text-base mb-4 ${txt}`}>Thống kê từng câu hỏi</h3>
+                <h3 className={`font-extrabold text-base mb-4 ${txt}`}>Phân tích câu hỏi (Dễ nhất → Khó nhất)</h3>
                 <div className="space-y-4">
-                    {report.questionStats.map((qs, i) => (
+                    {questionAnalysis.map((qs, i) => {
+                        const isFirst = i === 0;
+                        const isLast = i === questionAnalysis.length - 1;
+                        const optionBreakdown = (qs.options ?? [])
+                            .slice()
+                            .sort((a, b) => (a.optionLabel ?? '').localeCompare(b.optionLabel ?? ''));
+                        const maxOptionCount = Math.max(1, ...optionBreakdown.map(opt => opt.selectedCount ?? 0));
+                        const isExpanded = Boolean(expandedDistractors[qs.questionId]);
+                        return (
                         <div key={qs.questionId}>
                             <div className="flex items-center justify-between mb-1 flex-wrap gap-1">
                                 <p className={`text-sm font-bold flex-1 ${txt}`}>
@@ -1036,24 +1196,158 @@ function ReportView({ id, isDark }: { id: number; isDark: boolean }) {
                                     {qs.questionText.length > 80 ? qs.questionText.slice(0, 80) + '…' : qs.questionText}
                                 </p>
                                 <div className="flex items-center gap-2 shrink-0">
-                                    <span className={`text-xs font-semibold ${sub}`}>{DIFF_MAP[qs.difficultyLevel] ?? '—'}</span>
+                                    {isFirst && <span className="text-[10px] font-extrabold px-2 py-0.5 rounded-full bg-green-100 text-green-700">Dễ nhất</span>}
+                                    {isLast && !isFirst && <span className="text-[10px] font-extrabold px-2 py-0.5 rounded-full bg-red-100 text-red-700">Khó nhất</span>}
+                                    <span className={`text-[11px] font-extrabold px-2 py-0.5 rounded-xl border ${getDifficultyTagClass(qs.difficultyLevel)}`}>
+                                        {DIFF_MAP[qs.difficultyLevel] ?? '—'}
+                                    </span>
                                     <span className={`text-sm font-extrabold ${qs.accuracyRate >= 70 ? 'text-green-600' : qs.accuracyRate >= 40 ? 'text-yellow-600' : 'text-red-500'}`}>
                                         {qs.accuracyRate?.toFixed(1)}%
                                     </span>
                                 </div>
                             </div>
                             <div className={`w-full rounded-full h-2 ${isDark ? 'bg-white/10' : 'bg-[#1A1A1A]/10'}`}>
-                                <div className={`h-2 rounded-full transition-all ${qs.accuracyRate >= 70 ? 'bg-green-500' : qs.accuracyRate >= 40 ? 'bg-yellow-500' : 'bg-red-500'}`}
+                                <div className={`h-2 rounded-full transition-all ${getAccuracyColorClass(qs.accuracyRate)}`}
                                     style={{ width: `${qs.accuracyRate}%` }} />
                             </div>
-                            <p className={`text-xs font-semibold mt-0.5 ${sub}`}>{qs.correctCount}/{qs.totalAnswered} đúng</p>
+                            <div className="mt-1 flex items-center justify-between gap-2 flex-wrap">
+                                <p className={`text-xs font-semibold ${sub}`}>{qs.correctCount}/{qs.totalAnswered} đúng</p>
+                                {optionBreakdown.length > 0 && (
+                                    <button
+                                        onClick={() => setExpandedDistractors(prev => ({ ...prev, [qs.questionId]: !prev[qs.questionId] }))}
+                                        className="text-xs font-bold px-2 py-1 rounded-xl border border-[#FF6B4A]/30 text-[#d64b2e] hover:bg-[#FF6B4A]/10"
+                                    >
+                                        {isExpanded ? 'Ẩn đáp án nhiễu' : 'Xem đáp án nhiễu'}
+                                    </button>
+                                )}
+                            </div>
+                            {isExpanded && optionBreakdown.length > 0 && (
+                                <div className={`mt-2 rounded-2xl border p-3 space-y-2 ${isDark ? 'border-white/10' : 'border-[#1A1A1A]/10 bg-[#fafafa]'}`}>
+                                    {optionBreakdown.map(opt => (
+                                        <div key={opt.optionId}>
+                                            <div className="flex items-center justify-between gap-3">
+                                                <p className={`text-xs font-semibold ${txt}`}>
+                                                    {opt.optionLabel}. {opt.optionContent}
+                                                    {opt.isCorrect && <span className="ml-1 text-green-600">(Đáp án đúng)</span>}
+                                                </p>
+                                                <span className={`text-xs font-bold ${sub}`}>{opt.selectedCount} lượt chọn</span>
+                                            </div>
+                                            <div className={`mt-1 w-full rounded-full h-1.5 ${isDark ? 'bg-white/10' : 'bg-[#1A1A1A]/10'}`}>
+                                                <div
+                                                    className="h-1.5 rounded-full bg-[#FF6B4A]"
+                                                    style={{ width: `${((opt.selectedCount ?? 0) / maxOptionCount) * 100}%` }}
+                                                />
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+                            )}
                         </div>
-                    ))}
-                    {report.questionStats.length === 0 && (
+                    );
+                    })}
+                    {questionAnalysis.length === 0 && (
                         <p className={`text-center py-6 font-bold ${sub}`}>Chưa có dữ liệu</p>
                     )}
                 </div>
             </div>
+
+            {selectedSubmission && (
+                <div className="fixed inset-0 z-50 bg-black/40 flex items-center justify-center p-4">
+                    <div className={`w-full max-w-2xl rounded-2xl border p-5 shadow-xl ${isDark ? 'bg-[#171b20] border-white/10' : 'bg-white border-[#e5e7eb]'}`}>
+                        {(() => {
+                            const correctAnswerByQuestionId = new Map(
+                                questionAnalysis.map(q => {
+                                    const correctOpt = q.options?.find(opt => opt.isCorrect);
+                                    const correctAnswer = correctOpt
+                                        ? `${correctOpt.optionLabel}. ${correctOpt.optionContent}`
+                                        : 'Chưa có đáp án đúng';
+                                    return [q.questionId, correctAnswer] as const;
+                                })
+                            );
+
+                            const detailItems = (selectedSubmission.answers ?? []).map((ans, idx) => ({
+                                ...ans,
+                                order: idx + 1,
+                                correctAnswer: correctAnswerByQuestionId.get(ans.questionId) ?? 'Chưa có đáp án đúng',
+                            }));
+
+                            const wrongCount = detailItems.filter(item => !item.isCorrect).length;
+                            const filteredItems = detailFilter === 'wrong'
+                                ? detailItems.filter(item => !item.isCorrect)
+                                : detailItems;
+
+                            return (
+                                <>
+                        <div className="flex items-start justify-between gap-4">
+                            <div>
+                                <h4 className={`text-base font-extrabold ${txt}`}>Chi tiết bài làm</h4>
+                                <p className={`text-xs mt-1 ${sub}`}>
+                                    {selectedSubmission.studentName} • Điểm {selectedSubmission.score?.toFixed(2) ?? '0.00'}
+                                </p>
+                            </div>
+                            <button
+                                onClick={() => setSelectedSubmission(null)}
+                                className="text-xs font-bold px-3 py-1.5 rounded-xl border border-[#1A1A1A]/20 hover:bg-[#1A1A1A]/5"
+                            >
+                                Đóng
+                            </button>
+                        </div>
+
+                        <div className="mt-4 flex items-center gap-2">
+                            <button
+                                onClick={() => setDetailFilter('all')}
+                                className={`text-xs font-bold px-3 py-1.5 rounded-xl border transition-colors ${detailFilter === 'all'
+                                    ? 'bg-[#FF6B4A] text-white border-[#FF6B4A]'
+                                    : 'bg-gray-100 text-gray-600 border-gray-200 hover:bg-gray-200'}`}
+                            >
+                                Tất cả câu hỏi ({detailItems.length})
+                            </button>
+                            <button
+                                onClick={() => setDetailFilter('wrong')}
+                                className={`text-xs font-bold px-3 py-1.5 rounded-xl border transition-colors ${detailFilter === 'wrong'
+                                    ? 'bg-[#FF6B4A] text-white border-[#FF6B4A]'
+                                    : 'bg-gray-100 text-gray-600 border-gray-200 hover:bg-gray-200'}`}
+                            >
+                                Chỉ xem câu sai ({wrongCount})
+                            </button>
+                        </div>
+
+                        <div className="mt-4 max-h-[55vh] overflow-auto space-y-2">
+                            {filteredItems.length ? filteredItems.map((ans) => (
+                                <div key={`${ans.questionId}-${ans.order}`} className={`rounded-xl border p-3 ${ans.isCorrect ? 'border-green-200 bg-white' : 'border-red-200 bg-white'}`}>
+                                    <p className={`text-xs font-bold mb-1 ${txt}`}>Câu {ans.order}: {ans.questionText}</p>
+                                    <p className={`text-xs ${ans.isCorrect ? 'text-green-700' : 'text-red-700'}`}>
+                                        {ans.isCorrect ? 'Đúng' : 'Sai'} • Đáp án đã chọn: {ans.selectedAnswer ?? 'Chưa trả lời'}
+                                    </p>
+                                    {!ans.isCorrect && (
+                                        <div className="mt-2 text-xs text-green-700 bg-green-50 border border-green-100 rounded-lg px-2.5 py-1.5">
+                                            Đáp án đúng: {ans.correctAnswer}
+                                        </div>
+                                    )}
+                                </div>
+                            )) : (
+                                <p className={`text-sm py-6 text-center ${sub}`}>
+                                    {detailFilter === 'wrong'
+                                        ? 'Học sinh không có câu trả lời sai.'
+                                        : 'Bài nộp này chưa có dữ liệu câu trả lời.'}
+                                </p>
+                            )}
+                        </div>
+
+                        <div className="mt-4 flex justify-end">
+                            <button
+                                onClick={handleDownloadDetailPdf}
+                                className="text-xs font-extrabold px-4 py-2 rounded-xl bg-[#FF6B4A] hover:bg-[#ff5535] text-white"
+                            >
+                                Tải kết quả (PDF)
+                            </button>
+                        </div>
+                                </>
+                            );
+                        })()}
+                    </div>
+                </div>
+            )}
         </div>
     );
 }

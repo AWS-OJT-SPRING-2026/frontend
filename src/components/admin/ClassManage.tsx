@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
+import { createPortal } from 'react-dom';
 import { MagnifyingGlass, Plus, UserPlus, GraduationCap, Users, X, UserSwitch, CalendarBlank, BookOpen, Info, Student, PencilSimple, Lock, LockOpen } from '@phosphor-icons/react';
 import { api } from '../../services/api';
 import { authService } from '../../services/authService';
@@ -61,6 +62,7 @@ interface StudentInClass {
     gender: string;
     email: string;
     phone: string;
+    avatarUrl?: string | null;
     memberStatus?: string; // ACTIVE | INACTIVE trong lớp này (từ ClassMember.status)
 }
 
@@ -79,6 +81,7 @@ interface StudentDetail {
     parentPhone: string | null;
     parentEmail: string | null;
     parentRelationship: string | null;
+    avatarUrl?: string | null;
     role?: { name: string };
 }
 
@@ -117,6 +120,28 @@ function formatGenderVi(gender?: string | null): string {
     if (normalized === 'female' || normalized === 'nu' || normalized === 'nữ') return 'Nữ';
     if (normalized === 'other' || normalized === 'khac' || normalized === 'khác') return 'Khác';
     return gender;
+}
+
+function normalizeAvatarUrl(...candidates: unknown[]): string | null {
+    for (const candidate of candidates) {
+        if (typeof candidate !== 'string') continue;
+        const value = candidate.trim();
+        if (!value || value.toLowerCase() === 'null' || value.toLowerCase() === 'undefined') continue;
+        return value;
+    }
+    return null;
+}
+
+function getParentRelationshipLabel(relationship?: string | null): string {
+    const value = (relationship ?? '').trim().toLowerCase();
+    if (!value) return '';
+    if (value === 'father') return 'Ba';
+    if (value === 'mother') return 'Mẹ';
+    if (value === 'grandfather') return 'Ông';
+    if (value === 'grandmother') return 'Bà';
+    if (value === 'sibling') return 'Anh / Chị';
+    if (value === 'guardian') return 'Người giám hộ';
+    return relationship ?? '';
 }
 
 // ─── Reusable Modal Wrapper ───────────────────────────────────────────────────
@@ -620,13 +645,34 @@ function StudentDetailModal({
     const [actionLoading, setActionLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const [confirmRemove, setConfirmRemove] = useState(false);
+    const [isAvatarZoomOpen, setIsAvatarZoomOpen] = useState(false);
 
     useEffect(() => {
         const token = authService.getToken();
         if (!token) return;
         setLoading(true);
         api.get<ApiResponse<StudentDetail>>(`/students/${student.studentID}`, token)
-            .then(r => setDetail(r.result))
+            .then(r => {
+                const raw = r.result as StudentDetail & {
+                    avatar?: string | null;
+                    imageUrl?: string | null;
+                    profileImageUrl?: string | null;
+                    profilePicture?: string | null;
+                    profilePictureUrl?: string | null;
+                };
+
+                setDetail({
+                    ...r.result,
+                    avatarUrl: normalizeAvatarUrl(
+                        raw.avatarUrl,
+                        raw.avatar,
+                        raw.imageUrl,
+                        raw.profileImageUrl,
+                        raw.profilePicture,
+                        raw.profilePictureUrl,
+                    ),
+                });
+            })
             .catch(() => setDetail(null))
             .finally(() => setLoading(false));
     }, [student.studentID]);
@@ -667,6 +713,32 @@ function StudentDetailModal({
     // Dùng memberStatus từ ClassMember (trạng thái trong lớp) — KHÔNG phải status tài khoản
     const isMemberActive = (student.memberStatus ?? 'ACTIVE') === 'ACTIVE';
     const accent = isMemberActive ? '#FF6B4A' : '#F97316';
+    const [avatarBroken, setAvatarBroken] = useState(false);
+    const avatarSrc = normalizeAvatarUrl(student.avatarUrl, detail?.avatarUrl);
+    const shouldShowAvatar = !!avatarSrc && !avatarBroken;
+
+    useEffect(() => {
+        setAvatarBroken(false);
+    }, [avatarSrc]);
+
+    useEffect(() => {
+        if (!shouldShowAvatar) {
+            setIsAvatarZoomOpen(false);
+        }
+    }, [shouldShowAvatar]);
+
+    useEffect(() => {
+        if (!isAvatarZoomOpen) return;
+
+        const handleEsc = (event: KeyboardEvent) => {
+            if (event.key === 'Escape') {
+                setIsAvatarZoomOpen(false);
+            }
+        };
+
+        window.addEventListener('keydown', handleEsc);
+        return () => window.removeEventListener('keydown', handleEsc);
+    }, [isAvatarZoomOpen]);
 
     const formatDate = (d: string | null | undefined) => {
         if (!d) return '—';
@@ -703,10 +775,27 @@ function StudentDetailModal({
 
                             {/* Avatar + name */}
                             <div className={`flex items-center gap-4 rounded-2xl p-4 border ${isMemberActive ? 'bg-gray-50 border-gray-100 dark:bg-slate-800/70 dark:border-white/10' : 'bg-orange-50 border-orange-200 dark:bg-orange-500/10 dark:border-orange-300/40'}`}>
-                                <div className="w-14 h-14 rounded-2xl flex items-center justify-center text-white font-extrabold text-2xl flex-shrink-0"
-                                    style={{ backgroundColor: accent }}>
-                                    {detail.fullName?.charAt(0)}
-                                </div>
+                                {shouldShowAvatar ? (
+                                    <button
+                                        type="button"
+                                        onClick={() => setIsAvatarZoomOpen(true)}
+                                        className="w-14 h-14 rounded-2xl overflow-hidden border border-black/10 dark:border-white/20 flex-shrink-0 cursor-zoom-in focus:outline-none focus:ring-2 focus:ring-[#FF6B4A]/50"
+                                        title="Nhấn để phóng to ảnh đại diện"
+                                        aria-label="Phóng to ảnh đại diện"
+                                    >
+                                        <img
+                                            src={avatarSrc ?? undefined}
+                                            alt={detail.fullName}
+                                            onError={() => setAvatarBroken(true)}
+                                            className="w-full h-full object-cover"
+                                        />
+                                    </button>
+                                ) : (
+                                    <div className="w-14 h-14 rounded-2xl flex items-center justify-center text-white font-extrabold text-2xl flex-shrink-0"
+                                        style={{ backgroundColor: accent }}>
+                                        {detail.fullName?.charAt(0)}
+                                    </div>
+                                )}
                                 <div className="flex-1 min-w-0">
                                     <p className="font-extrabold text-lg text-[#1A1A1A] dark:text-slate-100 leading-tight">{detail.fullName}</p>
                                     <p className="text-xs font-bold text-gray-400 dark:text-slate-400 mt-0.5">{detail.email}</p>
@@ -742,8 +831,8 @@ function StudentDetailModal({
                                 <div className="bg-blue-50 rounded-2xl p-4 border border-blue-100 dark:bg-blue-500/10 dark:border-blue-300/35">
                                     <p className="text-xs font-extrabold text-blue-500 dark:text-blue-200 uppercase tracking-wider mb-2">Thông tin phụ huynh</p>
                                     <div className="space-y-1">
-                                        {detail.parentName && <p className="text-sm font-extrabold text-[#1A1A1A] dark:text-slate-100">{detail.parentName} {detail.parentRelationship ? `(${detail.parentRelationship})` : ''}</p>}
-                                        {detail.parentPhone && <p className="text-xs font-bold text-gray-600 dark:text-slate-300">So dien thoai: {detail.parentPhone}</p>}
+                                        {detail.parentName && <p className="text-sm font-extrabold text-[#1A1A1A] dark:text-slate-100">{detail.parentName} {getParentRelationshipLabel(detail.parentRelationship) ? `(${getParentRelationshipLabel(detail.parentRelationship)})` : ''}</p>}
+                                        {detail.parentPhone && <p className="text-xs font-bold text-gray-600 dark:text-slate-300">Số điện thoại: {detail.parentPhone}</p>}
                                         {detail.parentEmail && <p className="text-xs font-bold text-gray-600 dark:text-slate-300">Email: {detail.parentEmail}</p>}
                                     </div>
                                 </div>
@@ -805,6 +894,31 @@ function StudentDetailModal({
                     </div>
                 )}
             </div>
+
+            {isAvatarZoomOpen && avatarSrc && (
+                <div
+                    className="fixed inset-0 z-[90] bg-black/80 backdrop-blur-[2px] flex items-center justify-center p-4"
+                    onClick={() => setIsAvatarZoomOpen(false)}
+                    role="dialog"
+                    aria-modal="true"
+                    aria-label="Ảnh đại diện phóng to"
+                >
+                    <button
+                        type="button"
+                        onClick={() => setIsAvatarZoomOpen(false)}
+                        className="absolute top-5 right-5 w-10 h-10 rounded-full bg-white/15 hover:bg-white/25 text-white flex items-center justify-center"
+                        aria-label="Đóng ảnh phóng to"
+                    >
+                        <X className="w-5 h-5" weight="bold" />
+                    </button>
+                    <img
+                        src={avatarSrc}
+                        alt={detail?.fullName ?? 'Ảnh đại diện học sinh'}
+                        className="max-w-[90vw] max-h-[85vh] rounded-2xl object-contain border border-white/20 shadow-2xl"
+                        onClick={(e) => e.stopPropagation()}
+                    />
+                </div>
+            )}
         </div>
     );
 }
@@ -829,6 +943,18 @@ function ClassDetailModal({ cls, onClose, onEdit, onToggleStatus }: {
         api.get<ApiResponse<any>>(`/classrooms/${cls.classID}`, token)
             .then(r => {
                 const d = r.result;
+                const mappedStudents: StudentInClass[] = (d.students ?? []).map((s: any) => ({
+                    ...s,
+                    avatarUrl: normalizeAvatarUrl(
+                        s?.avatarUrl,
+                        s?.avatar,
+                        s?.imageUrl,
+                        s?.profileImageUrl,
+                        s?.profilePicture,
+                        s?.profilePictureUrl,
+                    ),
+                }));
+
                 setDetail({
                     classID: d.classID,
                     className: d.className,
@@ -843,7 +969,7 @@ function ClassDetailModal({ cls, onClose, onEdit, onToggleStatus }: {
                     currentStudents: d.currentStudents,
                     teacherName: d.teacherName ?? null,
                     teacherID: d.teacherID,
-                    students: d.students ?? [],
+                    students: mappedStudents,
                 });
             })
             .catch(() => setDetail(null))
@@ -873,7 +999,7 @@ function ClassDetailModal({ cls, onClose, onEdit, onToggleStatus }: {
         return String(d).substring(0, 10);
     };
 
-    return (
+    const classDetailModalContent = (
         <>
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-[6px] dark:bg-black/75">
             <div className="bg-white dark:bg-[#111827] rounded-3xl border-2 border-[#1A1A1A]/10 dark:border-white/15 shadow-2xl w-full max-w-3xl flex flex-col"
@@ -1006,6 +1132,7 @@ function ClassDetailModal({ cls, onClose, onEdit, onToggleStatus }: {
                                             <p className="text-xs font-bold text-gray-400 dark:text-slate-400 mb-1">Nhấn vào học sinh để xem chi tiết</p>
                                             {detail.students.map(s => {
                                                 const isSuspended = s.memberStatus === 'INACTIVE';
+                                                const studentAvatar = normalizeAvatarUrl(s.avatarUrl);
                                                 return (
                                                     <div
                                                         key={s.studentID}
@@ -1016,9 +1143,18 @@ function ClassDetailModal({ cls, onClose, onEdit, onToggleStatus }: {
                                                                 : 'border-gray-100 bg-gray-50 hover:bg-[#FF6B4A]/5 hover:border-[#FF6B4A]/30 dark:border-white/10 dark:bg-slate-800/70 dark:hover:bg-[#FF6B4A]/12 dark:hover:border-[#FF6B4A]/50'
                                                         }`}
                                                     >
-                                                        <div className={`w-9 h-9 rounded-xl flex items-center justify-center text-white text-xs font-extrabold flex-shrink-0 ${isSuspended ? 'bg-orange-400' : 'bg-[#1A1A1A] dark:bg-slate-600'}`}>
-                                                            {s.fullName?.charAt(0)}
-                                                        </div>
+                                                        {studentAvatar ? (
+                                                            <img
+                                                                src={studentAvatar}
+                                                                alt={s.fullName}
+                                                                className="w-9 h-9 rounded-xl object-cover border border-black/10 dark:border-white/20 flex-shrink-0"
+                                                                loading="lazy"
+                                                            />
+                                                        ) : (
+                                                            <div className={`w-9 h-9 rounded-xl flex items-center justify-center text-white text-xs font-extrabold flex-shrink-0 ${isSuspended ? 'bg-orange-400' : 'bg-[#1A1A1A] dark:bg-slate-600'}`}>
+                                                                {s.fullName?.charAt(0)}
+                                                            </div>
+                                                        )}
                                                         <div className="flex-1 min-w-0">
                                                             <div className="flex items-center gap-2">
                                                                 <p className={`font-extrabold text-sm truncate transition-colors ${isSuspended ? 'text-orange-700 dark:text-orange-200' : 'text-[#1A1A1A] dark:text-slate-100 group-hover:text-[#FF6B4A]'}`}>
@@ -1105,6 +1241,12 @@ function ClassDetailModal({ cls, onClose, onEdit, onToggleStatus }: {
         )}
         </>
     );
+
+    if (typeof document === 'undefined') {
+        return null;
+    }
+
+    return createPortal(classDetailModalContent, document.body);
 }
 
 // ─── Edit Class Modal ─────────────────────────────────────────────────────────

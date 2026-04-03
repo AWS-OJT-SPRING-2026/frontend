@@ -82,6 +82,7 @@ export interface ClassStudent {
   avatarUrl?: string;
   completionRate: number;
   gpa: number;
+  missingCount: number;
   lastActiveTime: string | null;
   status: 'ONLINE' | 'OFFLINE' | 'ATTENTION';
 }

@@ -72,6 +72,8 @@ const STATUS_MAP: Record<TabFilter, string> = {
   attention: 'ATTENTION',
 };
 
+const ATTENTION_MISSING_THRESHOLD = 2;
+
 function formatStudentId(id: number | string): string {
   const digits = String(id).replace(/\D/g, '');
   const numeric = Number(digits || '0');
@@ -419,14 +421,16 @@ export function TeacherClassList() {
   }, [token, classIdNum, currentPage, activeTab, searchQuery]);
 
   const filteredStudents = useMemo(() => {
-    const result = [...students];
+    const result = activeTab === 'attention'
+      ? students.filter((s) => s.status === 'ATTENTION' || s.missingCount >= ATTENTION_MISSING_THRESHOLD)
+      : [...students];
     if (sortBy === 'az') result.sort((a, b) => a.fullName.localeCompare(b.fullName, 'vi'));
     if (sortBy === 'za') result.sort((a, b) => b.fullName.localeCompare(a.fullName, 'vi'));
     if (sortBy === 'score_desc') result.sort((a, b) => b.gpa - a.gpa);
     if (sortBy === 'score_asc') result.sort((a, b) => a.gpa - b.gpa);
     if (sortBy === 'completion_desc') result.sort((a, b) => b.completionRate - a.completionRate);
     return result;
-  }, [students, sortBy]);
+  }, [students, sortBy, activeTab]);
 
   const tabCounts = useMemo(() => ({
     all: dashboard?.totalStudents ?? 0,
@@ -792,9 +796,13 @@ export function TeacherClassList() {
                             </td>
                             <td className="px-6 py-4">
                               <div className="flex items-center gap-2">
-                                <span className={`w-2.5 h-2.5 rounded-full ${hs.status === 'ONLINE' ? 'bg-emerald-500 animate-pulse' : hs.status === 'ATTENTION' ? 'bg-[#FF6B4A]' : 'bg-gray-300'}`} />
+                                <span className={`w-2.5 h-2.5 rounded-full ${hs.status === 'ONLINE' ? 'bg-emerald-500 animate-pulse' : hs.status === 'ATTENTION' || hs.missingCount >= ATTENTION_MISSING_THRESHOLD ? 'bg-[#FF6B4A]' : 'bg-gray-300'}`} />
                                 <span className={`text-sm font-bold ${isDark ? 'text-gray-300' : 'text-[#1A1A1A]/70'}`}>
-                                  {hs.status === 'ONLINE' ? 'Online' : hs.status === 'ATTENTION' ? 'Cần chú ý' : formatTimeAgo(hs.lastActiveTime)}
+                                  {hs.status === 'ONLINE'
+                                    ? 'Online'
+                                    : hs.status === 'ATTENTION' || hs.missingCount >= ATTENTION_MISSING_THRESHOLD
+                                      ? `Cần chú ý${hs.missingCount > 0 ? ` (${hs.missingCount} bỏ lỡ)` : ''}`
+                                      : formatTimeAgo(hs.lastActiveTime)}
                                 </span>
                               </div>
                             </td>

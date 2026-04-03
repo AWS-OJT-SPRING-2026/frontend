@@ -35,6 +35,7 @@ const deadlineItems = [
     { id: 3, subject: 'Ngữ Văn', color: '#95E1D3', title: 'Phân tích đoạn trích Truyện Kiều', due: '3 ngày nữa', urgent: false, action: 'exercises' },
     { id: 4, subject: 'Toán học', color: '#FCE38A', title: 'Kiểm tra 15 phút – Số phức', due: 'Thứ 6', urgent: false, action: 'schedule' },
     { id: 5, subject: 'Tiếng Anh', color: '#B8B5FF', title: 'Luyện đề IELTS Mock Test 3', due: 'Tuần sau', urgent: false, action: 'review' },
+    { id: 6, subject: 'Lịch Sử', color: '#FFB5B5', title: 'Kiểm tra nhanh Chương 2', due: 'Đã quá hạn', urgent: false, action: 'exercises', missing: true },
 ];
 
 const streakDays = [
@@ -49,7 +50,6 @@ const streakDays = [
 
 const DEADLINE_TABS = ['Tất cả', 'Toán học', 'Tiếng Anh', 'Ngữ Văn'];
 const POMODORO_WORK = 25 * 60;
-const POMODORO_BREAK = 5 * 60;
 
 // ─── Component ───────────────────────────────────────────────────────────────
 
@@ -144,12 +144,6 @@ export function StudentHomepage() {
 
     const resetPomodoro = () => { setPomRunning(false); setPomMode('work'); setPomTime(pomFocusMins * 60); };
 
-    const switchPomMode = (mode: 'work' | 'break') => {
-        setPomRunning(false);
-        setPomMode(mode);
-        setPomTime(mode === 'work' ? pomFocusMins * 60 : pomBreakMins * 60);
-    };
-
     const getPomSettingValue = (view: string) => {
         if (view === 'focus') return pomFocusMins;
         if (view === 'shortBreak') return pomBreakMins;
@@ -205,10 +199,6 @@ export function StudentHomepage() {
         ? 'bg-[#1A1A1A] border-2 border-[#EEEEEE] shadow-[4px_4px_0_0_#EEEEEE] hover:shadow-[0_0_15px_#FF6B4A] transition-all duration-300'
         : 'bg-white shadow-sm hover:shadow-md transition-all duration-300';
 
-    const cardFlat = isDark
-        ? 'bg-[#1A1A1A] border border-white/10'
-        : 'bg-white border border-gray-100';
-
     const text = isDark ? 'text-[#f3f4f6]' : 'text-[#1A1A1A]';
     const textMuted = isDark ? 'text-[#94a3b8]' : 'text-gray-400';
     const divider = isDark ? 'divide-white/10' : 'divide-gray-100';
@@ -222,7 +212,7 @@ export function StudentHomepage() {
             <div className="flex items-center justify-between mb-8">
                 <div>
                     <p className={`text-sm font-bold uppercase tracking-widest mb-1 ${textMuted}`}>
-                        Chào mừng đến với <span className="text-[#FF6B4A]">Slothub</span>
+                        Chào mừng đến với Slothub<span className="text-[#FF6B4A]">Edu</span>
                     </p>
                     {quote ? (
                         <>
@@ -636,6 +626,11 @@ export function StudentHomepage() {
                                         <span className="text-[10px] font-extrabold px-2 py-0.5 rounded-full" style={{ backgroundColor: item.color + '60', color: '#1A1A1A' }}>
                                             {item.subject}
                                         </span>
+                                        {item.missing && (
+                                            <span className={`text-[10px] font-extrabold px-2 py-0.5 rounded-full uppercase ${isDark ? 'bg-[#3a3f46] text-[#ff8b63] border border-[#ff8b63]/40' : 'bg-[#3b3b3b] text-[#ffb1a0]'}`}>
+                                                BỎ LỠ
+                                            </span>
+                                        )}
                                         <span className={`text-xs font-semibold ${item.urgent ? 'text-[#FF6B4A] font-extrabold' : textMuted}`}>
                                             {item.urgent && '⚠️ '}{item.due}
                                         </span>
@@ -737,7 +732,7 @@ export function StudentHomepage() {
             </div>
 
             <footer className={`mt-10 text-center text-xs font-semibold ${textMuted}`}>
-                © 2024 Slothub – Nền tảng học tập thông minh.
+                © 2024 SlothubEdu – Nền tảng học tập thông minh.
             </footer>
         </div>
     );

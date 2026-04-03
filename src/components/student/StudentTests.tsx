@@ -3,13 +3,13 @@ import { useLocation, useNavigate } from 'react-router-dom';
 import {
     CheckCircle, ClipboardText, Clock, BookOpen, CaretRight,
     ArrowCounterClockwise, Star, Hourglass, WarningCircle,
-    Medal, MagnifyingGlass, Funnel, ListNumbers, XCircle
+    Medal, MagnifyingGlass, Funnel, ListNumbers, XCircle, Archive
 } from '@phosphor-icons/react';
 import { useSettings } from '../../context/SettingsContext';
 import { assignmentService, AssignmentResponse, AssignmentDetailResponse, SubmissionResponse, AssignmentAttemptResponse, AssignmentResultResponse } from '../../services/assignmentService';
 import { authService } from '../../services/authService';
 
-type TestStatus = 'pending' | 'in_progress' | 'completed';
+type TestStatus = 'pending' | 'in_progress' | 'completed' | 'missing';
 type TestCategory = 'homework' | 'exam';
 
 interface Test {
@@ -109,7 +109,7 @@ function isUrgent(test: Test, nowMs: number) {
 type TimeAlert = 'opening' | 'ending' | 'deadline' | null;
 
 function getTimeAlert(test: Test, nowMs: number): TimeAlert {
-    if (test.status === 'completed') return null;
+    if (test.status === 'completed' || test.status === 'missing') return null;
 
     if (test.category === 'exam') {
         const startMs = test.startTimeIso ? new Date(test.startTimeIso).getTime() : NaN;
@@ -131,17 +131,6 @@ function getTimeAlert(test: Test, nowMs: number): TimeAlert {
 
     return isUrgent(test, nowMs) ? 'deadline' : null;
 }
-
-const allTests: Test[] = [
-    { id: 1, title: 'Kiểm tra giữa kỳ: Ngữ Văn 12', subject: 'Ngữ Văn', duration: 45, questionCount: 10, dueDate: '10/03/2026', status: 'in_progress', category: 'exam', className: '11C1' },
-    { id: 2, title: 'Bài tập trắc nghiệm: Toán Đại số tổ hợp', subject: 'Toán học', duration: 30, questionCount: 15, dueDate: '12/03/2026', status: 'pending', category: 'homework', className: '11C1', lessonKey: 'Toán học|11C1|08:00', lessonLabel: 'Tiết 08:00 - 09:30', lessonDate: '16/03/2026' },
-    { id: 3, title: 'Bài kiểm tra Lịch sử Chương 3', subject: 'Lịch Sử', duration: 20, questionCount: 8, dueDate: '11/03/2026', status: 'pending', category: 'exam', className: '11C1' },
-    { id: 4, title: 'Kiểm tra cuối kỳ: Vật Lý 12', subject: 'Vật Lý', duration: 60, questionCount: 20, dueDate: '01/03/2026', status: 'completed', category: 'exam', score: 8.5, submittedAt: '01/03/2026', correctCount: 17, className: '11C1' },
-    { id: 5, title: 'Bài tập Tiếng Anh: Reading', subject: 'Tiếng Anh', duration: 25, questionCount: 12, dueDate: '28/02/2026', status: 'completed', category: 'homework', score: 9.0, submittedAt: '27/02/2026', correctCount: 11, className: '11C1', lessonKey: 'Tiếng Anh|11C1|13:30', lessonLabel: 'Tiết 13:30 - 15:00', lessonDate: '17/03/2026' },
-    { id: 6, title: 'Kiểm tra Hóa học: Điện hóa', subject: 'Hóa Học', duration: 35, questionCount: 10, dueDate: '25/02/2026', status: 'completed', category: 'exam', score: 6.5, submittedAt: '25/02/2026', correctCount: 7, className: '11C1' },
-    { id: 7, title: 'Bài tập Toán: Xác suất cơ bản', subject: 'Toán học', duration: 20, questionCount: 10, dueDate: '13/03/2026', status: 'pending', category: 'homework', className: '11C1', lessonKey: 'Toán học|11C1|08:00', lessonLabel: 'Tiết 08:00 - 09:30', lessonDate: '16/03/2026' },
-    { id: 8, title: 'Bài tập Lịch sử: Chiến tranh thế giới', subject: 'Lịch Sử', duration: 25, questionCount: 12, dueDate: '14/03/2026', status: 'pending', category: 'homework', className: '11C1', lessonKey: 'Lịch sử|11C1|08:00', lessonLabel: 'Tiết 08:00 - 09:30', lessonDate: '19/03/2026' },
-];
 
 const reviewQuestionsByTest: Record<number, ReviewQuestion[]> = {
     4: [
@@ -186,15 +175,17 @@ const reviewQuestionsByTest: Record<number, ReviewQuestion[]> = {
     ],
 };
 
-function TestCard({ test, onStart, isDark, nowMs }: { test: Test; onStart: (t: Test) => Promise<void>; isDark: boolean; nowMs: number }) {
+function ExerciseCard({ test, onStart, isDark, nowMs }: { test: Test; onStart: (t: Test) => Promise<void>; isDark: boolean; nowMs: number }) {
     const bg = SUBJECT_BG[test.subject] ?? '#FCE38A';
-    const isCompleted = test.status === 'completed';
+    const isMissing = test.status === 'missing';
+    const isCompleted = test.status === 'completed' || isMissing;
     const timeAlert = getTimeAlert(test, nowMs);
     const urgent = !isCompleted && timeAlert !== null;
     const alertLabel = timeAlert === 'opening' ? 'SẮP MỞ' : timeAlert === 'deadline' ? 'SẮP HẾT' : null;
     const startMs = test.startTimeIso ? new Date(test.startTimeIso).getTime() : NaN;
     const isLockedUntilOpen = test.category === 'exam' && !isCompleted && !Number.isNaN(startMs) && nowMs < startMs;
     const openTooltip = isLockedUntilOpen ? `Mở sau: ${formatOpenTime(test.startTimeIso)}` : undefined;
+    const shouldSlowBlink = isDark && timeAlert === 'opening';
     const timeLabel = test.category === 'exam'
         ? (timeAlert === 'opening' ? 'Mở lúc' : 'Kết thúc')
         : 'Hạn';
@@ -205,12 +196,14 @@ function TestCard({ test, onStart, isDark, nowMs }: { test: Test; onStart: (t: T
         : test.dueDate;
 
     return (
-        <div className={`rounded-3xl overflow-hidden transition-all ${isDark ? 'bg-[#1A1A1A] border-2 border-[#EEEEEE] shadow-[4px_4px_0_0_#EEEEEE] hover:shadow-[0_0_15px_#FF6B4A] transition-all duration-300 hover:-translate-y-0.5' : 'bg-white border-2 border-[#1A1A1A] shadow-[4px_4px_0_0_#1A1A1A] hover:shadow-[6px_6px_0_0_#1A1A1A] hover:-translate-y-0.5'} ${urgent ? (isDark ? 'border border-[#ffc39d] shadow-[0_0_0_2px_rgba(255,120,73,0.12)] animate-[pulse_3.6s_ease-in-out_infinite]' : 'border-[#FFB48F] shadow-[0_0_0_2px_rgba(255,107,74,0.14)] animate-[pulse_3.6s_ease-in-out_infinite]') : ''}`}>
+        <div className={`rounded-3xl overflow-hidden transition-all ${isDark ? 'bg-[#1A1A1A] border-2 border-[#EEEEEE] shadow-[4px_4px_0_0_#EEEEEE] hover:shadow-[0_0_15px_#FF6B4A] transition-all duration-300 hover:-translate-y-0.5' : 'bg-white border-2 border-[#1A1A1A] shadow-[4px_4px_0_0_#1A1A1A] hover:shadow-[6px_6px_0_0_#1A1A1A] hover:-translate-y-0.5'} ${urgent ? (isDark ? 'border border-[#ffc39d] shadow-[0_0_0_2px_rgba(255,120,73,0.12)]' : 'border-[#FFB48F] shadow-[0_0_0_2px_rgba(255,107,74,0.14)]') : ''} ${shouldSlowBlink ? 'animate-soft-blink' : ''}`}>
             <div className="p-5 flex flex-col sm:flex-row sm:items-center gap-4">
                 {/* Subject icon */}
                 <div className={`w-14 h-14 rounded-2xl flex items-center justify-center shrink-0 relative ${isDark ? 'border border-[#1A1A1A]/20' : 'border-2 border-[#1A1A1A] shadow-[2px_2px_0_0_#1A1A1A]'}`} style={{ backgroundColor: isDark ? `${bg}66` : bg }}>
                     {isCompleted
-                        ? <CheckCircle className={`w-7 h-7 ${isDark ? 'text-emerald-300' : 'text-emerald-700'}`} weight="fill" />
+                        ? isMissing
+                            ? <Archive className={`w-7 h-7 ${isDark ? 'text-rose-300' : 'text-rose-700'}`} weight="fill" />
+                            : <CheckCircle className={`w-7 h-7 ${isDark ? 'text-emerald-300' : 'text-emerald-700'}`} weight="fill" />
                         : <ClipboardText className={`w-7 h-7 ${isDark ? 'text-amber-200' : 'text-[#1A1A1A]'}`} weight="fill" />
                     }
                 </div>
@@ -234,6 +227,11 @@ function TestCard({ test, onStart, isDark, nowMs }: { test: Test; onStart: (t: T
                                 Đang làm
                             </span>
                         )}
+                        {isMissing && (
+                            <span className={`text-[10px] font-extrabold px-3 py-1 rounded-full uppercase ${isDark ? 'bg-[#3a3f46] text-[#ff8b63] border border-[#ff8b63]/40' : 'bg-[#3b3b3b] text-[#ffb1a0] border-2 border-[#1A1A1A]'}`}>
+                                Bỏ lỡ
+                            </span>
+                        )}
                     </div>
                     <h3 className={`font-extrabold text-base truncate ${isDark ? 'text-[#1A1A1A]' : 'text-[#1A1A1A]'}`}>{test.title}</h3>
                     <div className="flex flex-wrap items-center gap-x-4 gap-y-2 mt-1.5 text-xs font-bold">
@@ -242,8 +240,8 @@ function TestCard({ test, onStart, isDark, nowMs }: { test: Test; onStart: (t: T
 
                         {isCompleted ? (
                             <span className={`flex items-center gap-1 ${isDark ? 'text-[#1A1A1A]/50' : 'text-[#1A1A1A]/70'}`}>
-                                <CheckCircle className="w-4 h-4 text-emerald-500" weight="fill" />
-                                {test.correctCount}/{test.questionCount} câu đúng
+                                {isMissing ? <Archive className="w-4 h-4 text-rose-500" weight="fill" /> : <CheckCircle className="w-4 h-4 text-emerald-500" weight="fill" />}
+                                {isMissing ? 'Không nộp bài' : `${test.correctCount}/${test.questionCount} câu đúng`}
                             </span>
                         ) : (
                             <span className={`flex items-center gap-1 px-2 py-0.5 rounded-md ${urgent ? (isDark ? 'text-[#ff8b63] font-black' : 'text-[#FF6B4A] font-black') : (isDark ? 'text-[#1A1A1A]/50' : 'text-[#1A1A1A]/70')}`}>
@@ -257,10 +255,10 @@ function TestCard({ test, onStart, isDark, nowMs }: { test: Test; onStart: (t: T
 
                 {/* Score + action */}
                 <div className="shrink-0 flex items-center gap-3">
-                    {isCompleted && test.score != null && (
+                        {isCompleted && test.score != null && (
                         <div className="text-right">
-                            <div className={`text-3xl font-extrabold ${isDark ? 'text-white' : 'text-[#1A1A1A]'}'`}>{test.score.toFixed(1)}</div>
-                            <div className="text-[10px] font-extrabold text-gray-400 uppercase tracking-widest">Điểm số</div>
+                                <div className={`text-3xl font-extrabold ${isMissing ? 'text-rose-500' : (isDark ? 'text-white' : 'text-[#1A1A1A]')}'`}>{test.score.toFixed(1)}</div>
+                                <div className="text-[10px] font-extrabold text-gray-400 uppercase tracking-widest">{isMissing ? 'BỎ LỠ' : 'Điểm số'}</div>
                         </div>
                     )}
                     <button
@@ -297,9 +295,10 @@ function TestDetailView({
     onDetailedReview: () => void;
     isDark: boolean;
 }) {
-    const isCompleted = test.status === 'completed';
+    const isMissing = test.status === 'missing';
+    const isCompleted = test.status === 'completed' || isMissing;
     const isInProgress = test.status === 'in_progress';
-    const statusLabel = isCompleted ? 'Đã hoàn thành' : isInProgress ? 'Đang làm dở' : 'Chưa làm';
+    const statusLabel = isMissing ? 'Bỏ lỡ' : isCompleted ? 'Đã hoàn thành' : isInProgress ? 'Đang làm dở' : 'Chưa làm';
     const lessonDate = test.lessonDate ?? scheduleDate;
     const isExam = test.category === 'exam';
     const testNotStarted = Boolean(
@@ -324,16 +323,13 @@ function TestDetailView({
                     <span className={`text-[10px] font-extrabold px-3 py-1 rounded-full ${isDark ? 'border border-[#1A1A1A]/20 bg-[#2a2a31] text-[#f8fafc]' : 'border-2 border-[#1A1A1A] text-[#1A1A1A] shadow-[2px_2px_0_0_#1A1A1A]'}`} style={{ backgroundColor: isDark ? undefined : SUBJECT_BG[test.subject] }}>
                         {test.subject}
                     </span>
-                    <span className={`text-[10px] font-extrabold px-3 py-1 rounded-full border-2 border-[#1A1A1A] shadow-[2px_2px_0_0_#1A1A1A] ${isCompleted ? 'bg-emerald-100 text-emerald-700' : isInProgress ? 'bg-[#FF6B4A] text-white animate-pulse' : 'bg-gray-100 text-gray-600'}`}>
+                    <span className={`text-[10px] font-extrabold px-3 py-1 rounded-full border-2 border-[#1A1A1A] shadow-[2px_2px_0_0_#1A1A1A] ${isMissing ? 'bg-rose-100 text-rose-700' : isCompleted ? 'bg-emerald-100 text-emerald-700' : isInProgress ? 'bg-[#FF6B4A] text-white animate-pulse' : 'bg-gray-100 text-gray-600'}`}>
                         {statusLabel}
                     </span>
                 </div>
 
                 <div>
                     <h1 className={`text-2xl md:text-3xl font-black leading-tight ${isDark ? 'text-[#1A1A1A]' : 'text-[#1A1A1A]'}`}>{test.title}</h1>
-                    <p className={`text-sm font-bold mt-2 ${isDark ? 'text-gray-500' : 'text-[#1A1A1A]/60'}`}>
-                        Giao diện demo thông tin chi tiết bài làm trước khi vào làm bài/xem kết quả.
-                    </p>
                 </div>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
@@ -373,11 +369,15 @@ function TestDetailView({
                 </div>
 
                 {isCompleted && (
-                    <div className="rounded-2xl border-2 border-emerald-200 bg-emerald-50 p-4 flex items-center justify-between gap-3">
+                    <div className={`rounded-2xl border-2 p-4 flex items-center justify-between gap-3 ${isMissing ? 'border-amber-300 bg-amber-50' : 'border-emerald-200 bg-emerald-50'}`}>
                         <div>
-                            <p className="text-[10px] font-extrabold uppercase tracking-widest text-emerald-700/70 mb-1">Kết quả</p>
-                            <p className="text-lg font-extrabold text-emerald-700">{test.correctCount ?? 0}/{test.questionCount} câu đúng - {test.score?.toFixed(1) ?? '0.0'} điểm</p>
-                            <p className="text-sm font-bold text-emerald-700/80 mt-1">Bạn đã làm bài này rồi, không thể bắt đầu làm lại.</p>
+                            <p className={`text-[10px] font-extrabold uppercase tracking-widest mb-1 ${isMissing ? 'text-amber-700/80' : 'text-emerald-700/70'}`}>Kết quả</p>
+                            <p className={`text-lg font-extrabold ${isMissing ? 'text-amber-800' : 'text-emerald-700'}`}>
+                                {isMissing ? '0 điểm - KHÔNG NỘP BÀI' : `${test.correctCount ?? 0}/${test.questionCount} câu đúng - ${test.score?.toFixed(1) ?? '0.0'} điểm`}
+                            </p>
+                            <p className={`text-sm font-bold mt-1 ${isMissing ? 'text-amber-700/90' : 'text-emerald-700/80'}`}>
+                                {isMissing ? 'Bạn đã quá hạn nộp bài. Hãy xem đáp án chi tiết để ôn tập.' : 'Bạn đã làm bài này rồi, không thể bắt đầu làm lại.'}
+                            </p>
                         </div>
                     </div>
                 )}
@@ -419,6 +419,7 @@ function DetailedReviewView({ test, result, detail, onBack, isDark }: {
     onBack: () => void;
     isDark: boolean;
 }) {
+    const isMissedResult = result?.submissionStatus === 'MISSED' || test.status === 'missing';
     const detailQuestionMap = useMemo(() => {
         const map = new Map<number, AssignmentDetailResponse['questions'][number]>();
         (detail?.questions ?? []).forEach(question => map.set(question.id, question));
@@ -453,7 +454,7 @@ function DetailedReviewView({ test, result, detail, onBack, isDark }: {
                 question: q.questionText,
                 choices: fullChoices.length > 0 ? fullChoices : fallbackChoices,
                 explanation: status === 'skipped'
-                    ? 'Bạn chưa chọn đáp án cho câu này.'
+                    ? 'Bạn chưa chọn đáp án.'
                     : (status === 'correct' ? 'Bạn đã chọn đáp án đúng.' : 'Bạn đã chọn đáp án chưa chính xác.'),
                 status,
             };
@@ -477,16 +478,22 @@ function DetailedReviewView({ test, result, detail, onBack, isDark }: {
                 {'<-'} Quay lại kết quả
             </button>
 
-            <div className={`rounded-3xl p-6 md:p-8 space-y-6 ${isDark ? 'bg-[#1A1A1A] border-2 border-[#EEEEEE] shadow-[4px_4px_0_0_#EEEEEE] hover:shadow-[0_0_15px_#FF6B4A] transition-all duration-300' : 'bg-white border-2 border-[#1A1A1A] shadow-[4px_4px_0_0_rgba(26,26,26,1)]'}`}>
+            <div className={`rounded-3xl p-6 md:p-8 space-y-6 ${isMissedResult ? (isDark ? 'bg-[#22252b] border-2 border-[#8d929b]/40 shadow-[4px_4px_0_0_#8d929b]/50' : 'bg-[#f1f3f5] border-2 border-[#9CA3AF] shadow-[4px_4px_0_0_#9CA3AF]') : (isDark ? 'bg-[#1A1A1A] border-2 border-[#EEEEEE] shadow-[4px_4px_0_0_#EEEEEE] hover:shadow-[0_0_15px_#FF6B4A] transition-all duration-300' : 'bg-white border-2 border-[#1A1A1A] shadow-[4px_4px_0_0_rgba(26,26,26,1)]')}`}>
                 <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 border-b-2 border-[#1A1A1A]/10 pb-5">
                     <div>
-                        <p className="text-xs font-extrabold text-gray-400 uppercase tracking-widest">Xem lại đáp án chi tiết</p>
-                        <h1 className="text-2xl md:text-3xl font-black text-[#1A1A1A]">{test.title}</h1>
+                        <p className="text-xs font-extrabold text-gray-400 uppercase tracking-widest">{isMissedResult ? 'Kết quả bài bỏ lỡ' : 'Xem lại đáp án chi tiết'}</p>
+                        <h1 className="text-2xl md:text-3xl font-black text-[#1A1A1A]">{isMissedResult ? 'Kết quả: 0 điểm (Không nộp bài)' : test.title}</h1>
                     </div>
                     <div className="text-sm font-extrabold text-[#1A1A1A]/70 bg-[#F7F7F2] rounded-xl border-2 border-[#1A1A1A]/10 px-4 py-2">
-                        {result?.correctCount ?? test.correctCount ?? 0}/{result?.totalQuestions ?? test.questionCount} câu đúng
+                        {isMissedResult ? `0/${result?.totalQuestions ?? test.questionCount} câu đúng` : `${result?.correctCount ?? test.correctCount ?? 0}/${result?.totalQuestions ?? test.questionCount} câu đúng`}
                     </div>
                 </div>
+
+                {isMissedResult && (
+                    <div className="rounded-2xl border-2 border-amber-300 bg-amber-50 px-4 py-3 text-sm font-bold text-amber-800">
+                        Bạn đã quá hạn nộp bài. Dưới đây là đáp án tham khảo để ôn tập.
+                    </div>
+                )}
 
                 {questions.length === 0 ? (
                     <div className="text-center py-14 border-2 border-dashed border-[#1A1A1A]/20 rounded-2xl bg-[#F7F7F2]">
@@ -502,7 +509,7 @@ function DetailedReviewView({ test, result, detail, onBack, isDark }: {
                                 : (isCorrect ? 'bg-emerald-100 text-emerald-700 border-emerald-300' : 'bg-rose-100 text-rose-700 border-rose-300');
 
                             return (
-                                <div key={q.id} className="rounded-2xl border-2 border-[#1A1A1A]/10 p-4 md:p-5 bg-[#FDFDFD]">
+                                <div key={q.id} className={`rounded-2xl border-2 p-4 md:p-5 ${isSkipped ? 'border-amber-300 bg-amber-50/70' : 'border-[#1A1A1A]/10 bg-[#FDFDFD]'}`}>
                                     <div className="flex flex-wrap items-center gap-2 mb-3">
                                         <span className={`text-[10px] font-extrabold px-2.5 py-1 rounded-full border ${questionBadgeClass}`}>Câu {q.id}</span>
                                         {isSkipped ? (
@@ -537,6 +544,12 @@ function DetailedReviewView({ test, result, detail, onBack, isDark }: {
                                         })}
                                     </div>
 
+                                    {isMissedResult && (
+                                        <div className="mt-3 rounded-xl border border-gray-300 bg-gray-100 px-3 py-2.5 text-sm font-bold text-gray-700">
+                                            Bạn chưa chọn đáp án
+                                        </div>
+                                    )}
+
                                     <div className="mt-3 rounded-xl border border-[#1A1A1A]/10 bg-[#F7F7F2] px-3 py-2.5 text-sm font-semibold text-[#1A1A1A]/75">
                                         <span className="font-extrabold text-[#1A1A1A]">Giải thích:</span> {q.explanation}
                                     </div>
@@ -551,8 +564,9 @@ function DetailedReviewView({ test, result, detail, onBack, isDark }: {
 }
 
 function TestTakingView({ test, onBack, onOpenDetailedReview, isDark }: { test: Test; onBack: () => void; onOpenDetailedReview: () => void; isDark: boolean }) {
-    if (test.status === 'completed') {
+    if (test.status === 'completed' || test.status === 'missing') {
         const bg = SUBJECT_BG[test.subject] ?? '#FCE38A';
+        const isMissing = test.status === 'missing';
         return (
             <div className="max-w-4xl mx-auto space-y-6 pb-20">
                 <button onClick={onBack} className="flex items-center gap-2 text-gray-400 hover:text-[#1A1A1A] font-extrabold text-sm transition-colors">
@@ -562,10 +576,10 @@ function TestTakingView({ test, onBack, onOpenDetailedReview, isDark }: { test: 
                     <div className="flex flex-col md:flex-row items-center gap-8 border-b-2 border-[#1A1A1A]/10 pb-8 mb-8">
                         <div className="w-36 h-36 rounded-full border-4 border-[#1A1A1A] flex items-center justify-center shrink-0 relative" style={{ backgroundColor: bg }}>
                             <div className="text-center">
-                                <div className="text-4xl font-extrabold text-[#1A1A1A]">{test.score?.toFixed(1)}</div>
+                                <div className="text-4xl font-extrabold text-[#1A1A1A]">{(test.score ?? 0).toFixed(1)}</div>
                                 <div className="text-[10px] font-extrabold text-[#1A1A1A]/50 uppercase tracking-widest mt-1">Điểm</div>
                             </div>
-                            {(test.score ?? 0) >= 8 && (
+                            {!isMissing && (test.score ?? 0) >= 8 && (
                                 <div className="absolute -bottom-2 -right-2 bg-[#FF6B4A] text-white p-2 rounded-full border-2 border-[#1A1A1A]">
                                     <Medal className="w-6 h-6" weight="fill" />
                                 </div>
@@ -573,20 +587,20 @@ function TestTakingView({ test, onBack, onOpenDetailedReview, isDark }: { test: 
                         </div>
                         <div className="flex-1 space-y-4">
                             <div>
-                                <h2 className="text-3xl font-black text-[#1A1A1A]">{(test.score ?? 0) >= 8 ? 'Xuất sắc!' : 'Đã hoàn thành!'}</h2>
+                                <h2 className="text-3xl font-black text-[#1A1A1A]">{isMissing ? 'Đã bỏ lỡ' : (test.score ?? 0) >= 8 ? 'Xuất sắc!' : 'Đã hoàn thành!'}</h2>
                                 <p className="text-[#1A1A1A]/60 font-bold mt-1 text-lg">{test.title}</p>
                             </div>
 
                             <div className="flex flex-wrap items-center gap-4 text-sm font-extrabold">
-                                <div className="flex items-center gap-2 bg-emerald-50 text-emerald-700 px-4 py-2 rounded-2xl border-2 border-emerald-200">
-                                    <CheckCircle className="w-5 h-5" weight="fill" /> {test.correctCount}/{test.questionCount} câu đúng
+                                <div className={`flex items-center gap-2 px-4 py-2 rounded-2xl border-2 ${isMissing ? 'bg-rose-50 text-rose-700 border-rose-200' : 'bg-emerald-50 text-emerald-700 border-emerald-200'}`}>
+                                    {isMissing ? <Archive className="w-5 h-5" weight="fill" /> : <CheckCircle className="w-5 h-5" weight="fill" />} {isMissing ? 'KHÔNG NỘP' : `${test.correctCount}/${test.questionCount} câu đúng`}
                                 </div>
                                 <div className="flex items-center gap-2 bg-[#FF6B4A]/10 text-[#FF6B4A] px-4 py-2 rounded-2xl border-2 border-[#FF6B4A]/20">
-                                    <Star className="w-5 h-5" weight="fill" /> {test.score?.toFixed(1)} điểm
+                                    <Star className="w-5 h-5" weight="fill" /> {(test.score ?? 0).toFixed(1)} điểm
                                 </div>
-                                {(test.score ?? 0) >= 8 && (
+                                {!isMissing && (test.score ?? 0) >= 8 && (
                                     <div className="flex items-center gap-2 bg-amber-50 text-amber-600 px-4 py-2 rounded-2xl border-2 border-amber-200 animate-bounce">
-                                        <Medal className="w-5 h-5" weight="fill" /> +50 XP EduCare
+                                        <Medal className="w-5 h-5" weight="fill" /> +50 XP SlothubEdu
                                     </div>
                                 )}
                             </div>
@@ -903,7 +917,9 @@ function apiAssignmentToTest(a: AssignmentResponse, isSubmitted: boolean, submis
     const dueDateStr = dueDate
         ? `${String(dueDate.getDate()).padStart(2, '0')}/${String(dueDate.getMonth() + 1).padStart(2, '0')}/${dueDate.getFullYear()}`
         : '';
-    const status: TestStatus = isSubmitted ? 'completed' : 'pending';
+    const status: TestStatus = isSubmitted
+        ? (submission?.submissionStatus === 'MISSING' ? 'missing' : 'completed')
+        : 'pending';
     const correctCount = submission ? submission.answers.filter(ans => ans.isCorrect).length : undefined;
     return {
         id: a.assignmentID,
@@ -914,7 +930,7 @@ function apiAssignmentToTest(a: AssignmentResponse, isSubmitted: boolean, submis
         dueDate: dueDateStr,
         status,
         category: a.assignmentType === 'ASSIGNMENT' ? 'homework' : 'exam',
-        score: submission?.score ?? undefined,
+        score: submission?.score ?? a.score ?? undefined,
         submittedAt: submission?.submitTime
             ? (() => { const d = new Date(submission.submitTime); return `${String(d.getDate()).padStart(2,'0')}/${String(d.getMonth()+1).padStart(2,'0')}/${d.getFullYear()}`; })()
             : undefined,
@@ -942,7 +958,7 @@ export function StudentTests() {
     // API data state
     const [apiActiveAssignments, setApiActiveAssignments] = useState<Test[]>([]);
     const [apiCompletedTests, setApiCompletedTests] = useState<Test[]>([]);
-    const [apiLoaded, setApiLoaded] = useState(false);
+    const [isLoadingAssignments, setIsLoadingAssignments] = useState(true);
 
     // Real test-taking state
     const [takingDetail, setTakingDetail] = useState<AssignmentDetailResponse | null>(null);
@@ -961,7 +977,14 @@ export function StudentTests() {
 
     const loadApiData = useCallback(async () => {
         const token = authService.getToken();
-        if (!token) return;
+        setIsLoadingAssignments(true);
+        if (!token) {
+            setApiActiveAssignments([]);
+            setApiCompletedTests([]);
+            setIsLoadingAssignments(false);
+            return;
+        }
+        const startedAt = Date.now();
         try {
             const [active, submitted] = await Promise.all([
                 assignmentService.getStudentActiveAssignments(token).catch(() => [] as AssignmentResponse[]),
@@ -993,9 +1016,15 @@ export function StudentTests() {
             setApiActiveAssignments(activeTests);
             setApiCompletedTests(completedTests);
         } catch {
-            // silent - fall back to mock data
+            setApiActiveAssignments([]);
+            setApiCompletedTests([]);
         } finally {
-            setApiLoaded(true);
+            const elapsed = Date.now() - startedAt;
+            const minDelay = 550;
+            if (elapsed < minDelay) {
+                await new Promise((resolve) => setTimeout(resolve, minDelay - elapsed));
+            }
+            setIsLoadingAssignments(false);
         }
     }, []);
 
@@ -1041,20 +1070,8 @@ export function StudentTests() {
         }
     }, [location.search]);
 
-    // Merge API data with mock data; API data takes precedence
-    const apiIds = new Set([
-        ...apiActiveAssignments.map(t => t.id),
-        ...apiCompletedTests.map(t => t.id),
-    ]);
-    const mockAvailable = allTests.filter(t => t.status !== 'completed' && !apiIds.has(t.id));
-    const mockCompleted = allTests.filter(t => t.status === 'completed' && !apiIds.has(t.id));
-
-    const availableTests = apiLoaded
-        ? [...apiActiveAssignments, ...mockAvailable]
-        : allTests.filter(t => t.status !== 'completed');
-    const completedTests = apiLoaded
-        ? [...apiCompletedTests, ...mockCompleted]
-        : allTests.filter(t => t.status === 'completed');
+    const availableTests = apiActiveAssignments;
+    const completedTests = apiCompletedTests;
 
 
     // Apply filters
@@ -1148,7 +1165,27 @@ export function StudentTests() {
     const handleStartTaking = async () => {
         if (!selectedTest) return;
 
+        if (selectedTest.status === 'missing') {
+            const realId = (selectedTest as any)._assignmentId as number | undefined;
+            const token = authService.getToken();
+            if (realId && token) {
+                try {
+                    const detail = await assignmentService.getDetail(realId, token).catch(() => null);
+                    setTakingDetail(detail);
+                    const result = await assignmentService.getResult(realId, token);
+                    setResultDetail(result);
+                } catch {
+                    setTakingDetail(null);
+                    setResultDetail(null);
+                }
+            }
+            // Keep missed assignments on the result summary screen first.
+            setExerciseViewMode('taking');
+            return;
+        }
+
         if (selectedTest.status === 'completed') {
+            setTakingDetail(null);
             const realId = (selectedTest as any)._assignmentId as number | undefined;
             const token = authService.getToken();
             if (realId && token) {
@@ -1188,7 +1225,7 @@ export function StudentTests() {
 
     const handleOpenDetailedReview = async () => {
         if (!selectedTest) return;
-        if (selectedTest.status === 'completed') {
+        if (selectedTest.status === 'completed' || selectedTest.status === 'missing') {
             const realId = (selectedTest as any)._assignmentId as number | undefined;
             const token = authService.getToken();
             if (realId && token) {
@@ -1207,7 +1244,7 @@ export function StudentTests() {
     };
 
     if (selectedTest) {
-        if (selectedTest.status === 'completed' && exerciseViewMode === 'detailedReview') {
+        if ((selectedTest.status === 'completed' || selectedTest.status === 'missing') && exerciseViewMode === 'detailedReview') {
             return (
                 <div className="min-h-screen p-6 lg:p-8" style={{ fontFamily: "'Nunito', sans-serif" }}>
                     <DetailedReviewView test={selectedTest} result={resultDetail} detail={takingDetail} onBack={() => setExerciseViewMode('detail')} isDark={isDark} />
@@ -1231,7 +1268,7 @@ export function StudentTests() {
         }
 
         // Real API test taking
-        if (takingDetail) {
+        if (takingDetail && selectedTest.status !== 'completed' && selectedTest.status !== 'missing') {
             return (
                 <div className="min-h-screen p-6 lg:p-8" style={{ fontFamily: "'Nunito', sans-serif" }}>
                     <RealTestTakingView
@@ -1253,7 +1290,7 @@ export function StudentTests() {
                 <TestTakingView
                     test={selectedTest}
                     onBack={() => setExerciseViewMode('detail')}
-                    onOpenDetailedReview={() => setExerciseViewMode('detailedReview')}
+                    onOpenDetailedReview={handleOpenDetailedReview}
                     isDark={isDark}
                 />
             </div>
@@ -1327,8 +1364,13 @@ export function StudentTests() {
 
             {/* Test List */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-                {filteredTests.length > 0
-                    ? filteredTests.map((t) => <TestCard key={t.id} test={t} onStart={handleOpenTest} isDark={isDark} nowMs={nowMs} />)
+                {isLoadingAssignments
+                    ? <div className={`col-span-1 md:col-span-2 text-center py-20 rounded-3xl border-dashed ${isDark ? 'bg-[#1a1a1f] border-none' : 'bg-white/50 border-2 border-[#1A1A1A]/20'}`}>
+                        <Hourglass className={`w-12 h-12 mx-auto mb-3 animate-spin ${isDark ? 'text-[#9ca3af]' : 'text-[#1A1A1A]/40'}`} weight="fill" />
+                        <div className={`font-extrabold text-lg ${isDark ? 'text-[#9ca3af]' : 'text-[#1A1A1A]/60'}`}>Đang tải bài tập...</div>
+                    </div>
+                    : filteredTests.length > 0
+                    ? filteredTests.map((t) => <ExerciseCard key={t.id} test={t} onStart={handleOpenTest} isDark={isDark} nowMs={nowMs} />)
                     : <div className={`col-span-1 md:col-span-2 text-center py-20 rounded-3xl border-dashed ${isDark ? 'bg-[#1a1a1f] border-none' : 'bg-white/50 border-2 border-[#1A1A1A]/20'}`}>
                         <Funnel className="w-12 h-12 text-[#1A1A1A]/20 mx-auto mb-3" />
                         <div className={`font-extrabold text-lg ${isDark ? 'text-[#1A1A1A]/50' : 'text-[#1A1A1A]/60'}`}>Không tìm thấy bài tập phù hợp</div>

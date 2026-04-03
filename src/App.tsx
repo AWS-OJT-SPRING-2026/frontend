@@ -55,8 +55,8 @@ function LoadingOverlay({ type, phase }: { type: TransitionType; phase: Transiti
     >
       <img
         src="/logo.svg"
-        alt="Slothub"
-        className={`w-20 rounded-xl bg-white mb-6 ${msg.isGoodbye ? 'opacity-60' : 'animate-pulse'}`}
+        alt="SlothubEdu"
+        className={`w-16 rounded-xl bg-white mb-6 ${msg.isGoodbye ? 'opacity-60' : 'animate-pulse'}`}
       />
 
       {/* Bouncing dots – hidden on goodbye screen */}
@@ -100,7 +100,7 @@ function SessionExpiredOverlay() {
       className="fixed inset-0 z-[100] flex flex-col items-center justify-center bg-[#1A1A1A]"
       style={{ fontFamily: "'Nunito', sans-serif" }}
     >
-      <img src="/logo.svg" alt="EduCare" className="w-20 rounded-xl bg-white mb-6 opacity-70" />
+      <img src="/logo.svg" alt="SlothubEdu" className="w-16 rounded-xl bg-white mb-6 opacity-70" />
 
       {/* Icon cảnh báo */}
       <div className="w-16 h-16 rounded-full bg-amber-500/20 border-2 border-amber-500/50 flex items-center justify-center mb-4">

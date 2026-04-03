@@ -161,9 +161,9 @@ const vi = {
 
   // ── User Support ──
   userMenu: {
-    supportTitle: 'Hỗ trợ EduCare',
+    supportTitle: 'Hỗ trợ SlothubEdu',
     adminOnline: 'Admin đang trực tuyến',
-    supportGreeting: 'Chào bạn! EduCare có thể giúp gì cho bạn?',
+    supportGreeting: 'Chào bạn! SlothubEdu có thể giúp gì cho bạn?',
     thankYou: 'Cảm ơn bạn. Yêu cầu của bạn đang được xử lý.',
     hotline: 'Hotline 24/7',
     callNow: 'Gọi ngay',

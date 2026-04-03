@@ -37,6 +37,8 @@ export interface AssignmentResponse {
   subjectName: string | null;
   totalQuestions: number;
   totalSubmissions: number;
+  submissionStatus?: 'IN_PROGRESS' | 'SUBMITTED' | 'MISSING' | null;
+  score?: number | null;
 }
 
 export interface AssignmentDetailResponse extends AssignmentResponse {
@@ -47,12 +49,17 @@ export interface AssignmentReportResponse {
   assignmentId: number;
   title: string;
   className: string;
+  totalStudents: number;
   totalSubmissions: number;
+  completionRate: number;
+  passRate: number;
+  scoreDistribution: number[];
   averageScore: number;
   highestScore: number;
   lowestScore: number;
   studentResults: StudentSubmissionSummary[];
   questionStats: QuestionStatistic[];
+  questionAnalysis: QuestionAnalysis[];
 }
 
 export interface StudentSubmissionSummary {
@@ -62,6 +69,8 @@ export interface StudentSubmissionSummary {
   score: number;
   timeTaken: number;
   submitTime: string;
+  submissionStatus?: 'IN_PROGRESS' | 'SUBMITTED' | 'MISSING' | null;
+  submissionTimingStatus?: 'ON_TIME' | 'LATE' | 'MISSING' | null;
 }
 
 export interface QuestionStatistic {
@@ -71,6 +80,19 @@ export interface QuestionStatistic {
   correctCount: number;
   totalAnswered: number;
   accuracyRate: number;
+}
+
+export interface QuestionAnalysis extends QuestionStatistic {
+  options: QuestionOptionStatistic[];
+}
+
+export interface QuestionOptionStatistic {
+  optionId: number;
+  optionLabel: string;
+  optionContent: string;
+  isCorrect: boolean;
+  selectedCount: number;
+  wrongSelectedCount: number;
 }
 
 export interface SubmissionResponse {
@@ -85,6 +107,7 @@ export interface SubmissionResponse {
   expiredAt: string | null;
   submittedAt: string | null;
   submitTime: string;
+  submissionStatus?: 'IN_PROGRESS' | 'SUBMITTED' | 'MISSING' | null;
   answers: SubmissionAnswerDetail[];
 }
 
@@ -99,6 +122,7 @@ export interface AssignmentResultResponse {
   correctCount: number;
   timeTaken: number;
   submitTime: string;
+  submissionStatus?: 'SUBMITTED' | 'MISSED' | null;
   questions: AssignmentResultQuestion[];
 }
 
@@ -185,6 +209,9 @@ export const assignmentService = {
 
   getReport: (id: number, token: string) =>
     api.get<ApiWrapper<AssignmentReportResponse>>(`/assignments/${id}/report`, token).then(r => r.result),
+
+  getSubmissionDetailForTeacher: (submissionId: number, token: string) =>
+    api.get<ApiWrapper<SubmissionResponse>>(`/assignments/submissions/${submissionId}`, token).then(r => r.result),
 
   getRandomQuestions: (params: { bankId?: number; difficultyLevel?: number; limit?: number }, token: string) => {
     const query = new URLSearchParams();

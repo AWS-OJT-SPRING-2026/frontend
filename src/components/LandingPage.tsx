@@ -42,11 +42,11 @@ export function LandingPage() {
                     <div className="flex items-center gap-3 select-none">
                         <img
                             src="/logo.svg"
-                            alt="Slothub"
-                            className="h-14 w-14 shrink-0 rounded-2xl shadow-lg block"
+                            alt="SlothubEdu"
+                            className="h-12 w-12 shrink-0 rounded-2xl shadow-lg block"
                         />
                         <span className={cn('text-xl font-extrabold tracking-tight leading-none', isDark ? 'text-white' : 'text-[#1A1A1A]')}>
-                            Sloth<span className="text-[#FF6B4A]">ub</span>
+                            Slothub<span className="text-[#FF6B4A]">Edu</span>
                         </span>
                     </div>
                     <nav className={cn(
@@ -252,7 +252,7 @@ export function LandingPage() {
                         <div className="absolute bottom-6 left-6 w-14 h-14 rounded-full border-2 border-[#B8B5FF]/20 pointer-events-none" />
                         <p className="text-xs font-extrabold text-white/40 uppercase tracking-widest">{t.landing.ctaSubtitle}</p>
                         <h2 className="text-3xl md:text-4xl font-extrabold text-white leading-tight relative z-10">
-                            {t.landing.ctaTitle1}<br />{t.landing.ctaTitle2} <span className="text-[#FF6B4A]">EduCare</span>?
+                            {t.landing.ctaTitle1}<br />{t.landing.ctaTitle2} Slothub<span className="text-[#FF6B4A]">Edu</span>?
                         </h2>
                         <p className="text-white/50 text-lg max-w-xl mx-auto font-semibold relative z-10">
                             {t.landing.ctaDesc}
@@ -278,8 +278,8 @@ export function LandingPage() {
                     <div className="grid grid-cols-1 md:grid-cols-4 gap-10 mb-10">
                         <div className="space-y-4">
                             <div className="flex items-center gap-2">
-                                <img src="/logo.svg" alt="EduCare" className="h-9 w-9 rounded-xl shadow-sm" />
-                                <span className="font-extrabold text-white text-lg">EduCare</span>
+                                <img src="/logo.svg" alt="SlothubEdu" className="h-8 w-8 rounded-xl shadow-sm" />
+                                <span className="font-extrabold text-white text-lg">Slothub<span className="text-[#FF6B4A]">Edu</span></span>
                             </div>
                             <p className="text-sm leading-relaxed font-semibold">
                                 {t.landing.footerDesc}
@@ -308,7 +308,7 @@ export function LandingPage() {
                         ))}
                     </div>
                     <div className="border-t border-white/10 pt-8 flex flex-col sm:flex-row justify-between items-center gap-4 text-xs font-bold">
-                        <p>© 2024 EduCare Corporation. All rights reserved.</p>
+                        <p>© 2024 SlothubEdu Corporation. All rights reserved.</p>
                     </div>
                 </div>
             </footer>
