@@ -62,6 +62,14 @@ function normalizeRole(input: unknown): User["role"] {
 function deriveUserFromToken(token: string, fallbackUsername?: string): User {
   const payload = tryDecodeJwt(token);
 
+  // Prefer numeric user ID claim from backend; fallback to sub for compatibility.
+  const idCandidate =
+    payload?.userID ??
+    payload?.userId ??
+    payload?.userid ??
+    payload?.sub ??
+    "";
+
   // Common patterns:
   // - scope: "ADMIN TEACHER" or "ROLE_ADMIN"
   // - roles: ["ADMIN"]
@@ -75,7 +83,7 @@ function deriveUserFromToken(token: string, fallbackUsername?: string): User {
     roleFromScope;
 
   return {
-    id: String(payload?.sub ?? ""),
+    id: String(idCandidate),
     email: String(payload?.email ?? ""),
     name: String(
       payload?.name ?? payload?.fullName ?? payload?.username ?? fallbackUsername ?? "User"

@@ -101,6 +101,21 @@ export function StudentReview() {
     const urlApplied = useRef(false);
 
     const resolveCurrentUserId = (): number => {
+        const token = localStorage.getItem('auth_token') ?? localStorage.getItem('token');
+        if (token) {
+            try {
+                const payloadPart = token.split('.')[1];
+                if (payloadPart) {
+                    const normalized = payloadPart.replace(/-/g, '+').replace(/_/g, '/');
+                    const decoded = JSON.parse(atob(normalized.padEnd(normalized.length + ((4 - normalized.length % 4) % 4), '=')));
+                    const jwtUserId = Number(decoded?.userID ?? decoded?.userId ?? decoded?.userid);
+                    if (Number.isFinite(jwtUserId) && jwtUserId > 0) return jwtUserId;
+                }
+            } catch {
+                // Fall back to localStorage user parsing below.
+            }
+        }
+
         try {
             const rawUser = localStorage.getItem('user');
             if (!rawUser) return 1;
@@ -110,6 +125,10 @@ export function StudentReview() {
         } catch {
             return 1;
         }
+    };
+
+    const getAuthToken = (): string | null => {
+        return localStorage.getItem('auth_token') ?? localStorage.getItem('token');
     };
 
     const currentUserId = resolveCurrentUserId();
@@ -149,20 +168,41 @@ export function StudentReview() {
 
     const fetchHistory = async () => {
         try {
-            const res = await fetch(`${FAST_API_URL}/subjects/submissions/${currentUserId}`);
+            const token = getAuthToken();
+            if (!token) {
+                setHistory([]);
+                return;
+            }
+
+            const res = await fetch(`${FAST_API_URL}/subjects/submissions/me`, {
+                headers: {
+                    Authorization: `Bearer ${token}`,
+                },
+            });
             if (res.ok) {
                 const data = await res.json();
                 setHistory(data);
+                return;
             }
+
+            setHistory([]);
         } catch (err) {
             console.error('Error fetching history:', err);
+            setHistory([]);
         }
     };
 
     const handleViewDetail = async (submissionid: number) => {
         setLoadingDetail(true);
         try {
-            const res = await fetch(`${FAST_API_URL}/subjects/submissions/${submissionid}/details`);
+            const token = getAuthToken();
+            if (!token) return;
+
+            const res = await fetch(`${FAST_API_URL}/subjects/submissions/${submissionid}/details`, {
+                headers: {
+                    Authorization: `Bearer ${token}`,
+                },
+            });
             if (res.ok) {
                 const data = await res.json();
                 setHistoryDetail(data);
@@ -281,9 +321,13 @@ export function StudentReview() {
 
         setIsSubmitting(true);
         try {
+            const token = getAuthToken();
             const response = await fetch(`${FAST_API_URL}/subjects/submit-quiz`, {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
+                headers: {
+                    'Content-Type': 'application/json',
+                    ...(token ? { Authorization: `Bearer ${token}` } : {}),
+                },
                 body: JSON.stringify(submissionData)
             });
             if (!response.ok) throw new Error("Submission failed");
