@@ -4,7 +4,6 @@ import { AuthProvider, useAuth } from './context/AuthContext';
 import { SettingsProvider, useSettings } from './context/SettingsContext';
 import type { TransitionType, TransitionPhase } from './context/AuthContext';
 import { Login } from './components/Login';
-import { Register } from './components/Register';
 import { ForgotPassword } from './components/ForgotPassword';
 import { LandingPage } from './components/LandingPage';
 import { AdminLayout } from './components/admin/AdminLayout';
@@ -155,18 +154,14 @@ function ProtectedRoute({ role, children }: { role: string; children: React.Reac
 }
 
 function AuthPages() {
-  const [authView, setAuthView] = useState<'login' | 'register' | 'forgot'>('login');
+  const [authView, setAuthView] = useState<'login' | 'forgot'>('login');
 
   return (
     <PublicRoute>
       {authView === 'login' && (
         <Login
-          onSwitchToRegister={() => setAuthView('register')}
           onSwitchToForgotPassword={() => setAuthView('forgot')}
         />
-      )}
-      {authView === 'register' && (
-        <Register onSwitchToLogin={() => setAuthView('login')} />
       )}
       {authView === 'forgot' && (
         <ForgotPassword onBackToLogin={() => setAuthView('login')} />

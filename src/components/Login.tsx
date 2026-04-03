@@ -10,11 +10,10 @@ import { ThemeSwitcher } from './ThemeSwitcher';
 import { cn } from '../lib/utils';
 
 interface LoginProps {
-  onSwitchToRegister: () => void;
   onSwitchToForgotPassword: () => void;
 }
 
-export function Login({ onSwitchToRegister, onSwitchToForgotPassword }: LoginProps) {
+export function Login({ onSwitchToForgotPassword }: LoginProps) {
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
@@ -291,7 +290,7 @@ export function Login({ onSwitchToRegister, onSwitchToForgotPassword }: LoginPro
           <div className="mt-6 text-center">
             <p className={cn('text-sm font-semibold', isDark ? 'text-gray-400' : 'text-gray-400')}>
               Cần hỗ trợ kỹ thuật?{' '}
-              <button onClick={onSwitchToRegister} className="text-[#FF6B4A] hover:text-[#ff5535] font-extrabold transition-colors">
+              <button onClick={onSwitchToForgotPassword} className="text-[#FF6B4A] hover:text-[#ff5535] font-extrabold transition-colors">
                 Trung tâm trợ giúp
               </button>
             </p>

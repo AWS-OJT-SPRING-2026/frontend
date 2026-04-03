@@ -1,7 +1,6 @@
 import { api } from "./api";
 import {
   LoginRequest,
-  RegisterRequest,
   AuthResponse,
   User,
 } from "../types/auth";
@@ -138,38 +137,6 @@ function normalizeAuthResponse(
   return { token, user };
 }
 
-function normalizeRegisterResponse(
-  raw: any,
-  fallbackUsername?: string,
-  fallbackEmail?: string,
-  fallbackFullName?: string,
-): AuthResponse {
-  const root: AnyObj = raw ?? {};
-  const data: AnyObj = root.result ?? root.data ?? root;
-
-  // Register endpoint returns UserResponse and doesn't return token.
-  const roleLower = String(
-    data.role?.roleName ?? data.roleName ?? data.role ?? "",
-  ).toLowerCase();
-
-  const user: User = {
-    id: String(data.userID ?? data.userId ?? data.id ?? ""),
-    email: String(data.email ?? fallbackEmail ?? ""),
-    name: String(
-      data.fullName ?? data.name ?? fallbackFullName ?? fallbackUsername ?? "",
-    ),
-    avatarUrl: typeof data.avatarUrl === 'string' ? data.avatarUrl : undefined,
-    role:
-      roleLower === "admin"
-        ? "admin"
-        : roleLower === "teacher"
-          ? "teacher"
-          : "student",
-  };
-
-  return { token: "", user };
-}
-
 function buildQuickDemoUser(role: QuickLoginRole): User {
   if (role === "admin") {
     return {
@@ -213,16 +180,6 @@ export const authService = {
     };
   },
 
-  async register(userData: RegisterRequest): Promise<AuthResponse> {
-    // Backend: http://localhost:8080/api/users/register
-    const raw = await api.post<any>("/users/register", userData);
-    return normalizeRegisterResponse(
-      raw,
-      userData.username,
-      userData.email,
-      userData.fullName,
-    );
-  },
 
   async logoutRemote(): Promise<void> {
     if (this.isQuickDemoSession()) return;
