@@ -42,11 +42,11 @@ export function LandingPage() {
                     <div className="flex items-center gap-3 select-none">
                         <img
                             src="/logo.svg"
-                            alt="AntiEdu"
+                            alt="Slothub"
                             className="h-14 w-14 shrink-0 rounded-2xl shadow-lg block"
                         />
                         <span className={cn('text-xl font-extrabold tracking-tight leading-none', isDark ? 'text-white' : 'text-[#1A1A1A]')}>
-                            Anti<span className="text-[#FF6B4A]">Edu</span>
+                            Sloth<span className="text-[#FF6B4A]">ub</span>
                         </span>
                     </div>
                     <nav className={cn(

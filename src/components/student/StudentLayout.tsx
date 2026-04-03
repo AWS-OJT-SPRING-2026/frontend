@@ -39,9 +39,9 @@ export function StudentLayout() {
                 isExpanded ? "w-60" : "group/sidebar w-20 hover:w-60"
             )}>
                 <div className="mb-6 flex items-center pl-4 w-full h-14">
-                    <img src="/logo.svg" alt="AntiEdu" className="w-14 h-14 shrink-0 rounded-xl block" />
+                    <img src="/logo.svg" alt="Slothub" className="w-14 h-14 shrink-0 rounded-xl block" />
                     <span className={cn("ml-3 text-white font-extrabold text-lg whitespace-nowrap", labelClass)}>
-                        Anti<span className="text-[#FF6B4A]">Edu</span>
+                        Sloth<span className="text-[#FF6B4A]">ub</span>
                     </span>
                 </div>
 

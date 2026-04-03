@@ -56,7 +56,7 @@ function LoadingOverlay({ type, phase }: { type: TransitionType; phase: Transiti
     >
       <img
         src="/logo.svg"
-        alt="AntiEdu"
+        alt="Slothub"
         className={`w-20 rounded-xl bg-white mb-6 ${msg.isGoodbye ? 'opacity-60' : 'animate-pulse'}`}
       />
 

@@ -152,7 +152,7 @@ export function StudentHomepage() {
                 <div>
                     <p className={`text-sm font-bold uppercase tracking-widest mb-1 ${isDark ? 'text-[#94a3b8]' : 'text-gray-400'}`}>
                         Chào mừng đến với
-                        <span className="text-[#FF6B4A] ml-1">AntiEdu</span>
+                        <span className="text-[#FF6B4A] ml-1">Slothub</span>
                     </p>
                     {quote ? (
                         <>
@@ -464,7 +464,7 @@ export function StudentHomepage() {
             )}
 
             <footer className={`mt-10 text-center text-xs font-semibold ${isDark ? 'text-[#94a3b8]' : 'text-gray-400'}`}>
-                © 2024 AntiEdu – Nền tảng học tập thông minh.
+                © 2024 Slothub – Nền tảng học tập thông minh.
             </footer>
         </div>
     );

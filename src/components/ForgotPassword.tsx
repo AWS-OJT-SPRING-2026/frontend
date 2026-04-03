@@ -315,9 +315,9 @@ export function ForgotPassword({ onBackToLogin }: ForgotPasswordProps) {
 
           {/* Logo */}
           <div className="relative z-10 flex items-center gap-3">
-            <img src="/logo.svg" alt="AntiEdu" className="w-20 rounded-xl bg-white" />
-            <span className="text-white text-2xl font-extrabold tracking-tight">Anti
-              <span className="text-[#FF6B4A]">Edu</span>
+            <img src="/logo.svg" alt="Slothub" className="w-20 rounded-xl bg-white" />
+            <span className="text-white text-2xl font-extrabold tracking-tight">Sloth
+              <span className="text-[#FF6B4A]">ub</span>
             </span>
           </div>
 
