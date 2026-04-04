@@ -63,12 +63,12 @@ export interface AssignmentReportResponse {
 }
 
 export interface StudentSubmissionSummary {
-  submissionId: number;
+  submissionId: number | null;
   userId: number;
   studentName: string;
-  score: number;
-  timeTaken: number;
-  submitTime: string;
+  score: number | null;
+  timeTaken: number | null;
+  submitTime: string | null;
   submissionStatus?: 'IN_PROGRESS' | 'SUBMITTED' | 'MISSING' | null;
   submissionTimingStatus?: 'ON_TIME' | 'LATE' | 'MISSING' | null;
 }
