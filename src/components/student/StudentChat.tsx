@@ -55,15 +55,18 @@ export function StudentChat() {
     
     const parseContentSegments = (content: string): Segment[] => {
         if (!content) return [];
-        const regex = />>>\[UI_WIDGET:([^\]]+)\]<<</g;
+        // Xóa marker correction nếu có
+        let cleaned = content.replace(/\n?___WIDGET_CORRECTION___\n?/g, '');
+        // Regex linh hoạt: chấp nhận 0-3 dấu >, 0-3 dấu <, có thể có quotes/backticks
+        const regex = /["`'`]*>{0,3}\[UI_WIDGET:([^\]]+)\]<{0,3}["`'`]*/g;
         const segments: Segment[] = [];
         let lastIndex = 0;
         let match;
         
-        while ((match = regex.exec(content)) !== null) {
+        while ((match = regex.exec(cleaned)) !== null) {
             // Text trước widget
             if (match.index > lastIndex) {
-                segments.push({ type: 'text', content: content.slice(lastIndex, match.index) });
+                segments.push({ type: 'text', content: cleaned.slice(lastIndex, match.index) });
             }
             // Widget
             const parts = match[1].split('|');
@@ -71,10 +74,13 @@ export function StudentChat() {
             lastIndex = regex.lastIndex;
         }
         // Text còn lại sau widget cuối
-        if (lastIndex < content.length) {
-            segments.push({ type: 'text', content: content.slice(lastIndex) });
+        if (lastIndex < cleaned.length) {
+            const remaining = cleaned.slice(lastIndex).trim();
+            if (remaining) {
+                segments.push({ type: 'text', content: remaining });
+            }
         }
-        return segments.length > 0 ? segments : [{ type: 'text', content }];
+        return segments.length > 0 ? segments : [{ type: 'text', content: cleaned }];
     };
 
     const [sessions, setSessions] = useState<ChatSession[]>([]);
