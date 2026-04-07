@@ -943,6 +943,16 @@ function apiAssignmentToTest(a: AssignmentResponse, isSubmitted: boolean, submis
     } as Test & { _assignmentId: number };
 }
 
+function hasValidAssignmentId(assignmentId: number | null | undefined): assignmentId is number {
+    return Number.isInteger(assignmentId) && Number(assignmentId) > 0;
+}
+
+function isCompletedSubmission(submission: SubmissionResponse): boolean {
+    const hasSubmitTime = Boolean(submission.submittedAt || submission.submitTime);
+    const isFinishedStatus = submission.submissionStatus !== 'IN_PROGRESS' && submission.submissionStatus !== 'MISSING';
+    return hasValidAssignmentId(submission.assignmentId) && hasSubmitTime && isFinishedStatus;
+}
+
 export function StudentTests() {
     const { theme } = useSettings();
     const isDark = theme === 'dark';
@@ -990,19 +1000,24 @@ export function StudentTests() {
                 assignmentService.getStudentActiveAssignments(token).catch(() => [] as AssignmentResponse[]),
                 assignmentService.getStudentSubmissions(token).catch(() => [] as SubmissionResponse[]),
             ]);
-            // Only treat rows with submit timestamp as completed; started-but-unsubmitted attempts are not completed.
-            const completedSubmissions = submitted.filter(s => Boolean(s.submittedAt || s.submitTime));
+            // Completed tab only includes truly submitted rows that have a valid assignment id.
+            const completedSubmissions = submitted.filter(isCompletedSubmission);
 
             const submittedMap = new Map<number, SubmissionResponse>();
-            completedSubmissions.forEach(s => submittedMap.set(s.assignmentId, s));
+            completedSubmissions.forEach(s => {
+                if (hasValidAssignmentId(s.assignmentId)) {
+                    submittedMap.set(s.assignmentId, s);
+                }
+            });
 
             const activeTests = active
                 .filter(a => !submittedMap.has(a.assignmentID))
                 .map(a => apiAssignmentToTest(a, false));
             const completedTests = completedSubmissions
                 .map(s => {
-                    const a = active.find(x => x.assignmentID === s.assignmentId) ?? {
-                        assignmentID: s.assignmentId, title: s.assignmentTitle,
+                    const assignmentId = s.assignmentId;
+                    const a = active.find(x => x.assignmentID === assignmentId) ?? {
+                        assignmentID: assignmentId, title: s.assignmentTitle ?? 'Bài đã nộp',
                         assignmentType: 'TEST', format: 'MULTIPLE_CHOICE', status: 'CLOSED',
                         startTime: null, endTime: null, deadline: null,
                         durationMinutes: 45,
@@ -1011,7 +1026,8 @@ export function StudentTests() {
                         totalQuestions: s.answers.length, totalSubmissions: 0,
                     } as AssignmentResponse;
                     return apiAssignmentToTest(a, true, s);
-                });
+                })
+                .filter(t => hasValidAssignmentId(t._assignmentId));
 
             setApiActiveAssignments(activeTests);
             setApiCompletedTests(completedTests);
@@ -1078,7 +1094,10 @@ export function StudentTests() {
     const filteredTests = useMemo(() => {
         const sourceList = activeTab === 'available' ? availableTests : completedTests;
         return sourceList.filter(t => {
-            const matchSearch = t.title.toLowerCase().includes(searchQuery.toLowerCase()) || t.subject.toLowerCase().includes(searchQuery.toLowerCase());
+            const query = searchQuery.toLowerCase();
+            const title = (t.title ?? '').toLowerCase();
+            const subject = (t.subject ?? '').toLowerCase();
+            const matchSearch = title.includes(query) || subject.includes(query);
             const matchCategory = filterCategory === 'all' ? true : t.category === filterCategory;
             const matchSchedule = !scheduleFilter
                 ? true

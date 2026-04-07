@@ -97,8 +97,8 @@ export interface QuestionOptionStatistic {
 
 export interface SubmissionResponse {
   submissionID: number;
-  assignmentId: number;
-  assignmentTitle: string;
+  assignmentId: number | null;
+  assignmentTitle: string | null;
   userId: number;
   studentName: string;
   score: number;
@@ -106,7 +106,7 @@ export interface SubmissionResponse {
   startedAt: string | null;
   expiredAt: string | null;
   submittedAt: string | null;
-  submitTime: string;
+  submitTime: string | null;
   submissionStatus?: 'IN_PROGRESS' | 'SUBMITTED' | 'MISSING' | null;
   answers: SubmissionAnswerDetail[];
 }

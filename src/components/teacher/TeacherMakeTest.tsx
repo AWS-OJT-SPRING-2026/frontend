@@ -51,9 +51,13 @@ function formatRelativeTime(dt: string | null) {
     return rtf.format(-Math.round(diffMs / 86_400_000), 'day');
 }
 
-function getSubmissionTimingTag(status?: 'ON_TIME' | 'LATE' | 'MISSING' | null) {
+type TeacherReportSubmissionStatus = 'ON_TIME' | 'LATE' | 'IN_PROGRESS' | 'NOT_STARTED' | 'MISSING';
+
+function getSubmissionTimingTag(status?: TeacherReportSubmissionStatus | null) {
     if (status === 'ON_TIME') return { label: 'Nộp đúng hạn', cls: 'bg-green-50 text-green-700 border-green-200' };
     if (status === 'LATE') return { label: 'Nộp muộn', cls: 'bg-yellow-50 text-yellow-700 border-yellow-200' };
+    if (status === 'IN_PROGRESS') return { label: 'Đang làm', cls: 'bg-blue-50 text-blue-700 border-blue-200' };
+    if (status === 'NOT_STARTED') return { label: 'Chưa làm bài', cls: 'bg-slate-100 text-slate-700 border-slate-300' };
     return { label: 'Không nộp', cls: 'bg-red-50 text-red-700 border-red-200' };
 }
 
@@ -983,6 +987,7 @@ function DetailView({ id, isDark, onReport, onDeleted }: { id: number; isDark: b
 // ─── Report View ──────────────────────────────────────────────────────────────
 function ReportView({ id, isDark }: { id: number; isDark: boolean }) {
     const [report, setReport] = useState<AssignmentReportResponse | null>(null);
+    const [assignmentDetail, setAssignmentDetail] = useState<AssignmentDetailResponse | null>(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState('');
     const [expandedDistractors, setExpandedDistractors] = useState<Record<number, boolean>>({});
@@ -999,8 +1004,14 @@ function ReportView({ id, isDark }: { id: number; isDark: boolean }) {
         setSelectedSubmission(null);
         setDetailFilter('all');
         setTableFilter('all');
-        assignmentService.getReport(id, token)
-            .then(r => setReport(r))
+        Promise.all([
+            assignmentService.getReport(id, token),
+            assignmentService.getDetail(id, token).catch(() => null),
+        ])
+            .then(([reportData, detailData]) => {
+                setReport(reportData);
+                setAssignmentDetail(detailData);
+            })
             .catch(e => setError(e.message ?? 'Lỗi'))
             .finally(() => setLoading(false));
     }, [id]);
@@ -1036,16 +1047,37 @@ function ReportView({ id, isDark }: { id: number; isDark: boolean }) {
     const passRate = Math.max(0, Math.min(100, report.passRate ?? 0));
     const scoreDistribution = report.scoreDistribution ?? [0, 0, 0];
 
-    const isMissingStudent = (student: AssignmentReportResponse['studentResults'][number]) => {
-        if (student.submissionTimingStatus === 'MISSING') return true;
-        if (student.submissionStatus === 'MISSING') return true;
-        if (!student.submissionId && !student.submitTime) return true;
-        return false;
+    const dueAtIso = assignmentDetail?.assignmentType === 'TEST'
+        ? (assignmentDetail?.endTime ?? assignmentDetail?.deadline)
+        : (assignmentDetail?.deadline ?? assignmentDetail?.endTime);
+    const dueAtMs = dueAtIso ? new Date(dueAtIso).getTime() : NaN;
+    const isPastDue = !Number.isNaN(dueAtMs) && Date.now() > dueAtMs;
+
+    const resolveStudentStatus = (student: AssignmentReportResponse['studentResults'][number]): TeacherReportSubmissionStatus => {
+        const hasSubmitTime = Boolean(student.submitTime);
+        const isMarkedSubmitted = student.submissionStatus === 'SUBMITTED';
+
+        // Guard against backend rows that still carry ON_TIME/LATE while submitTime is missing.
+        if (hasSubmitTime && student.submissionTimingStatus === 'ON_TIME') return 'ON_TIME';
+        if (hasSubmitTime && student.submissionTimingStatus === 'LATE') return 'LATE';
+
+        if (hasSubmitTime || isMarkedSubmitted) {
+            return student.submissionTimingStatus === 'LATE' ? 'LATE' : 'ON_TIME';
+        }
+
+        if (student.submissionStatus === 'IN_PROGRESS') return 'IN_PROGRESS';
+        if (!isPastDue) return 'NOT_STARTED';
+        return 'MISSING';
     };
 
-    const onTimeCount = report.studentResults.filter(s => s.submissionTimingStatus === 'ON_TIME').length;
-    const lateCount = report.studentResults.filter(s => s.submissionTimingStatus === 'LATE').length;
-    const missingCount = report.studentResults.filter(isMissingStudent).length;
+    const studentRows = report.studentResults.map(student => ({
+        student,
+        displayStatus: resolveStudentStatus(student),
+    }));
+
+    const onTimeCount = studentRows.filter(row => row.displayStatus === 'ON_TIME').length;
+    const lateCount = studentRows.filter(row => row.displayStatus === 'LATE').length;
+    const missingCount = studentRows.filter(row => row.displayStatus !== 'ON_TIME' && row.displayStatus !== 'LATE').length;
 
     const distributionData = [
         { label: '< 5', sublabel: 'Yếu', count: scoreDistribution[0] ?? 0, color: '#ef4444', pct: submittedCount > 0 ? Math.round((scoreDistribution[0] ?? 0) / submittedCount * 100) : 0 },
@@ -1069,9 +1101,9 @@ function ReportView({ id, isDark }: { id: number; isDark: boolean }) {
         ? report.questionAnalysis
         : report.questionStats.map(q => ({ ...q, options: [] }));
 
-    const filteredStudents = report.studentResults.filter(s => {
-        if (tableFilter === 'submitted') return s.submissionTimingStatus === 'ON_TIME' || s.submissionTimingStatus === 'LATE';
-        if (tableFilter === 'missing') return isMissingStudent(s);
+    const filteredStudents = studentRows.filter(({ displayStatus }) => {
+        if (tableFilter === 'submitted') return displayStatus === 'ON_TIME' || displayStatus === 'LATE';
+        if (tableFilter === 'missing') return displayStatus === 'IN_PROGRESS' || displayStatus === 'NOT_STARTED' || displayStatus === 'MISSING';
         return true;
     });
 
@@ -1309,38 +1341,42 @@ function ReportView({ id, isDark }: { id: number; isDark: boolean }) {
                             </tr>
                         </thead>
                         <tbody className={`divide-y ${isDark ? 'divide-white/5' : 'divide-gray-50'}`}>
-                            {filteredStudents.map((s, i) => {
-                                const isMissing = isMissingStudent(s);
-                                const isLate = s.submissionTimingStatus === 'LATE';
+                            {filteredStudents.map(({ student: s, displayStatus }, i) => {
+                                const isSubmitted = displayStatus === 'ON_TIME' || displayStatus === 'LATE';
+                                const isMissing = displayStatus === 'MISSING';
+                                const isLate = displayStatus === 'LATE';
+                                const isInProgress = displayStatus === 'IN_PROGRESS';
                                 const rowBg = isMissing
                                     ? (isDark ? 'bg-red-900/10' : 'bg-red-50/40')
+                                    : isInProgress
+                                        ? (isDark ? 'bg-blue-900/10' : 'bg-blue-50/35')
                                     : isLate
                                         ? (isDark ? 'bg-yellow-900/10' : 'bg-yellow-50/30')
                                         : '';
                                 const scoreVal = Number(s.score ?? 0);
-                                const scoreColor = isMissing ? 'text-red-500' : scoreVal >= 8 ? 'text-green-600' : scoreVal >= 5 ? 'text-yellow-600' : 'text-red-500';
+                                const scoreColor = !isSubmitted ? (isMissing ? 'text-red-500' : 'text-slate-500') : scoreVal >= 8 ? 'text-green-600' : scoreVal >= 5 ? 'text-yellow-600' : 'text-red-500';
                                 return (
                                     <tr key={`${s.userId}-${s.submissionId ?? 'missing'}`} className={`${rowBg} transition-colors`}>
                                         <td className={`py-2.5 pr-4 font-bold ${sub}`}>{i + 1}</td>
                                         <td className={`py-2.5 pr-4 font-bold ${isMissing ? 'text-red-500' : txt}`}>{s.studentName}</td>
                                         <td className={`py-2.5 pr-4 text-center font-extrabold ${scoreColor}`}>
-                                            {isMissing ? '—' : (s.score?.toFixed(2) ?? '0.00')}
+                                            {!isSubmitted ? '—' : (s.score?.toFixed(2) ?? '0.00')}
                                         </td>
                                         <td className={`py-2.5 pr-4 text-center font-semibold ${sub}`}>
-                                            {isMissing ? 'N/A' : (s.timeTaken ? `${Math.floor(s.timeTaken / 60)}:${String(s.timeTaken % 60).padStart(2, '0')}` : '—')}
+                                            {!isSubmitted ? 'N/A' : (s.timeTaken ? `${Math.floor(s.timeTaken / 60)}:${String(s.timeTaken % 60).padStart(2, '0')}` : '—')}
                                         </td>
                                         <td className="py-2.5 pr-4 text-center">
-                                            <span className={`inline-flex items-center text-[11px] font-extrabold px-2.5 py-1 rounded-xl border ${getSubmissionTimingTag(s.submissionTimingStatus).cls}`}>
-                                                {getSubmissionTimingTag(s.submissionTimingStatus).label}
+                                            <span className={`inline-flex items-center text-[11px] font-extrabold px-2.5 py-1 rounded-xl border ${getSubmissionTimingTag(displayStatus).cls}`}>
+                                                {getSubmissionTimingTag(displayStatus).label}
                                             </span>
                                         </td>
                                         <td className={`py-2.5 px-4 text-center font-semibold ${sub}`}>
-                                            {isMissing ? 'N/A' : s.submitTime ? (
+                                            {!isSubmitted ? 'N/A' : s.submitTime ? (
                                                 <span title={formatDeadline(s.submitTime)}>{formatRelativeTime(s.submitTime)}</span>
                                             ) : 'N/A'}
                                         </td>
                                         <td className="py-2.5 text-center">
-                                            {!isMissing && (
+                                            {isSubmitted && (
                                                 <button
                                                     onClick={() => s.submissionId && handleViewSubmission(s.submissionId)}
                                                     className="inline-flex items-center justify-center w-8 h-8 rounded-xl border border-[#FF6B4A]/30 text-[#d64b2e] hover:bg-[#FF6B4A]/10 transition-colors"
