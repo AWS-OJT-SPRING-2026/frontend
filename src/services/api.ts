@@ -16,6 +16,18 @@ export interface BlobResult {
   headers: Headers;
 }
 
+async function safeFetch(input: RequestInfo | URL, init?: RequestInit): Promise<Response> {
+  try {
+    return await fetch(input, init);
+  } catch (error) {
+    // Browser CORS/network failures throw TypeError before an HTTP response exists.
+    if (error instanceof TypeError) {
+      throw new ApiError(0, 'Không thể kết nối máy chủ (lỗi mạng hoặc CORS).');
+    }
+    throw error;
+  }
+}
+
 function isLogoutEndpoint(endpoint: string): boolean {
   const normalized = endpoint.split('?')[0].replace(/\/+$/, '');
   return normalized === '/auth/logout';
@@ -84,7 +96,7 @@ async function handleResponse<T>(response: Response): Promise<T> {
 
 export const api = {
   async post<T>(endpoint: string, data: unknown): Promise<T> {
-    const response = await fetch(`${API_BASE_URL}${endpoint}`, {
+    const response = await safeFetch(`${API_BASE_URL}${endpoint}`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -103,7 +115,7 @@ export const api = {
       headers['Authorization'] = `Bearer ${token}`;
     }
 
-    const response = await fetch(`${API_BASE_URL}${endpoint}`, {
+    const response = await safeFetch(`${API_BASE_URL}${endpoint}`, {
       method: 'GET',
       headers,
     });
@@ -111,7 +123,7 @@ export const api = {
   },
 
   async authPost<T>(endpoint: string, data: unknown, token: string): Promise<T> {
-    const response = await fetch(`${API_BASE_URL}${endpoint}`, {
+    const response = await safeFetch(`${API_BASE_URL}${endpoint}`, {
       method: 'POST',
       headers: buildAuthHeaders(token, endpoint),
       body: JSON.stringify(data),
@@ -120,7 +132,7 @@ export const api = {
   },
 
   async authPut<T>(endpoint: string, data: unknown, token: string): Promise<T> {
-    const response = await fetch(`${API_BASE_URL}${endpoint}`, {
+    const response = await safeFetch(`${API_BASE_URL}${endpoint}`, {
       method: 'PUT',
       headers: buildAuthHeaders(token, endpoint),
       body: JSON.stringify(data),
@@ -129,7 +141,7 @@ export const api = {
   },
 
   async authPostForm<T>(endpoint: string, formData: FormData, token: string): Promise<T> {
-    const response = await fetch(`${API_BASE_URL}${endpoint}`, {
+    const response = await safeFetch(`${API_BASE_URL}${endpoint}`, {
       method: 'POST',
       headers: buildAuthHeaders(token, endpoint, false),
       body: formData,
@@ -138,7 +150,7 @@ export const api = {
   },
 
   async authPutForm<T>(endpoint: string, formData: FormData, token: string): Promise<T> {
-    const response = await fetch(`${API_BASE_URL}${endpoint}`, {
+    const response = await safeFetch(`${API_BASE_URL}${endpoint}`, {
       method: 'PUT',
       headers: buildAuthHeaders(token, endpoint, false),
       body: formData,
@@ -147,7 +159,7 @@ export const api = {
   },
 
   async authDelete<T>(endpoint: string, token: string): Promise<T> {
-    const response = await fetch(`${API_BASE_URL}${endpoint}`, {
+    const response = await safeFetch(`${API_BASE_URL}${endpoint}`, {
       method: 'DELETE',
       headers: buildAuthHeaders(token, endpoint),
     });
@@ -155,7 +167,7 @@ export const api = {
   },
 
   async authPatch<T>(endpoint: string, data: unknown, token: string): Promise<T> {
-    const response = await fetch(`${API_BASE_URL}${endpoint}`, {
+    const response = await safeFetch(`${API_BASE_URL}${endpoint}`, {
       method: 'PATCH',
       headers: buildAuthHeaders(token, endpoint),
       body: JSON.stringify(data),
@@ -164,7 +176,7 @@ export const api = {
   },
 
   async authPostBlob(endpoint: string, data: unknown, token: string): Promise<BlobResult> {
-    const response = await fetch(`${API_BASE_URL}${endpoint}`, {
+    const response = await safeFetch(`${API_BASE_URL}${endpoint}`, {
       method: 'POST',
       headers: buildAuthHeaders(token, endpoint),
       body: JSON.stringify(data),

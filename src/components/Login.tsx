@@ -42,6 +42,8 @@ export function Login({ onSwitchToForgotPassword }: LoginProps) {
       if (err instanceof ApiError) {
         if (err.message === 'ACCOUNT_LOCKED') {
           setIsLocked(true);
+        } else if (err.status === 0) {
+          setError('Không thể kết nối đến máy chủ. Vui lòng thử lại sau hoặc liên hệ quản trị viên.');
         } else if (err.status === 401 || err.status === 403) {
           setError('Tên đăng nhập hoặc mật khẩu không đúng.');
         } else {
