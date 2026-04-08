@@ -1,8 +1,10 @@
-import { useState } from 'react';
-import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
+import { useEffect, useState } from 'react';
+import { BrowserRouter, Routes, Route, Navigate, useNavigate } from 'react-router-dom';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { SettingsProvider, useSettings } from './context/SettingsContext';
 import type { TransitionType, TransitionPhase } from './context/AuthContext';
+import { authService } from './services/authService';
+import { getHomeRouteForRole } from './lib/roleRoutes';
 import { Login } from './components/Login';
 import { ForgotPassword } from './components/ForgotPassword';
 import { LandingPage } from './components/LandingPage';
@@ -170,6 +172,36 @@ function AuthPages() {
   );
 }
 
+function AuthCallbackPage() {
+  const { login } = useAuth();
+  const navigate = useNavigate();
+
+  useEffect(() => {
+    let cancelled = false;
+
+    const completeCallback = async () => {
+      const sessionAuth = await authService.getCurrentSessionAuth();
+      if (cancelled) return;
+
+      if (!sessionAuth) {
+        navigate('/login', { replace: true });
+        return;
+      }
+
+      login(sessionAuth.token, sessionAuth.user);
+      navigate(getHomeRouteForRole(sessionAuth.user.role), { replace: true });
+    };
+
+    void completeCallback();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [login, navigate]);
+
+  return <LoadingOverlay type={'login'} phase={1} />;
+}
+
 function AppRoutes() {
   const { isInitializing, isTransitioning, transitionType, transitionPhase, sessionExpired } = useAuth();
   const { t } = useSettings();
@@ -188,6 +220,7 @@ function AppRoutes() {
       {/* Public pages */}
       <Route path="/" element={<PublicRoute><LandingPage /></PublicRoute>} />
       <Route path="/login" element={<AuthPages />} />
+      <Route path="/auth/callback" element={<AuthCallbackPage />} />
 
       {/* Admin */}
       <Route path="/admin" element={<ProtectedRoute role="admin"><AdminLayout /></ProtectedRoute>}>

@@ -1,7 +1,6 @@
 import { useState, useEffect } from 'react';
 import { X, Check, Warning, Clock } from '@phosphor-icons/react';
 import { isPast24hAfterEnd, hasClassStarted } from '../../lib/timeUtils';
-import { authService } from '../../services/authService';
 import { timetableService, type AttendanceRequest } from '../../services/timetableService';
 import { useSettings } from '../../context/SettingsContext';
 
@@ -49,21 +48,12 @@ export function AttendanceModal({ isOpen, onClose, event, isAdmin }: AttendanceM
         let active = true;
 
         const loadAttendance = async () => {
-            const token = authService.getToken();
-            if (!token) {
-                if (!active) return;
-                setFetchError('Bạn chưa đăng nhập.');
-                setStudents([]);
-                setAttendance({});
-                return;
-            }
-
             setIsLoading(true);
             setFetchError(null);
             setSaveError(null);
 
             try {
-                const data = await timetableService.getAttendanceByTimetable(event.id, token);
+                const data = await timetableService.getAttendanceByTimetable(event.id);
                 if (!active) return;
 
                 const mappedStudents: AttendanceStudent[] = data.map((item) => ({
@@ -111,12 +101,6 @@ export function AttendanceModal({ isOpen, onClose, event, isAdmin }: AttendanceM
     const handleSave = async () => {
         if (!event) return;
 
-        const token = authService.getToken();
-        if (!token) {
-            setSaveError('Bạn chưa đăng nhập.');
-            return;
-        }
-
         setIsSaving(true);
         setSaveError(null);
 
@@ -131,7 +115,7 @@ export function AttendanceModal({ isOpen, onClose, event, isAdmin }: AttendanceM
                 };
             });
 
-            await timetableService.saveAttendance(event.id, requests, token);
+            await timetableService.saveAttendance(event.id, requests);
             onClose();
         } catch (error) {
             const message = error instanceof Error ? error.message : 'Không thể lưu điểm danh.';

@@ -2,6 +2,8 @@ import { useState, useEffect, useRef } from 'react';
 import { Brain, CaretDown, Check, ArrowRight, ArrowLeft, Trophy } from '@phosphor-icons/react';
 import { useSettings } from '../../context/SettingsContext';
 import { useSearchParams } from 'react-router-dom';
+import { authService } from '../../services/authService';
+import { profileService } from '../../services/profileService';
 
 import { FAST_API_BASE_URL as FAST_API_URL } from '../../services/env';
 
@@ -65,6 +67,7 @@ export function StudentReview() {
     const [history, setHistory] = useState<SubmissionHistory[]>([]);
     const [historyDetail, setHistoryDetail] = useState<SubmissionDetail | null>(null);
     const [loadingDetail, setLoadingDetail] = useState(false);
+    const [currentUserId, setCurrentUserId] = useState<number | null>(null);
 
     interface SubmissionHistory {
         submissionid: number;
@@ -100,38 +103,39 @@ export function StudentReview() {
     const urlQuestions = searchParams.get('questions');
     const urlApplied = useRef(false);
 
-    const resolveCurrentUserId = (): number => {
-        const token = localStorage.getItem('auth_token') ?? localStorage.getItem('token');
-        if (token) {
+    const getAuthToken = (): string | null => {
+        return authService.getToken();
+    };
+
+    useEffect(() => {
+        let cancelled = false;
+
+        const resolveCurrentUserId = async () => {
+            const token = getAuthToken();
+            if (!token) {
+                if (!cancelled) setCurrentUserId(null);
+                return;
+            }
+
             try {
-                const payloadPart = token.split('.')[1];
-                if (payloadPart) {
-                    const normalized = payloadPart.replace(/-/g, '+').replace(/_/g, '/');
-                    const decoded = JSON.parse(atob(normalized.padEnd(normalized.length + ((4 - normalized.length % 4) % 4), '=')));
-                    const jwtUserId = Number(decoded?.userID ?? decoded?.userId ?? decoded?.userid);
-                    if (Number.isFinite(jwtUserId) && jwtUserId > 0) return jwtUserId;
+                const profile = await profileService.getMyProfile(token);
+                const candidate = Number(profile.userID ?? profile.studentID ?? profile.teacherID);
+                if (!cancelled) {
+                    setCurrentUserId(Number.isFinite(candidate) && candidate > 0 ? candidate : null);
                 }
             } catch {
-                // Fall back to localStorage user parsing below.
+                if (!cancelled) {
+                    setCurrentUserId(null);
+                }
             }
-        }
+        };
 
-        try {
-            const rawUser = localStorage.getItem('user');
-            if (!rawUser) return 1;
-            const parsed = JSON.parse(rawUser);
-            const candidate = Number(parsed?.id);
-            return Number.isFinite(candidate) && candidate > 0 ? candidate : 1;
-        } catch {
-            return 1;
-        }
-    };
+        void resolveCurrentUserId();
 
-    const getAuthToken = (): string | null => {
-        return localStorage.getItem('auth_token') ?? localStorage.getItem('token');
-    };
-
-    const currentUserId = resolveCurrentUserId();
+        return () => {
+            cancelled = true;
+        };
+    }, []);
 
     useEffect(() => {
         fetch(`${FAST_API_URL}/subjects/`)
@@ -250,6 +254,10 @@ export function StudentReview() {
 
     const handleStartReview = async () => {
         if (!selectedSubjectId) return;
+        if (!currentUserId) {
+            alert(isEn ? 'Session expired. Please login again.' : 'Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại.');
+            return;
+        }
 
         const selectedLessonIds = lessons
             .filter((_, i) => selectedLessons[i])
@@ -302,6 +310,10 @@ export function StudentReview() {
 
     const handleSubmitQuiz = async () => {
         if (isSubmitting) return;
+        if (!currentUserId) {
+            alert(isEn ? 'Session expired. Please login again.' : 'Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại.');
+            return;
+        }
 
         const correctCount = answers.filter((ans, idx) => questions[idx] && ans === questions[idx].correct).length;
         const scoreVal = questions.length > 0 ? Math.round((correctCount / questions.length) * 10) : 0;

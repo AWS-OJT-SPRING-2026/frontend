@@ -1,14 +1,42 @@
-import { api } from "./api";
-import {
-  LoginRequest,
-  AuthResponse,
-  User,
-} from "../types/auth";
+import { fetchAuthSession, signIn, signOut } from 'aws-amplify/auth';
+import { AuthResponse, LoginRequest, User } from '../types/auth';
 
 export type QuickLoginRole = "admin" | "teacher" | "student";
 const QUICK_DEMO_SESSION_KEY = "educare_quick_demo_session";
+const COGNITO_ACCESS_TOKEN_KEY = "educare_cognito_access_token";
+const COGNITO_ID_TOKEN_KEY = "educare_cognito_id_token";
+const COGNITO_REFRESH_TOKEN_KEY = "educare_cognito_refresh_token";
 
-type AnyObj = Record<string, any>;
+const AUTH_STORAGE_MODE = String(import.meta.env.VITE_AUTH_STORAGE ?? 'local').toLowerCase();
+
+type StorageLike = Pick<Storage, 'getItem' | 'setItem' | 'removeItem'>;
+
+type MaybeTokenWithToString = { toString: () => string };
+type MaybeSessionTokens = { refreshToken?: MaybeTokenWithToString };
+
+function getAuthStorage(): StorageLike {
+  if (AUTH_STORAGE_MODE === 'session') {
+    return sessionStorage;
+  }
+  return localStorage;
+}
+
+function extractRefreshToken(tokens: unknown): string {
+  const refreshToken = (tokens as MaybeSessionTokens | undefined)?.refreshToken;
+  if (!refreshToken) {
+    return '';
+  }
+  try {
+    return refreshToken.toString();
+  } catch {
+    return '';
+  }
+}
+
+const ALLOWED_LOGOUT_URLS = [
+  "http://localhost:5173",
+  "https://slothub.id.vn",
+] as const;
 
 type JwtPayload = {
   sub?: string;
@@ -20,6 +48,8 @@ type JwtPayload = {
   roles?: string[];
   authorities?: string[];
   role?: string;
+  /** Cognito custom user pool attribute — contains the application role. */
+  "custom:role"?: string;
   avatarUrl?: string;
   exp?: number;
   iat?: number;
@@ -61,21 +91,13 @@ function normalizeRole(input: unknown): User["role"] {
 function deriveUserFromToken(token: string, fallbackUsername?: string): User {
   const payload = tryDecodeJwt(token);
 
-  // Prefer numeric user ID claim from backend; fallback to sub for compatibility.
-  const idCandidate =
-    payload?.userID ??
-    payload?.userId ??
-    payload?.userid ??
-    payload?.sub ??
-    "";
+  const idCandidate = payload?.sub ?? "";
 
-  // Common patterns:
-  // - scope: "ADMIN TEACHER" or "ROLE_ADMIN"
-  // - roles: ["ADMIN"]
-  // - authorities: ["ROLE_ADMIN"]
-  // - role: "ADMIN"
+  // NEW: "custom:role" (Cognito) takes precedence over all other role claims.
+  // OLD: role was read from scope / roles / authorities / role claims.
   const roleFromScope = payload?.scope?.split(/\s+/).find(Boolean);
   const roleCandidate =
+    payload?.["custom:role"] ??   // Cognito custom attribute (highest priority)
     payload?.role ??
     (Array.isArray(payload?.roles) ? payload?.roles[0] : undefined) ??
     (Array.isArray(payload?.authorities) ? payload?.authorities[0] : undefined) ??
@@ -88,120 +110,135 @@ function deriveUserFromToken(token: string, fallbackUsername?: string): User {
       payload?.name ?? payload?.fullName ?? payload?.username ?? fallbackUsername ?? "User"
     ),
     role: normalizeRole(roleCandidate),
-    avatarUrl: typeof payload?.avatarUrl === 'string' ? payload.avatarUrl : undefined,
+    avatarUrl: typeof payload?.avatarUrl === "string" ? payload.avatarUrl : undefined,
   };
 }
 
-function normalizeAuthResponse(
-  raw: any,
-  fallbackUsername?: string
-): AuthResponse {
-  const root: AnyObj = raw ?? {};
-  const data: AnyObj = root.result ?? root.data ?? root; // support {result:{...}} wrappers
+function mapCognitoSignInError(error: unknown): string {
+  const anyError = error as { name?: string; code?: string; message?: string };
+  const errorCode = anyError?.name ?? anyError?.code;
 
-  const token: string | undefined = data.token ?? data.accessToken ?? data.jwt;
-  const userRaw: AnyObj =
-    data.user ??
-    data.account ??
-    data.profile ??
-    data.data?.user ??
-    data.data?.account;
-
-  if (!token) {
-    throw new Error("Invalid login response from server");
+  if (errorCode === 'NotAuthorizedException') {
+    return 'Tên đăng nhập hoặc mật khẩu không đúng.';
+  }
+  if (errorCode === 'UserDisabledException') {
+    return 'ACCOUNT_LOCKED';
+  }
+  if (errorCode === 'UserNotConfirmedException') {
+    return 'Tài khoản chưa được xác nhận. Vui lòng kiểm tra email để xác nhận tài khoản.';
+  }
+  if (errorCode === 'PasswordResetRequiredException') {
+    return 'Tài khoản yêu cầu đặt lại mật khẩu trước khi đăng nhập.';
+  }
+  if (errorCode === 'UserNotFoundException') {
+    return 'Tài khoản không tồn tại.';
+  }
+  if (errorCode === 'TooManyRequestsException') {
+    return 'Bạn đã thử đăng nhập quá nhiều lần. Vui lòng thử lại sau.';
   }
 
-  // If backend doesn't return user info (our BE currently returns only token+authenticated), derive from JWT.
-  if (!userRaw) {
-    return { token, user: deriveUserFromToken(token, fallbackUsername) };
-  }
-
-  const roleRaw = (userRaw.role ?? userRaw.authority ?? userRaw.userRole) as
-    | string
-    | undefined;
-  const roleLower = String(roleRaw ?? "").toLowerCase();
-
-  let role: User["role"] = "student";
-  if (roleLower === "admin") role = "admin";
-  else if (roleLower === "teacher") role = "teacher";
-  else if (roleLower === "student" || roleLower === "user") role = "student";
-
-  const user: User = {
-    id: String(userRaw.id ?? userRaw.userId ?? ""),
-    email: String(userRaw.email ?? ""),
-    name: String(userRaw.name ?? userRaw.fullName ?? ""),
-    role,
-    avatarUrl: typeof userRaw.avatarUrl === 'string' ? userRaw.avatarUrl : undefined,
-  };
-
-  return { token, user };
+  return anyError?.message || 'Đã xảy ra lỗi. Vui lòng thử lại sau.';
 }
 
-function buildQuickDemoUser(role: QuickLoginRole): User {
-  if (role === "admin") {
-    return {
-      id: "demo-admin",
-      email: "admin@demo.local",
-      name: "Quản trị viên Demo",
-      role: "admin",
-    };
+async function getCognitoTokens(): Promise<{ accessToken: string; idToken: string }> {
+  const session = await fetchAuthSession();
+  const accessToken = session.tokens?.accessToken?.toString() ?? '';
+  const idToken = session.tokens?.idToken?.toString() ?? '';
+  const refreshToken = extractRefreshToken(session.tokens);
+
+  if (!accessToken || !idToken) {
+    throw new Error('Không thể lấy phiên đăng nhập từ Cognito.');
   }
 
-  if (role === "teacher") {
-    return {
-      id: "demo-teacher",
-      email: "teacher@demo.local",
-      name: "Giáo viên Demo",
-      role: "teacher",
-    };
+  const storage = getAuthStorage();
+  storage.setItem(COGNITO_ACCESS_TOKEN_KEY, accessToken);
+  storage.setItem(COGNITO_ID_TOKEN_KEY, idToken);
+  if (refreshToken) {
+    storage.setItem(COGNITO_REFRESH_TOKEN_KEY, refreshToken);
   }
 
-  return {
-    id: "demo-student",
-    email: "student@demo.local",
-    name: "Học sinh Demo",
-    role: "student",
-  };
+  return { accessToken, idToken };
 }
+
+// ─────────────────────────────────────────────────────────────────────────────
 
 export const authService = {
+  async getCurrentSessionAuth(): Promise<AuthResponse | null> {
+    try {
+      const { accessToken, idToken } = await getCognitoTokens();
+      return {
+        token: accessToken,
+        user: deriveUserFromToken(idToken),
+      };
+    } catch {
+      return null;
+    }
+  },
+
   async login(credentials: LoginRequest): Promise<AuthResponse> {
-    // Backend: http://localhost:8080/api/auth/login
-    const raw = await api.post<any>("/auth/login", credentials);
-    this.clearQuickDemoSession();
-    return normalizeAuthResponse(raw, credentials.username);
+    try {
+      const result = await signIn({
+        username: credentials.username,
+        password: credentials.password,
+      });
+
+      const signInStep = result.nextStep?.signInStep;
+      if (signInStep === 'CONFIRM_SIGN_IN_WITH_NEW_PASSWORD_REQUIRED') {
+        throw new Error('NEW_PASSWORD_REQUIRED');
+      }
+      if (!result.isSignedIn) {
+        throw new Error('Không thể hoàn tất đăng nhập. Vui lòng thử lại.');
+      }
+
+      const { accessToken, idToken } = await getCognitoTokens();
+      this.clearQuickDemoSession();
+      return {
+        token: accessToken,
+        user: deriveUserFromToken(idToken, credentials.username),
+      };
+    } catch (error) {
+      if (error instanceof Error && error.message === 'NEW_PASSWORD_REQUIRED') {
+        throw error;
+      }
+      throw new Error(mapCognitoSignInError(error));
+    }
   },
 
-  async quickDemoLogin(role: QuickLoginRole): Promise<AuthResponse> {
-    this.markQuickDemoSession();
-    return {
-      token: `quick-demo-${role}`,
-      user: buildQuickDemoUser(role),
-    };
-  },
-
+  // ── OLD quickDemoLogin (commented — quick role buttons now redirect to Cognito) ──
+  // async quickDemoLogin(role: QuickLoginRole): Promise<AuthResponse> {
+  //   this.markQuickDemoSession();
+  //   return {
+  //     token: `quick-demo-${role}`,
+  //     user: buildQuickDemoUser(role),
+  //   };
+  // },
 
   async logoutRemote(): Promise<void> {
     if (this.isQuickDemoSession()) return;
-
-    const token = localStorage.getItem("token") ?? this.getToken();
-    if (!token) return;
-
-    // Backend: POST /api/auth/logout expects { token }
-    await api.post('/auth/logout', { token });
+    const redirectUrl = ALLOWED_LOGOUT_URLS.includes(window.location.origin as (typeof ALLOWED_LOGOUT_URLS)[number])
+      ? window.location.origin
+      : "http://localhost:5173";
+    await signOut({ global: false, oauth: { redirectUrl } });
   },
 
   saveToken(token: string): void {
-    localStorage.setItem("auth_token", token);
-    // Backward compatibility for flows that still read `token` directly.
-    localStorage.setItem("token", token);
+    getAuthStorage().setItem(COGNITO_ACCESS_TOKEN_KEY, token);
   },
 
   getToken(): string | null {
-    return localStorage.getItem("auth_token") ?? localStorage.getItem("token");
+    return getAuthStorage().getItem(COGNITO_ACCESS_TOKEN_KEY);
+  },
+
+  getRefreshToken(): string | null {
+    return getAuthStorage().getItem(COGNITO_REFRESH_TOKEN_KEY);
   },
 
   removeToken(): void {
+    const storage = getAuthStorage();
+    storage.removeItem(COGNITO_ACCESS_TOKEN_KEY);
+    storage.removeItem(COGNITO_ID_TOKEN_KEY);
+    storage.removeItem(COGNITO_REFRESH_TOKEN_KEY);
+    // Cleanup legacy keys from old local JWT flow.
     localStorage.removeItem("auth_token");
     localStorage.removeItem("token");
   },
@@ -235,5 +272,38 @@ export const authService = {
     this.removeToken();
     this.removeUser();
     this.clearQuickDemoSession();
+  },
+
+  async syncTokensFromAmplifySession(): Promise<string | null> {
+    try {
+      const { accessToken } = await getCognitoTokens();
+      return accessToken;
+    } catch {
+      return null;
+    }
+  },
+
+  async refreshAccessToken(): Promise<string | null> {
+    try {
+      const session = await fetchAuthSession({ forceRefresh: true });
+      const accessToken = session.tokens?.accessToken?.toString() ?? '';
+      const idToken = session.tokens?.idToken?.toString() ?? '';
+      const refreshToken = extractRefreshToken(session.tokens);
+
+      if (!accessToken || !idToken) {
+        return null;
+      }
+
+      const storage = getAuthStorage();
+      storage.setItem(COGNITO_ACCESS_TOKEN_KEY, accessToken);
+      storage.setItem(COGNITO_ID_TOKEN_KEY, idToken);
+      if (refreshToken) {
+        storage.setItem(COGNITO_REFRESH_TOKEN_KEY, refreshToken);
+      }
+
+      return accessToken;
+    } catch {
+      return null;
+    }
   },
 };

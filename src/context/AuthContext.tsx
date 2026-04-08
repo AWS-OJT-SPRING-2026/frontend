@@ -1,11 +1,12 @@
-import { createContext, useContext, useState, useEffect, useCallback, ReactNode } from 'react';
+import { createContext, useContext, useState, useEffect, useCallback, ReactNode, useRef } from 'react';
+import { fetchAuthSession } from 'aws-amplify/auth';
 import { User } from '../types/auth';
 import { authService } from '../services/authService';
 import { profileService } from '../services/profileService';
 
 const PHASE1_DELAY = 1500; // ms – first message duration
 const PHASE2_DELAY = 1200; // ms – second message duration (total = PHASE1 + PHASE2)
-const TOKEN_CHECK_INTERVAL = 30_000; // ms – token expiry check interval
+const SESSION_CHECK_INTERVAL = 30_000; // ms – Amplify session check interval
 
 export type TransitionType = 'login' | 'logout' | 'session_expired' | null;
 export type TransitionPhase = 1 | 2 | null;
@@ -28,18 +29,70 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-/** Returns true when a stored JWT token is still valid (not expired). */
-function isTokenValid(token: string): boolean {
+type JwtPayload = {
+  sub?: string;
+  email?: string;
+  name?: string;
+  fullName?: string;
+  username?: string;
+  role?: string;
+  scope?: string;
+  roles?: string[];
+  authorities?: string[];
+  'custom:role'?: string;
+};
+
+function decodeJwtPayload(token: string): JwtPayload | null {
   try {
-    const parts = token.split('.');
-    if (parts.length < 2) return false;
-    const normalized = parts[1].replace(/-/g, '+').replace(/_/g, '/');
+    const payloadPart = token.split('.')[1];
+    if (!payloadPart) return null;
+    const normalized = payloadPart.replace(/-/g, '+').replace(/_/g, '/');
     const padded = normalized + '='.repeat((4 - (normalized.length % 4)) % 4);
-    const payload = JSON.parse(atob(padded));
-    if (typeof payload.exp !== 'number') return true; // no exp → treat as valid
-    return payload.exp * 1000 > Date.now();
+    return JSON.parse(atob(padded)) as JwtPayload;
   } catch {
-    return false;
+    return null;
+  }
+}
+
+function normalizeRole(roleCandidate: unknown): User['role'] {
+  const role = String(roleCandidate ?? '').toLowerCase();
+  if (role.includes('admin')) return 'admin';
+  if (role.includes('teacher')) return 'teacher';
+  return 'student';
+}
+
+function isProtectedPath(pathname: string): boolean {
+  return pathname.startsWith('/admin') || pathname.startsWith('/teacher') || pathname.startsWith('/student');
+}
+
+async function getAmplifySessionAuth(): Promise<{ token: string; user: User } | null> {
+  try {
+    const session = await fetchAuthSession();
+    const accessToken = session.tokens?.accessToken?.toString() ?? '';
+    const idToken = session.tokens?.idToken?.toString() ?? '';
+    if (!accessToken || !idToken) {
+      return null;
+    }
+
+    const payload = decodeJwtPayload(idToken);
+    const roleCandidate =
+      payload?.['custom:role'] ??
+      payload?.role ??
+      (Array.isArray(payload?.roles) ? payload.roles[0] : undefined) ??
+      (Array.isArray(payload?.authorities) ? payload.authorities[0] : undefined) ??
+      payload?.scope?.split(/\s+/).find(Boolean);
+
+    return {
+      token: accessToken,
+      user: {
+        id: String(payload?.sub ?? ''),
+        email: String(payload?.email ?? ''),
+        name: String(payload?.name ?? payload?.fullName ?? payload?.username ?? 'User'),
+        role: normalizeRole(roleCandidate),
+      },
+    };
+  } catch {
+    return null;
   }
 }
 
@@ -50,20 +103,48 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [transitionType, setTransitionType] = useState<TransitionType>(null);
   const [transitionPhase, setTransitionPhase] = useState<TransitionPhase>(null);
   const [sessionExpired, setSessionExpired] = useState(false);
+  const isCheckingSessionRef = useRef(false);
 
   useEffect(() => {
-    const token = authService.getToken();
-    const savedUser = authService.getUser() as User | null;
-    const isQuickDemoSession = authService.isQuickDemoSession();
+    let isCancelled = false;
 
-    if (token && savedUser && (isQuickDemoSession || isTokenValid(token))) {
-      setUser(savedUser);
-    } else if (token || savedUser) {
-      // Token missing or expired – clean up stale data
-      authService.logout();
-    }
+    const bootstrapAuth = async () => {
+      const savedUser = authService.getUser() as User | null;
+      const hasQuickDemoSession = authService.isQuickDemoSession();
 
-    setIsInitializing(false);
+      if (hasQuickDemoSession) {
+        if (savedUser && !isCancelled) {
+          setUser(savedUser);
+        }
+        if (!isCancelled) {
+          setIsInitializing(false);
+        }
+        return;
+      }
+
+      const sessionAuth = await getAmplifySessionAuth();
+      if (isCancelled) return;
+
+      if (sessionAuth) {
+        await authService.syncTokensFromAmplifySession();
+        if (savedUser) {
+          setUser(savedUser);
+        } else {
+          authService.saveUser(sessionAuth.user);
+          setUser(sessionAuth.user);
+        }
+      } else if (authService.getToken() || savedUser) {
+        authService.logout();
+      }
+
+      setIsInitializing(false);
+    };
+
+    void bootstrapAuth();
+
+    return () => {
+      isCancelled = true;
+    };
   }, []);
 
   // Keep auth user profile in sync for sidebar/header UI.
@@ -71,14 +152,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     if (!user) return;
     if (authService.isQuickDemoSession()) return;
 
-    const token = authService.getToken();
-    if (!token) return;
-
     let isCancelled = false;
 
     const hydrateUser = async () => {
       try {
-        const profile = await profileService.getMyProfile(token);
+        const sessionAuth = await getAmplifySessionAuth();
+        if (!sessionAuth) return;
+        await authService.syncTokensFromAmplifySession();
+
+        const profile = await profileService.getMyProfile(sessionAuth.token);
         if (isCancelled) return;
 
         const nextUser: User = {
@@ -117,6 +199,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const currentUser = authService.getUser();
     if (!currentUser) return;
 
+    // Never force session-expired overlay when user is already on public pages.
+    const pathname = window.location.pathname;
+    if (!isProtectedPath(pathname)) {
+      authService.logout();
+      setUser(null);
+      setSessionExpired(false);
+      return;
+    }
+
     authService.logout();
     setUser(null);
     setIsTransitioning(false);
@@ -125,23 +216,37 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setSessionExpired(true);
   }, [sessionExpired]);
 
-  // ── Periodic token expiry check ───────────────────────────────────────────
+  // ── Periodic Amplify session check ────────────────────────────────────────
   useEffect(() => {
     if (isInitializing) return;
 
     const interval = setInterval(() => {
-      const token = authService.getToken();
-      if (token && !authService.isQuickDemoSession() && !isTokenValid(token)) {
-        expireSession();
-      }
-    }, TOKEN_CHECK_INTERVAL);
+      if (authService.isQuickDemoSession()) return;
+      if (isCheckingSessionRef.current) return;
+
+      void (async () => {
+        isCheckingSessionRef.current = true;
+        try {
+          const hasSession = await getAmplifySessionAuth();
+          if (!hasSession && authService.getUser()) {
+            expireSession();
+          }
+        } finally {
+          isCheckingSessionRef.current = false;
+        }
+      })();
+    }, SESSION_CHECK_INTERVAL);
 
     return () => clearInterval(interval);
   }, [isInitializing, expireSession]);
 
   // ── Listen for 401 event fired by api.ts ─────────────────────────────────
   useEffect(() => {
-    const handler = () => expireSession();
+    const handler = () => {
+      if (isProtectedPath(window.location.pathname)) {
+        expireSession();
+      }
+    };
     window.addEventListener(SESSION_EXPIRED_EVENT, handler);
     return () => window.removeEventListener(SESSION_EXPIRED_EVENT, handler);
   }, [expireSession]);

@@ -1,5 +1,6 @@
-import axios, { AxiosError } from 'axios';
+import { AxiosError } from 'axios';
 import { api } from './api';
+import axiosClient from './axios';
 
 export interface ApiResponse<T> {
   code: number;
@@ -117,9 +118,6 @@ export interface StudentWeeklyStats {
   totalExams: number;
 }
 
-import { API_BASE_URL } from './env';
-const SESSION_EXPIRED_EVENT = 'educare:session-expired';
-
 function getAxiosErrorMessage(error: unknown): string {
   if (error instanceof AxiosError) {
     return (
@@ -137,15 +135,6 @@ function getAxiosErrorMessage(error: unknown): string {
   return 'Không thể tải dữ liệu lịch học.';
 }
 
-function handleAxios401(error: unknown): void {
-  if (error instanceof AxiosError && error.response?.status === 401) {
-    const isQuickDemoSession = localStorage.getItem('educare_quick_demo_session') === '1';
-    if (!isQuickDemoSession) {
-      window.dispatchEvent(new CustomEvent(SESSION_EXPIRED_EVENT));
-    }
-  }
-}
-
 function toLocalDateTime(date: Date): string {
   const yyyy = date.getFullYear();
   const mm = String(date.getMonth() + 1).padStart(2, '0');
@@ -157,80 +146,77 @@ function toLocalDateTime(date: Date): string {
 }
 
 export const timetableService = {
-  async getTimetables(start: Date, end: Date, token: string): Promise<TimetableItem[]> {
+  async getTimetables(start: Date, end: Date): Promise<TimetableItem[]> {
     const query = `?start=${encodeURIComponent(toLocalDateTime(start))}&end=${encodeURIComponent(toLocalDateTime(end))}`;
-    const response = await api.get<ApiResponse<TimetableItem[]>>(`/timetables${query}`, token);
+    const response = await api.get<ApiResponse<TimetableItem[]>>(`/timetables${query}`);
     return response.result ?? [];
   },
 
-  async getStats(token: string): Promise<TimetableStats> {
-    const response = await api.get<ApiResponse<TimetableStats>>('/timetables/stats', token);
+  async getStats(): Promise<TimetableStats> {
+    const response = await api.get<ApiResponse<TimetableStats>>('/timetables/stats');
     return response.result;
   },
 
-  async createSingle(request: CreateSingleTimetableRequest, token: string): Promise<TimetableItem> {
-    const response = await api.authPost<ApiResponse<TimetableItem>>('/timetables/single', request, token);
+  async createSingle(request: CreateSingleTimetableRequest): Promise<TimetableItem> {
+    const response = await api.authPost<ApiResponse<TimetableItem>>('/timetables/single', request);
     return response.result;
   },
 
-  async createRecurring(request: CreateRecurringTimetableRequest, token: string): Promise<void> {
-    await api.authPost<ApiResponse<void>>('/timetables/recurring', request, token);
+  async createRecurring(request: CreateRecurringTimetableRequest): Promise<void> {
+    await api.authPost<ApiResponse<void>>('/timetables/recurring', request);
   },
 
-  async bulkUpdateTimetable(classId: number, request: BulkUpdateTimetableRequest, token: string): Promise<void> {
-    await api.authPut<ApiResponse<void>>(`/timetables/bulk/${classId}`, request, token);
+  async bulkUpdateTimetable(classId: number, request: BulkUpdateTimetableRequest): Promise<void> {
+    await api.authPut<ApiResponse<void>>(`/timetables/bulk/${classId}`, request);
   },
 
-  async updateSingleTimetable(id: number, request: UpdateSingleTimetableRequest, token: string): Promise<TimetableItem> {
-    const response = await api.authPut<ApiResponse<TimetableItem>>(`/timetables/${id}`, request, token);
+  async updateSingleTimetable(id: number, request: UpdateSingleTimetableRequest): Promise<TimetableItem> {
+    const response = await api.authPut<ApiResponse<TimetableItem>>(`/timetables/${id}`, request);
     return response.result;
   },
 
-  async deleteTimetable(id: number, token: string): Promise<void> {
-    await api.authDelete<ApiResponse<void>>(`/timetables/${id}`, token);
+  async deleteTimetable(id: number): Promise<void> {
+    await api.authDelete<ApiResponse<void>>(`/timetables/${id}`);
   },
 
-  async deleteAllByClass(classId: number, token: string): Promise<void> {
-    await api.authDelete<ApiResponse<void>>(`/timetables/class/${classId}`, token);
+  async deleteAllByClass(classId: number): Promise<void> {
+    await api.authDelete<ApiResponse<void>>(`/timetables/class/${classId}`);
   },
 
-  async getTeachers(token: string): Promise<TeacherItem[]> {
-    const response = await api.get<ApiResponse<TeacherItem[]>>('/teachers', token);
+  async getTeachers(): Promise<TeacherItem[]> {
+    const response = await api.get<ApiResponse<TeacherItem[]>>('/teachers');
     return response.result ?? [];
   },
 
-  async getAttendanceByTimetable(timetableId: number, token: string): Promise<AttendanceStudentResponse[]> {
-    const response = await api.get<ApiResponse<AttendanceStudentResponse[]>>(`/timetables/${timetableId}/attendance`, token);
+  async getAttendanceByTimetable(timetableId: number): Promise<AttendanceStudentResponse[]> {
+    const response = await api.get<ApiResponse<AttendanceStudentResponse[]>>(`/timetables/${timetableId}/attendance`);
     return response.result ?? [];
   },
 
-  async saveAttendance(timetableId: number, requests: AttendanceRequest[], token: string): Promise<void> {
-    await api.authPost<ApiResponse<void>>(`/timetables/${timetableId}/attendance`, requests, token);
+  async saveAttendance(timetableId: number, requests: AttendanceRequest[]): Promise<void> {
+    await api.authPost<ApiResponse<void>>(`/timetables/${timetableId}/attendance`, requests);
   },
 
-  async getMyScheduleList(start: Date, end: Date, token: string): Promise<TimetableItem[]> {
+  async getMyScheduleList(start: Date, end: Date): Promise<TimetableItem[]> {
     const query = `?start=${encodeURIComponent(toLocalDateTime(start))}&end=${encodeURIComponent(toLocalDateTime(end))}`;
-    const response = await api.get<ApiResponse<TimetableItem[]>>(`/timetables/my-schedule${query}`, token);
+    const response = await api.get<ApiResponse<TimetableItem[]>>(`/timetables/my-schedule${query}`);
     return response.result ?? [];
   },
 
-  async getMyScheduleStats(start: Date, end: Date, token: string): Promise<TeacherScheduleStats> {
+  async getMyScheduleStats(start: Date, end: Date): Promise<TeacherScheduleStats> {
     const query = `?start=${encodeURIComponent(toLocalDateTime(start))}&end=${encodeURIComponent(toLocalDateTime(end))}`;
-    const response = await api.get<ApiResponse<TeacherScheduleStats>>(`/timetables/my-schedule/stats${query}`, token);
+    const response = await api.get<ApiResponse<TeacherScheduleStats>>(`/timetables/my-schedule/stats${query}`);
     return response.result;
   },
 
-  async updateMeetLink(timetableId: number, googleMeetLink: string, token: string): Promise<TimetableItem> {
-    const response = await api.authPatch<ApiResponse<TimetableItem>>(`/timetables/${timetableId}/meet-link`, { googleMeetLink }, token);
+  async updateMeetLink(timetableId: number, googleMeetLink: string): Promise<TimetableItem> {
+    const response = await api.authPatch<ApiResponse<TimetableItem>>(`/timetables/${timetableId}/meet-link`, { googleMeetLink });
     return response.result;
   },
 
-  async getStudentSchedule(start: Date, end: Date, token: string): Promise<StudentScheduleItem[]> {
+  async getStudentSchedule(start: Date, end: Date): Promise<StudentScheduleItem[]> {
     try {
-      const response = await axios.get<ApiResponse<StudentScheduleItem[]>>(`${API_BASE_URL}/timetables/my-schedule/student`, {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
+      const response = await axiosClient.get<ApiResponse<StudentScheduleItem[]>>('/timetables/my-schedule/student', {
         params: {
           start: toLocalDateTime(start),
           end: toLocalDateTime(end),
@@ -239,17 +225,13 @@ export const timetableService = {
 
       return response.data.result ?? [];
     } catch (error) {
-      handleAxios401(error);
       throw new Error(getAxiosErrorMessage(error));
     }
   },
 
-  async getStudentScheduleStats(start: Date, end: Date, token: string): Promise<StudentWeeklyStats> {
+  async getStudentScheduleStats(start: Date, end: Date): Promise<StudentWeeklyStats> {
     try {
-      const response = await axios.get<ApiResponse<StudentWeeklyStats>>(`${API_BASE_URL}/timetables/my-schedule/student/stats`, {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
+      const response = await axiosClient.get<ApiResponse<StudentWeeklyStats>>('/timetables/my-schedule/student/stats', {
         params: {
           start: toLocalDateTime(start),
           end: toLocalDateTime(end),
@@ -258,7 +240,6 @@ export const timetableService = {
 
       return response.data.result;
     } catch (error) {
-      handleAxios401(error);
       throw new Error(getAxiosErrorMessage(error));
     }
   },
