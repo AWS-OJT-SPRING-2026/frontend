@@ -1,5 +1,7 @@
 import { api } from './api';
 
+export type DisplayAnswerMode = 'IMMEDIATE' | 'AFTER_DEADLINE' | 'RESULTONLYIMMEDIATE';
+
 export interface AnswerResponse {
   id: number;
   label: string;
@@ -30,6 +32,7 @@ export interface AssignmentResponse {
   endTime: string | null;
   deadline: string | null;
   durationMinutes: number;
+  displayAnswerMode: DisplayAnswerMode;
   createdAt: string;
   updatedAt: string;
   classroomId: number;
@@ -117,12 +120,17 @@ export interface AssignmentResultResponse {
   assignmentTitle: string;
   userId: number;
   studentName: string;
-  score: number;
+  score: number | null;
   totalQuestions: number;
-  correctCount: number;
+  correctCount: number | null;
   timeTaken: number;
   submitTime: string;
   submissionStatus?: 'SUBMITTED' | 'MISSED' | null;
+  displayAnswerMode?: DisplayAnswerMode;
+  canViewResult?: boolean;
+  canViewDetailedAnswers?: boolean;
+  revealAt?: string | null;
+  visibilityMessage?: string | null;
   questions: AssignmentResultQuestion[];
 }
 
@@ -182,6 +190,7 @@ export const assignmentService = {
     endTime: string | null;
     deadline: string | null;
     durationMinutes: number;
+    displayAnswerMode: DisplayAnswerMode;
     questionIds: number[];
   }, token: string) =>
     api.authPost<ApiWrapper<AssignmentDetailResponse>>('/assignments', data, token).then(r => r.result),
@@ -194,6 +203,7 @@ export const assignmentService = {
     endTime: string | null;
     deadline: string | null;
     durationMinutes: number;
+    displayAnswerMode: DisplayAnswerMode;
     questionIds: number[];
   }>, token: string) =>
     api.authPut<ApiWrapper<AssignmentDetailResponse>>(`/assignments/${id}`, data, token).then(r => r.result),

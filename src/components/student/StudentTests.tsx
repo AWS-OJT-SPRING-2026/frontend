@@ -241,7 +241,7 @@ function ExerciseCard({ test, onStart, isDark, nowMs }: { test: Test; onStart: (
                         {isCompleted ? (
                             <span className={`flex items-center gap-1 ${isDark ? 'text-[#1A1A1A]/50' : 'text-[#1A1A1A]/70'}`}>
                                 {isMissing ? <Archive className="w-4 h-4 text-rose-500" weight="fill" /> : <CheckCircle className="w-4 h-4 text-emerald-500" weight="fill" />}
-                                {isMissing ? 'Không nộp bài' : `${test.correctCount}/${test.questionCount} câu đúng`}
+                                {isMissing ? 'Không nộp bài' : (typeof test.correctCount === 'number' ? `${test.correctCount}/${test.questionCount} câu đúng` : 'Đã nộp bài')}
                             </span>
                         ) : (
                             <span className={`flex items-center gap-1 px-2 py-0.5 rounded-md ${urgent ? (isDark ? 'text-[#ff8b63] font-black' : 'text-[#FF6B4A] font-black') : (isDark ? 'text-[#1A1A1A]/50' : 'text-[#1A1A1A]/70')}`}>
@@ -282,6 +282,7 @@ function ExerciseCard({ test, onStart, isDark, nowMs }: { test: Test; onStart: (
 
 function TestDetailView({
     test,
+    result,
     scheduleDate,
     onBack,
     onPrimary,
@@ -289,6 +290,7 @@ function TestDetailView({
     isDark,
 }: {
     test: Test;
+    result: AssignmentResultResponse | null;
     scheduleDate?: string;
     onBack: () => void;
     onPrimary: () => void;
@@ -301,6 +303,9 @@ function TestDetailView({
     const statusLabel = isMissing ? 'Bỏ lỡ' : isCompleted ? 'Đã hoàn thành' : isInProgress ? 'Đang làm dở' : 'Chưa làm';
     const lessonDate = test.lessonDate ?? scheduleDate;
     const isExam = test.category === 'exam';
+    const canViewResult = result?.canViewResult ?? (test.score != null);
+    const canViewDetailedAnswers = result?.canViewDetailedAnswers ?? true;
+    const dueTime = test.category === 'exam' ? test.endTimeIso : test.deadlineIso;
     const testNotStarted = Boolean(
         isExam &&
         test.startTimeIso &&
@@ -372,12 +377,34 @@ function TestDetailView({
                     <div className={`rounded-2xl border-2 p-4 flex items-center justify-between gap-3 ${isMissing ? 'border-amber-300 bg-amber-50' : 'border-emerald-200 bg-emerald-50'}`}>
                         <div>
                             <p className={`text-[10px] font-extrabold uppercase tracking-widest mb-1 ${isMissing ? 'text-amber-700/80' : 'text-emerald-700/70'}`}>Kết quả</p>
-                            <p className={`text-lg font-extrabold ${isMissing ? 'text-amber-800' : 'text-emerald-700'}`}>
-                                {isMissing ? '0 điểm - KHÔNG NỘP BÀI' : `${test.correctCount ?? 0}/${test.questionCount} câu đúng - ${test.score?.toFixed(1) ?? '0.0'} điểm`}
-                            </p>
-                            <p className={`text-sm font-bold mt-1 ${isMissing ? 'text-amber-700/90' : 'text-emerald-700/80'}`}>
-                                {isMissing ? 'Bạn đã quá hạn nộp bài. Hãy xem đáp án chi tiết để ôn tập.' : 'Bạn đã làm bài này rồi, không thể bắt đầu làm lại.'}
-                            </p>
+                            {!isMissing && !canViewResult ? (
+                                <>
+                                    <p className="text-lg font-extrabold text-amber-800">
+                                        Kết quả và đáp án chưa đến thời điểm công bố
+                                    </p>
+                                    <p className="text-sm font-bold mt-1 text-amber-700/90">
+                                        {result?.visibilityMessage ?? `Kết quả và đáp án sẽ được hiển thị sau ${formatDateTime(result?.revealAt ?? dueTime)}.`}
+                                    </p>
+                                </>
+                            ) : !isMissing && canViewResult && !canViewDetailedAnswers ? (
+                                <>
+                                    <p className="text-lg font-extrabold text-emerald-700">
+                                        Điểm hiện tại: {test.score?.toFixed(1) ?? (result?.score?.toFixed(1) ?? '0.0')} điểm
+                                    </p>
+                                    <p className="text-sm font-bold mt-1 text-emerald-700/80">
+                                        {result?.visibilityMessage ?? `Đáp án chi tiết sẽ được hiển thị sau ${formatDateTime(result?.revealAt ?? dueTime)}.`}
+                                    </p>
+                                </>
+                            ) : (
+                                <>
+                                    <p className={`text-lg font-extrabold ${isMissing ? 'text-amber-800' : 'text-emerald-700'}`}>
+                                        {isMissing ? '0 điểm - KHÔNG NỘP BÀI' : `${test.correctCount ?? result?.correctCount ?? 0}/${test.questionCount} câu đúng - ${test.score?.toFixed(1) ?? (result?.score?.toFixed(1) ?? '0.0')} điểm`}
+                                    </p>
+                                    <p className={`text-sm font-bold mt-1 ${isMissing ? 'text-amber-700/90' : 'text-emerald-700/80'}`}>
+                                        {isMissing ? 'Bạn đã quá hạn nộp bài. Hãy xem đáp án chi tiết để ôn tập.' : 'Bạn đã làm bài này rồi, không thể bắt đầu làm lại.'}
+                                    </p>
+                                </>
+                            )}
                         </div>
                     </div>
                 )}
@@ -388,7 +415,12 @@ function TestDetailView({
                     </button>
                     {isCompleted ? (
                         <>
-                            <button onClick={onDetailedReview} className={`h-11 px-6 rounded-2xl font-extrabold transition-colors ${isDark ? 'border-2 border-[#1A1A1A] text-[#1A1A1A] hover:bg-[#1A1A1A]/5' : 'border-2 border-[#1A1A1A] text-[#1A1A1A] hover:bg-[#1A1A1A]/5'}`}>
+                            <button
+                                onClick={onDetailedReview}
+                                disabled={!canViewDetailedAnswers}
+                                title={!canViewDetailedAnswers ? (result?.visibilityMessage ?? `Đáp án chi tiết sẽ được hiển thị sau ${formatDateTime(result?.revealAt ?? dueTime)}.`) : undefined}
+                                className={`h-11 px-6 rounded-2xl font-extrabold transition-colors disabled:opacity-50 disabled:cursor-not-allowed ${isDark ? 'border-2 border-[#1A1A1A] text-[#1A1A1A] hover:bg-[#1A1A1A]/5' : 'border-2 border-[#1A1A1A] text-[#1A1A1A] hover:bg-[#1A1A1A]/5'}`}
+                            >
                                 Xem đáp án chi tiết
                             </button>
                             <button onClick={onPrimary} className="h-11 px-6 rounded-2xl bg-[#FF6B4A] text-white font-extrabold hover:bg-[#ff5535] transition-colors">
@@ -420,13 +452,15 @@ function DetailedReviewView({ test, result, detail, onBack, isDark }: {
     isDark: boolean;
 }) {
     const isMissedResult = result?.submissionStatus === 'MISSED' || test.status === 'missing';
+    const canViewResult = result?.canViewResult ?? true;
+    const canViewDetailedAnswers = result?.canViewDetailedAnswers ?? true;
     const detailQuestionMap = useMemo(() => {
         const map = new Map<number, AssignmentDetailResponse['questions'][number]>();
         (detail?.questions ?? []).forEach(question => map.set(question.id, question));
         return map;
     }, [detail]);
 
-    const questions = result
+    const questions = result && canViewDetailedAnswers
         ? result.questions.map((q, idx) => {
             const detailQuestion = detailQuestionMap.get(q.questionId);
             const fullChoices = (detailQuestion?.answers ?? []).map((ans, answerIdx) => ({
@@ -485,7 +519,11 @@ function DetailedReviewView({ test, result, detail, onBack, isDark }: {
                         <h1 className="text-2xl md:text-3xl font-black text-[#1A1A1A]">{isMissedResult ? 'Kết quả: 0 điểm (Không nộp bài)' : test.title}</h1>
                     </div>
                     <div className="text-sm font-extrabold text-[#1A1A1A]/70 bg-[#F7F7F2] rounded-xl border-2 border-[#1A1A1A]/10 px-4 py-2">
-                        {isMissedResult ? `0/${result?.totalQuestions ?? test.questionCount} câu đúng` : `${result?.correctCount ?? test.correctCount ?? 0}/${result?.totalQuestions ?? test.questionCount} câu đúng`}
+                        {!canViewResult
+                            ? `Chưa công bố (${result?.totalQuestions ?? test.questionCount} câu)`
+                            : (isMissedResult
+                                ? `0/${result?.totalQuestions ?? test.questionCount} câu đúng`
+                                : `${result?.correctCount ?? test.correctCount ?? 0}/${result?.totalQuestions ?? test.questionCount} câu đúng`)}
                     </div>
                 </div>
 
@@ -495,7 +533,15 @@ function DetailedReviewView({ test, result, detail, onBack, isDark }: {
                     </div>
                 )}
 
-                {questions.length === 0 ? (
+                {!canViewResult ? (
+                    <div className="rounded-2xl border-2 border-amber-300 bg-amber-50 px-4 py-4 text-sm font-bold text-amber-800">
+                        {result?.visibilityMessage ?? `Kết quả và đáp án sẽ được hiển thị sau ${formatDateTime(result?.revealAt)}.`}
+                    </div>
+                ) : !canViewDetailedAnswers ? (
+                    <div className="rounded-2xl border-2 border-blue-300 bg-blue-50 px-4 py-4 text-sm font-bold text-blue-800">
+                        {result?.visibilityMessage ?? `Đáp án chi tiết sẽ được hiển thị sau ${formatDateTime(result?.revealAt)}.`}
+                    </div>
+                ) : questions.length === 0 ? (
                     <div className="text-center py-14 border-2 border-dashed border-[#1A1A1A]/20 rounded-2xl bg-[#F7F7F2]">
                         <p className="font-extrabold text-[#1A1A1A]/60">Chưa có dữ liệu xem lại chi tiết cho bài này.</p>
                     </div>
@@ -563,10 +609,12 @@ function DetailedReviewView({ test, result, detail, onBack, isDark }: {
     );
 }
 
-function TestTakingView({ test, onBack, onOpenDetailedReview, isDark }: { test: Test; onBack: () => void; onOpenDetailedReview: () => void; isDark: boolean }) {
+function TestTakingView({ test, result, onBack, onOpenDetailedReview, isDark }: { test: Test; result: AssignmentResultResponse | null; onBack: () => void; onOpenDetailedReview: () => void; isDark: boolean }) {
     if (test.status === 'completed' || test.status === 'missing') {
         const bg = SUBJECT_BG[test.subject] ?? '#FCE38A';
         const isMissing = test.status === 'missing';
+        const canViewDetailedAnswers = result?.canViewDetailedAnswers ?? true;
+        const detailBlockedMessage = result?.visibilityMessage ?? `Đáp án chi tiết sẽ được hiển thị sau ${formatDateTime(result?.revealAt)}.`;
         return (
             <div className="max-w-4xl mx-auto space-y-6 pb-20">
                 <button onClick={onBack} className="flex items-center gap-2 text-gray-400 hover:text-[#1A1A1A] font-extrabold text-sm transition-colors">
@@ -654,7 +702,12 @@ function TestTakingView({ test, onBack, onOpenDetailedReview, isDark }: { test: 
 
                     <div className="flex justify-center gap-4">
                         <button onClick={onBack} className="h-12 px-8 border-2 border-[#1A1A1A] text-[#1A1A1A] font-extrabold rounded-2xl hover:bg-[#1A1A1A]/5 transition-colors">Quay về danh sách</button>
-                        <button onClick={onOpenDetailedReview} className="h-12 px-8 bg-[#1A1A1A] text-white font-extrabold rounded-2xl hover:bg-[#1A1A1A]/80 flex items-center gap-2 transition-colors">
+                        <button
+                            onClick={onOpenDetailedReview}
+                            disabled={!canViewDetailedAnswers}
+                            title={!canViewDetailedAnswers ? detailBlockedMessage : undefined}
+                            className="h-12 px-8 bg-[#1A1A1A] text-white font-extrabold rounded-2xl hover:bg-[#1A1A1A]/80 flex items-center gap-2 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                        >
                             <MagnifyingGlass className="w-5 h-5" /> Xem lại đáp án chi tiết
                         </button>
                     </div>
@@ -1130,14 +1183,20 @@ export function StudentTests() {
         setAttemptInfo(null);
         setAnswerSelections({});
         setResultDetail(null);
-        // Pre-fetch questions for real assignments
+        // Pre-fetch questions/results for real assignments
         const realId = (test as any)._assignmentId as number | undefined;
-        if (realId && test.status !== 'completed') {
+        if (realId) {
             const token = authService.getToken();
             if (token) {
                 try {
-                    const detail = await assignmentService.getDetail(realId, token);
-                    setTakingDetail(detail);
+                    if (test.status !== 'completed' && test.status !== 'missing') {
+                        const detail = await assignmentService.getDetail(realId, token);
+                        setTakingDetail(detail);
+                    }
+                    if (test.status === 'completed' || test.status === 'missing') {
+                        const result = await assignmentService.getResult(realId, token).catch(() => null);
+                        setResultDetail(result);
+                    }
                 } catch { /* silent */ }
             }
         }
@@ -1276,6 +1335,7 @@ export function StudentTests() {
                 <div className="min-h-screen p-6 lg:p-8" style={{ fontFamily: "'Nunito', sans-serif" }}>
                     <TestDetailView
                         test={selectedTest}
+                        result={resultDetail}
                         scheduleDate={scheduleFilter?.date}
                         onBack={() => setSelectedTest(null)}
                         onPrimary={handleStartTaking}
@@ -1308,6 +1368,7 @@ export function StudentTests() {
             <div className="min-h-screen p-6 lg:p-8" style={{ fontFamily: "'Nunito', sans-serif" }}>
                 <TestTakingView
                     test={selectedTest}
+                    result={resultDetail}
                     onBack={() => setExerciseViewMode('detail')}
                     onOpenDetailedReview={handleOpenDetailedReview}
                     isDark={isDark}

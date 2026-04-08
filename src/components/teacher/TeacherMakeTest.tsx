@@ -7,7 +7,7 @@ import {
 import { Input } from '../ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
 import { useSettings } from '../../context/SettingsContext';
-import { assignmentService, AssignmentResponse, AssignmentDetailResponse, AssignmentReportResponse, QuestionPreviewResponse, QuestionBankResponse, SubmissionResponse } from '../../services/assignmentService';
+import { assignmentService, AssignmentResponse, AssignmentDetailResponse, AssignmentReportResponse, QuestionPreviewResponse, QuestionBankResponse, SubmissionResponse, DisplayAnswerMode } from '../../services/assignmentService';
 import { authService } from '../../services/authService';
 import { classroomService } from '../../services/classroomService';
 import { ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip, LabelList, Cell } from 'recharts';
@@ -79,6 +79,28 @@ function getFormatLabel(format: string) {
 
 function getAssignmentTypeLabel(assignmentType: string) {
     return assignmentType === 'ASSIGNMENT' ? 'Bài tập' : 'Bài kiểm tra';
+}
+
+const DISPLAY_MODE_OPTIONS: { value: DisplayAnswerMode; label: string; helper: string }[] = [
+    {
+        value: 'IMMEDIATE',
+        label: 'Hiển thị ngay điểm và đáp án',
+        helper: 'Học sinh thấy điểm và đáp án chi tiết ngay sau khi nộp.',
+    },
+    {
+        value: 'AFTER_DEADLINE',
+        label: 'Chỉ hiển thị sau hạn nộp',
+        helper: 'Trước hạn nộp học sinh chưa xem được điểm hoặc đáp án.',
+    },
+    {
+        value: 'RESULTONLYIMMEDIATE',
+        label: 'Hiển thị điểm ngay, đáp án sau hạn',
+        helper: 'Học sinh xem được điểm trước, đáp án chi tiết mở sau hạn nộp.',
+    },
+];
+
+function getDisplayModeLabel(mode?: string | null) {
+    return DISPLAY_MODE_OPTIONS.find((item) => item.value === mode)?.label ?? 'Hiển thị ngay điểm và đáp án';
 }
 
 function toLocalDateTime(input: string) {
@@ -313,6 +335,7 @@ function CreateTest({ isDark, onSaved }: { isDark: boolean; onSaved: () => void 
     const [endTime, setEndTime] = useState('');
     const [deadline, setDeadline] = useState('');
     const [durationMinutes, setDurationMinutes] = useState('30');
+    const [displayAnswerMode, setDisplayAnswerMode] = useState<DisplayAnswerMode>('IMMEDIATE');
     const [bankId, setBankId] = useState('');
     const [difficultyLevel, setDifficultyLevel] = useState('');
     const [limit, setLimit] = useState('10');
@@ -410,6 +433,7 @@ function CreateTest({ isDark, onSaved }: { isDark: boolean; onSaved: () => void 
                 endTime: assignmentType === 'TEST' ? toLocalDateTime(endTime) : null,
                 deadline: assignmentType === 'ASSIGNMENT' ? toLocalDateTime(deadline) : null,
                 durationMinutes: Number(durationMinutes),
+                displayAnswerMode,
                 questionIds: activeQuestions.map(q => q.id),
             }, token);
             if (publishAfter) {
@@ -516,6 +540,20 @@ function CreateTest({ isDark, onSaved }: { isDark: boolean; onSaved: () => void 
                         onChange={e => setDurationMinutes(e.target.value)}
                         className={`w-full ${inp}`}
                     />
+                </div>
+                <div>
+                    <p className={label}>Chế độ hiển thị đáp án</p>
+                    <Select value={displayAnswerMode} onValueChange={(value) => setDisplayAnswerMode(value as DisplayAnswerMode)}>
+                        <SelectTrigger className={inp}><SelectValue /></SelectTrigger>
+                        <SelectContent>
+                            {DISPLAY_MODE_OPTIONS.map((option) => (
+                                <SelectItem key={option.value} value={option.value}>{option.label}</SelectItem>
+                            ))}
+                        </SelectContent>
+                    </Select>
+                    <p className={`mt-1.5 text-[11px] font-semibold ${sub}`}>
+                        {DISPLAY_MODE_OPTIONS.find((option) => option.value === displayAnswerMode)?.helper}
+                    </p>
                 </div>
                 <div>
                     <p className={label}>Tiêu đề đề kiểm tra</p>
@@ -638,6 +676,7 @@ function DetailView({ id, isDark, onReport, onDeleted }: { id: number; isDark: b
     const [editAssignmentType, setEditAssignmentType] = useState<'TEST' | 'ASSIGNMENT'>('TEST');
     const [editTitle, setEditTitle] = useState('');
     const [editDuration, setEditDuration] = useState('30');
+    const [editDisplayAnswerMode, setEditDisplayAnswerMode] = useState<DisplayAnswerMode>('IMMEDIATE');
     const [editStartTime, setEditStartTime] = useState('');
     const [editEndTime, setEditEndTime] = useState('');
     const [editDeadline, setEditDeadline] = useState('');
@@ -679,6 +718,7 @@ function DetailView({ id, isDark, onReport, onDeleted }: { id: number; isDark: b
         setEditAssignmentType(detail.assignmentType);
         setEditTitle(detail.title);
         setEditDuration(String(detail.durationMinutes ?? 30));
+        setEditDisplayAnswerMode((detail.displayAnswerMode as DisplayAnswerMode) ?? 'IMMEDIATE');
         setEditStartTime(toDateTimeLocalInput(detail.startTime));
         setEditEndTime(toDateTimeLocalInput(detail.endTime));
         setEditDeadline(toDateTimeLocalInput(detail.deadline));
@@ -764,6 +804,7 @@ function DetailView({ id, isDark, onReport, onDeleted }: { id: number; isDark: b
                 startTime: editAssignmentType === 'TEST' ? toLocalDateTime(editStartTime) : null,
                 endTime: editAssignmentType === 'TEST' ? toLocalDateTime(editEndTime) : null,
                 deadline: editAssignmentType === 'ASSIGNMENT' ? toLocalDateTime(editDeadline) : null,
+                displayAnswerMode: editDisplayAnswerMode,
                 questionIds: activeQuestionIds,
             }, token);
             setDetail(updated);
@@ -894,6 +935,28 @@ function DetailView({ id, isDark, onReport, onDeleted }: { id: number; isDark: b
                                     <Input type="number" min="1" value={editDuration} onChange={e => setEditDuration(e.target.value)} className={isDark ? 'bg-[#20242b] border-white/15 text-gray-100' : 'bg-[#F7F7F2] border-[#1A1A1A]/20'} />
                                 ) : (
                                     <Input readOnly value={`${detail.durationMinutes} phút`} className={isDark ? 'bg-[#20242b] border-white/10 text-gray-100' : 'bg-[#F7F7F2] border-[#1A1A1A]/15'} />
+                                )}
+                            </div>
+
+                            <div className="md:col-span-2">
+                                <p className={`text-xs font-extrabold mb-1.5 ${sub}`}>Chế độ hiển thị đáp án</p>
+                                {isEditing ? (
+                                    <Select value={editDisplayAnswerMode} onValueChange={(value) => setEditDisplayAnswerMode(value as DisplayAnswerMode)}>
+                                        <SelectTrigger className={isDark ? 'bg-[#20242b] border-white/15 text-gray-100' : 'bg-[#F7F7F2] border-[#1A1A1A]/20'}>
+                                            <SelectValue />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                            {DISPLAY_MODE_OPTIONS.map((option) => (
+                                                <SelectItem key={option.value} value={option.value}>{option.label}</SelectItem>
+                                            ))}
+                                        </SelectContent>
+                                    </Select>
+                                ) : (
+                                    <Input
+                                        readOnly
+                                        value={getDisplayModeLabel(detail.displayAnswerMode)}
+                                        className={isDark ? 'bg-[#20242b] border-white/10 text-gray-100' : 'bg-[#F7F7F2] border-[#1A1A1A]/15'}
+                                    />
                                 )}
                             </div>
                         </div>

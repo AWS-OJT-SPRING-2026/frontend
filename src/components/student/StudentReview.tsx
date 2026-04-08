@@ -4,6 +4,7 @@ import { useSettings } from '../../context/SettingsContext';
 import { useSearchParams } from 'react-router-dom';
 import { authService } from '../../services/authService';
 import { profileService } from '../../services/profileService';
+import { aiFetch } from '../../services/aiFetch';
 
 import { FAST_API_BASE_URL as FAST_API_URL } from '../../services/env';
 
@@ -178,7 +179,7 @@ export function StudentReview() {
                 return;
             }
 
-            const res = await fetch(`${FAST_API_URL}/subjects/submissions/me`, {
+            const res = await aiFetch(`${FAST_API_URL}/subjects/submissions/me`, {
                 headers: {
                     Authorization: `Bearer ${token}`,
                 },
@@ -202,7 +203,7 @@ export function StudentReview() {
             const token = getAuthToken();
             if (!token) return;
 
-            const res = await fetch(`${FAST_API_URL}/subjects/submissions/${submissionid}/details`, {
+            const res = await aiFetch(`${FAST_API_URL}/subjects/submissions/${submissionid}/details`, {
                 headers: {
                     Authorization: `Bearer ${token}`,
                 },
@@ -334,7 +335,7 @@ export function StudentReview() {
         setIsSubmitting(true);
         try {
             const token = getAuthToken();
-            const response = await fetch(`${FAST_API_URL}/subjects/submit-quiz`, {
+            const response = await aiFetch(`${FAST_API_URL}/subjects/submit-quiz`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',

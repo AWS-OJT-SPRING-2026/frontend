@@ -1,5 +1,6 @@
 import { authService } from './authService';
 import { api, ApiError } from './api';
+import { aiFetch } from './aiFetch';
 
 import { FAST_API_BASE_URL } from './env';
 
@@ -92,7 +93,7 @@ function mapLegacyBook(item: LegacyBookItem): TeacherDocumentItem {
 
 export const teacherDocumentService = {
   async getDocuments(token: string): Promise<TeacherDocumentItem[]> {
-    const response = await fetch(`${FAST_API_BASE_URL}/books`, {
+    const response = await aiFetch(`${FAST_API_BASE_URL}/books`, {
       headers: buildAuthHeader(token),
     });
     const data = await handleJson<LegacyBookItem[]>(response);
@@ -104,7 +105,7 @@ export const teacherDocumentService = {
       throw new Error('Tài khoản demo không hỗ trợ tải tài liệu. Vui lòng đăng nhập tài khoản thật.');
     }
 
-    const response = await fetch(`${FAST_API_BASE_URL}/documents/upload`, {
+    const response = await aiFetch(`${FAST_API_BASE_URL}/documents/upload`, {
       method: 'POST',
       headers: buildAuthHeader(token),
       body: formData,
@@ -117,7 +118,7 @@ export const teacherDocumentService = {
       throw new Error('Tài khoản demo không hỗ trợ xem chi tiết tài liệu. Vui lòng đăng nhập tài khoản thật.');
     }
 
-    const response = await fetch(`${FAST_API_BASE_URL}/books/${docType}/${docId}`, {
+    const response = await aiFetch(`${FAST_API_BASE_URL}/books/${docType}/${docId}`, {
       headers: buildAuthHeader(token),
     });
     return handleJson<TeacherDocumentDetail>(response);
@@ -143,7 +144,7 @@ export const teacherDocumentService = {
     } catch (error) {
       // Backward compatibility with legacy Python distribution endpoint.
       if (error instanceof ApiError && (error.status === 404 || error.status === 405)) {
-        const response = await fetch(`${FAST_API_BASE_URL}/books/${docType}/${docId}/distribute`, {
+        const response = await aiFetch(`${FAST_API_BASE_URL}/books/${docType}/${docId}/distribute`, {
           method: 'POST',
           headers: {
             ...buildAuthHeader(token),
@@ -162,7 +163,7 @@ export const teacherDocumentService = {
       throw new Error('Tài khoản demo không hỗ trợ xóa tài liệu. Vui lòng đăng nhập tài khoản thật.');
     }
 
-    const response = await fetch(`${FAST_API_BASE_URL}/books/${docType}/${docId}`, {
+    const response = await aiFetch(`${FAST_API_BASE_URL}/books/${docType}/${docId}`, {
       method: 'DELETE',
       headers: buildAuthHeader(token),
     });
