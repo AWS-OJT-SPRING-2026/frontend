@@ -8,7 +8,6 @@ import {
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '../ui/dialog';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuTrigger } from '../ui/dropdown-menu';
 import { useSettings } from '../../context/SettingsContext';
-import { authService } from '../../services/authService';
 import { StudentClassmate, StudentScheduleItem, StudentWeeklyStats, timetableService } from '../../services/timetableService';
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL;
@@ -434,18 +433,6 @@ export function StudentSchedule() {
     }, [weeklyStats]);
 
     useEffect(() => {
-        const token = authService.getToken();
-        if (!token) {
-            setScheduleEvents([]);
-            setWeeklyStats({
-                totalClassesThisWeek: 0,
-                totalHoursStudied: 0,
-                totalSubjects: 0,
-                totalExams: 0,
-            });
-            return;
-        }
-
         let isMounted = true;
 
         const fetchScheduleData = async () => {
@@ -453,8 +440,8 @@ export function StudentSchedule() {
                 setScheduleError(null);
 
                 const [statsResult, scheduleResult] = await Promise.all([
-                    timetableService.getStudentScheduleStats(weekRange.start, weekRange.end, token),
-                    timetableService.getStudentSchedule(weekRange.start, weekRange.end, token),
+                    timetableService.getStudentScheduleStats(weekRange.start, weekRange.end),
+                    timetableService.getStudentSchedule(weekRange.start, weekRange.end),
                 ]);
 
                 if (!isMounted) return;

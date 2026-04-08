@@ -333,9 +333,16 @@ export function AdminSchedule() {
         changed: boolean;
     } | null>(null);
 
-    const today = useMemo(() => new Date(), []);
     const weekDates = useMemo(() => getWeekDates(weekOffset), [weekOffset]);
-    const todayDayIndex = useMemo(() => weekDates.findIndex((d) => isSameDay(d, today)), [today, weekDates]);
+    const todayDayIndex = useMemo(() => {
+        const today = new Date();
+        return weekDates.findIndex((d) => isSameDay(d, today));
+    }, [weekDates]);
+    const goToToday = useCallback(() => {
+        const now = new Date();
+        setWeekOffset(0);
+        setMonthDate({ year: now.getFullYear(), month: now.getMonth() });
+    }, []);
 
     const allClassrooms = useMemo(() => classrooms.map((c) => c.className), [classrooms]);
     const allTeachers = useMemo(() => {
@@ -357,19 +364,11 @@ export function AdminSchedule() {
     }), [events, filterClass, filterTeacher, filterSubject]);
 
     const refreshStats = useCallback(async () => {
-        const token = authService.getToken();
-        if (!token) return;
-        const next = await timetableService.getStats(token);
+        const next = await timetableService.getStats();
         setStats(next);
     }, []);
 
     const loadCalendarData = useCallback(async () => {
-        const token = authService.getToken();
-        if (!token) {
-            setError('Bạn chưa đăng nhập.');
-            return;
-        }
-
         let start: Date;
         let end: Date;
         if (viewMode === 'week') {
@@ -390,7 +389,7 @@ export function AdminSchedule() {
         setLoading(true);
         setError(null);
         try {
-            const list = await timetableService.getTimetables(start, end, token);
+            const list = await timetableService.getTimetables(start, end);
             setEvents(list.map(mapTimetableItem));
         } catch (e) {
             setError(e instanceof Error ? e.message : 'Không thể tải lịch học.');
@@ -400,18 +399,18 @@ export function AdminSchedule() {
     }, [viewMode, weekDates, monthDate]);
 
     useEffect(() => {
-        const token = authService.getToken();
-        if (!token) {
-            setError('Bạn chưa đăng nhập.');
-            return;
-        }
-
         (async () => {
             try {
+                const sessionAuth = await authService.getCurrentSessionAuth();
+                if (!sessionAuth) {
+                    setError('Bạn chưa đăng nhập.');
+                    return;
+                }
+
                 const [allClasses, allTeachersData, allSubjects] = await Promise.all([
-                    classroomService.getAllClassrooms(token),
-                    timetableService.getTeachers(token),
-                    classroomService.getAllSubjects(token),
+                    classroomService.getAllClassrooms(sessionAuth.token),
+                    timetableService.getTeachers(),
+                    classroomService.getAllSubjects(sessionAuth.token),
                 ]);
                 setClassrooms(allClasses);
                 setTeachers(allTeachersData);
@@ -583,7 +582,7 @@ export function AdminSchedule() {
                     googleMeetLink: updated.meetLink,
                     startTime: updated.startTime,
                     endTime: updated.endTime,
-                }, token);
+                });
                 await refreshStats();
             } catch (err) {
                 setError(err instanceof Error ? err.message : 'Không thể cập nhật nhanh buổi học.');
@@ -632,7 +631,7 @@ export function AdminSchedule() {
                 googleMeetLink: singleEditData.meetLink || undefined,
                 startTime: `${singleEditData.date}T${fmtTimeApi(singleEditData.startTime)}`,
                 endTime: `${singleEditData.date}T${fmtTimeApi(singleEditData.endTime)}`,
-            }, token);
+            });
             setSingleEditOpen(false);
             setDetailOpen(false);
             await Promise.all([loadCalendarData(), refreshStats()]);
@@ -701,7 +700,7 @@ export function AdminSchedule() {
                     startTime: fmtTimeApi(formData.startTime),
                     endTime: fmtTimeApi(formData.endTime),
                     daysOfWeek: formData.selectedDays.map((d) => DAY_ENUMS[d]),
-                }, token);
+                });
             } else {
                 if (!formData.date) {
                     setError('Vui lòng chọn ngày học trước khi lưu buổi học.');
@@ -715,7 +714,7 @@ export function AdminSchedule() {
                     googleMeetLink: formData.meetLink || undefined,
                     startTime: `${formData.date}T${fmtTimeApi(formData.startTime)}`,
                     endTime: `${formData.date}T${fmtTimeApi(formData.endTime)}`,
-                }, token);
+                });
             }
 
             setCreateOpen(false);
@@ -773,7 +772,7 @@ export function AdminSchedule() {
                 startTime: bulkEditData.startTime ? fmtTimeApi(bulkEditData.startTime) : undefined,
                 endTime: bulkEditData.endTime ? fmtTimeApi(bulkEditData.endTime) : undefined,
                 googleMeetLink: bulkEditData.meetLink || undefined,
-            }, token);
+            });
 
             setBulkEditOpen(false);
             await Promise.all([loadCalendarData(), refreshStats()]);
@@ -783,11 +782,10 @@ export function AdminSchedule() {
     }, [bulkEditClassId, bulkEditData, loadCalendarData, refreshStats]);
 
     const handleDeleteSingle = useCallback(async () => {
-        const token = authService.getToken();
-        if (!token || !selectedEvent) return;
+        if (!selectedEvent) return;
 
         try {
-            await timetableService.deleteTimetable(selectedEvent.id, token);
+            await timetableService.deleteTimetable(selectedEvent.id);
             setDetailOpen(false);
             await Promise.all([loadCalendarData(), refreshStats()]);
         } catch (e) {
@@ -796,11 +794,10 @@ export function AdminSchedule() {
     }, [selectedEvent, loadCalendarData, refreshStats]);
 
     const handleDeleteByClass = useCallback(async () => {
-        const token = authService.getToken();
-        if (!token || !bulkEditClassId) return;
+        if (!bulkEditClassId) return;
 
         try {
-            await timetableService.deleteAllByClass(Number(bulkEditClassId), token);
+            await timetableService.deleteAllByClass(Number(bulkEditClassId));
             setBulkEditOpen(false);
             await Promise.all([loadCalendarData(), refreshStats()]);
         } catch (e) {
@@ -834,7 +831,10 @@ export function AdminSchedule() {
                 <div className="flex items-center gap-3 flex-wrap">
                     <button
                         type="button"
-                        onClick={() => setViewMode('today')}
+                        onClick={() => {
+                            goToToday();
+                            setViewMode('today');
+                        }}
                         className={`h-10 rounded-2xl border-2 px-4 text-sm font-extrabold transition-all ${
                             viewMode === 'today'
                                 ? 'border-[#2563EB]/35 bg-[#EEF4FF] text-[#2563EB] shadow-sm'
@@ -949,6 +949,7 @@ export function AdminSchedule() {
                                 todayDayIndex={todayDayIndex}
                                 weekOffset={weekOffset}
                                 setWeekOffset={setWeekOffset}
+                                onGoToToday={goToToday}
                                 onEventClick={(ev) => { setSelectedEvent(ev); setDetailOpen(true); }}
                                 onCellClick={handleCellClick}
                                 onShowTooltip={showTooltip}
@@ -1733,6 +1734,7 @@ function WeekView({
     todayDayIndex,
     weekOffset,
     setWeekOffset,
+    onGoToToday,
     onEventClick,
     onCellClick,
     onShowTooltip,
@@ -1749,6 +1751,7 @@ function WeekView({
     todayDayIndex: number;
     weekOffset: number;
     setWeekOffset: (v: number | ((p: number) => number)) => void;
+    onGoToToday: () => void;
     onEventClick: (ev: ScheduleEvent) => void;
     onCellClick: (dayIndex: number, hour: number) => void;
     onShowTooltip: (ev: ScheduleEvent, e: React.MouseEvent<HTMLElement>) => void;
@@ -1761,6 +1764,8 @@ function WeekView({
     onOpenMore: (title: string, items: ScheduleEvent[]) => void;
 }) {
     const [hoveredCardId, setHoveredCardId] = useState<number | null>(null);
+    const showTodayButton = weekOffset !== 0;
+    const showTodayOnLeft = weekOffset > 0;
 
     const slotGroups = useMemo(() => {
         const grouped = new Map<string, ScheduleEvent[]>();
@@ -1787,13 +1792,20 @@ function WeekView({
         <div className="bg-white rounded-3xl border-2 border-[#1A1A1A] overflow-hidden shadow-sm">
             {/* Week nav */}
             <div className="flex items-center justify-between px-5 py-3 border-b-2 border-[#1A1A1A]">
-                <button onClick={() => setWeekOffset((p) => p - 1)} className="w-8 h-8 rounded-xl bg-gray-100 hover:bg-gray-200 flex items-center justify-center font-bold text-gray-500 transition-colors">‹</button>
+                <div className="flex items-center gap-1.5">
+                    <button onClick={() => setWeekOffset((p) => p - 1)} className="w-8 h-8 rounded-xl bg-gray-100 hover:bg-gray-200 flex items-center justify-center font-bold text-gray-500 transition-colors">‹</button>
+                    {showTodayButton && showTodayOnLeft && (
+                        <button onClick={onGoToToday} className="px-3 h-8 rounded-xl bg-[#FF6B4A]/10 text-[#FF6B4A] font-bold text-xs hover:bg-[#FF6B4A]/20 transition-colors">
+                            Hôm nay
+                        </button>
+                    )}
+                </div>
                 <span className="text-sm font-extrabold text-[#1A1A1A]">
                     {weekDates[0]?.toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit' })} — {weekDates[6]?.toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit', year: 'numeric' })}
                 </span>
-                <div className="flex gap-1.5">
-                    {weekOffset !== 0 && (
-                        <button onClick={() => setWeekOffset(0)} className="px-3 h-8 rounded-xl bg-[#FF6B4A]/10 text-[#FF6B4A] font-bold text-xs hover:bg-[#FF6B4A]/20 transition-colors">
+                <div className="flex items-center gap-1.5">
+                    {showTodayButton && !showTodayOnLeft && (
+                        <button onClick={onGoToToday} className="px-3 h-8 rounded-xl bg-[#FF6B4A]/10 text-[#FF6B4A] font-bold text-xs hover:bg-[#FF6B4A]/20 transition-colors">
                             Hôm nay
                         </button>
                     )}

@@ -6,7 +6,6 @@ import {
 } from '@phosphor-icons/react';
 import { Input } from '../ui/input';
 import { AttendanceModal } from '../shared/AttendanceModal';
-import { authService } from '../../services/authService';
 import { timetableService, type TimetableItem, type TeacherScheduleStats } from '../../services/timetableService';
 import { useSettings } from '../../context/SettingsContext';
 
@@ -345,9 +344,6 @@ export function TeacherSchedule() {
 
     // ── Fetch data from API ──
     const fetchData = useCallback(async () => {
-        const token = authService.getToken();
-        if (!token) { setError('Chưa đăng nhập'); setIsLoading(false); return; }
-
         setIsLoading(true);
         setError(null);
 
@@ -363,8 +359,8 @@ export function TeacherSchedule() {
             }
 
             const [items, statsData] = await Promise.all([
-                timetableService.getMyScheduleList(start, end, token),
-                timetableService.getMyScheduleStats(start, end, token),
+                timetableService.getMyScheduleList(start, end),
+                timetableService.getMyScheduleStats(start, end),
             ]);
 
             const mapped = items.map(item => mapToScheduleEvent(item));
@@ -390,10 +386,7 @@ export function TeacherSchedule() {
 
     // ── Update meet link via API ──
     const handleUpdateMeetLink = useCallback(async (event: ScheduleEvent, meetLink: string) => {
-        const token = authService.getToken();
-        if (!token) throw new Error('Chưa đăng nhập');
-
-        const updated = await timetableService.updateMeetLink(event.id, meetLink, token);
+        const updated = await timetableService.updateMeetLink(event.id, meetLink);
 
         // Update local state
         setEvents(prev => prev.map(ev => {
@@ -416,7 +409,7 @@ export function TeacherSchedule() {
                 start = getMonday(currentDate);
                 end = getSunday(start);
             }
-            const newStats = await timetableService.getMyScheduleStats(start, end, token);
+            const newStats = await timetableService.getMyScheduleStats(start, end);
             setStats(newStats);
         } catch { /* stats refresh is best-effort */ }
     }, [currentDate, viewMode]);
