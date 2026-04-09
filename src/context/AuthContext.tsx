@@ -3,6 +3,7 @@ import { fetchAuthSession } from 'aws-amplify/auth';
 import { User } from '../types/auth';
 import { authService } from '../services/authService';
 import { profileService } from '../services/profileService';
+import { quizSessionGuard } from '../lib/quizSessionGuard';
 
 const PHASE1_DELAY = 1500; // ms – first message duration
 const PHASE2_DELAY = 1200; // ms – second message duration (total = PHASE1 + PHASE2)
@@ -191,6 +192,31 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     };
   }, [user]);
 
+  // ── Hard-logout helper ────────────────────────────────────────────────────
+  // Clears all Cognito keys, revokes the refresh token server-side via
+  // signOut({ global: true }), then shows the session-expired overlay.
+  // Use this whenever the access token has genuinely expired so that
+  // Amplify cannot silently issue a new one from the refresh token.
+  const hardLogout = useCallback(async () => {
+    if (sessionExpired) return;
+    if (authService.isQuickDemoSession()) return;
+
+    await authService.hardLogout();
+
+    setUser(null);
+    setIsTransitioning(false);
+    setTransitionType(null);
+    setTransitionPhase(null);
+
+    const pathname = window.location.pathname;
+    if (isProtectedPath(pathname)) {
+      setSessionExpired(true);
+    }
+    // Replace history entry so the browser back-button cannot return to the
+    // protected page after the user lands on /login.
+    window.history.replaceState(null, '', window.location.href);
+  }, [sessionExpired]);
+
   // ── Expire session helper ─────────────────────────────────────────────────
   const expireSession = useCallback(() => {
     // Don't trigger if already expired or not logged in
@@ -227,6 +253,29 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       void (async () => {
         isCheckingSessionRef.current = true;
         try {
+          // Check the raw token exp BEFORE calling fetchAuthSession.
+          // fetchAuthSession auto-refreshes using the refresh token, so we
+          // must inspect the stored JWT ourselves to detect genuine expiry.
+          if (authService.isAccessTokenExpired()) {
+            if (quizSessionGuard.isActive()) {
+              // Student is in a timed quiz — attempt a silent token refresh
+              // so they don't lose progress mid-session. Only hard-logout if
+              // the refresh token itself is also expired or revoked.
+              const refreshed = await authService.refreshAccessToken();
+              if (!refreshed) {
+                // Refresh failed (refresh token expired/revoked) — no choice
+                await hardLogout();
+              }
+              // Refresh succeeded: new tokens are already stored by
+              // refreshAccessToken(). The student continues uninterrupted.
+              return;
+            }
+            await hardLogout();
+            return;
+          }
+
+          // Token is still within its lifetime — verify the Amplify session
+          // is otherwise intact (e.g. revoked server-side).
           const hasSession = await getAmplifySessionAuth();
           if (!hasSession && authService.getUser()) {
             expireSession();
@@ -238,18 +287,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }, SESSION_CHECK_INTERVAL);
 
     return () => clearInterval(interval);
-  }, [isInitializing, expireSession]);
+  }, [isInitializing, expireSession, hardLogout]);
 
   // ── Listen for 401 event fired by api.ts ─────────────────────────────────
   useEffect(() => {
     const handler = () => {
       if (isProtectedPath(window.location.pathname)) {
-        expireSession();
+        // Use hardLogout so the refresh token is also revoked and cleared.
+        void hardLogout();
       }
     };
     window.addEventListener(SESSION_EXPIRED_EVENT, handler);
     return () => window.removeEventListener(SESSION_EXPIRED_EVENT, handler);
-  }, [expireSession]);
+  }, [hardLogout]);
 
   const login = useCallback((token: string, userData: User) => {
     authService.saveToken(token);

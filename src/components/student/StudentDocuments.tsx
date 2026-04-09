@@ -11,6 +11,7 @@ import {
   type ContentBlockDto,
   type StudentTheorySubjectOverview,
 } from '../../services/studentMaterialService';
+import { MathRenderer } from '../ui/MathRenderer';
 
 const SPECIAL_BLOCK_KEYWORDS = ['diem nhan', 'tom tat', 'ghi nho', 'key highlight', 'cot loi', 'quan trong'];
 
@@ -190,10 +191,10 @@ export function StudentDocuments() {
           <div className="flex items-center gap-2 mb-2">
             <Star className="w-5 h-5 text-amber-400" weight="fill" />
             <h5 className="text-xl md:text-2xl font-black leading-tight">
-              {block.title?.trim() || 'Điểm nhấn quan trọng của bài'}
+              <MathRenderer content={block.title?.trim() || 'Điểm nhấn quan trọng của bài'} />
             </h5>
           </div>
-          <p className="whitespace-pre-wrap text-base md:text-lg font-bold leading-8">{block.content}</p>
+          <p className="whitespace-pre-wrap text-base md:text-lg font-bold leading-8"><MathRenderer content={block.content} /></p>
         </article>
       );
     }
@@ -206,8 +207,8 @@ export function StudentDocuments() {
           : 'border-[#1A1A1A]/10 bg-white text-[#1A1A1A]/85'
           }`}
       >
-        {block.title && <h5 className="font-bold text-base mb-1">{block.title}</h5>}
-        <p>{block.content}</p>
+        {block.title && <h5 className="font-bold text-base mb-1"><MathRenderer content={block.title} /></h5>}
+        <p><MathRenderer content={block.content} /></p>
       </article>
     );
   };

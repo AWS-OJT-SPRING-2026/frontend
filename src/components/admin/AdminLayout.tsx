@@ -1,5 +1,5 @@
-import { useEffect } from 'react';
-import { Outlet, NavLink } from 'react-router-dom';
+import { useEffect, useState } from 'react';
+import { Outlet, NavLink, useNavigate, useLocation, Link } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import { useSettings } from '../../context/SettingsContext';
 import {
@@ -8,11 +8,16 @@ import {
 import { cn } from '../../lib/utils';
 import { SettingsPanel } from '../SettingsPanel';
 
+const BASE_PATH = '/admin';
+
 export function AdminLayout() {
     const { user, logout } = useAuth();
     const { theme, sidebarMode, t } = useSettings();
     const isDark = theme === 'dark';
     const isExpanded = sidebarMode === 'visible';
+    const navigate = useNavigate();
+    const location = useLocation();
+    const [resetKey, setResetKey] = useState(0);
 
     const labelClass = isExpanded
         ? "opacity-100"
@@ -34,6 +39,21 @@ export function AdminLayout() {
         };
     }, []);
 
+    const handleNavClick = (item: typeof navItems[number]) => (e: React.MouseEvent) => {
+        const targetPath = item.to === '.' ? BASE_PATH : `${BASE_PATH}/${item.to}`;
+        const isActive = item.end
+            ? location.pathname === targetPath
+            : location.pathname === targetPath || location.pathname.startsWith(`${targetPath}/`);
+
+        if (isActive) {
+            e.preventDefault();
+            setResetKey(k => k + 1);
+            navigate(targetPath, { replace: true });
+            const mainContent = document.querySelector('main .overflow-auto');
+            if (mainContent) mainContent.scrollTo({ top: 0, behavior: 'smooth' });
+        }
+    };
+
     return (
         <div className={cn("h-screen flex overflow-hidden transition-colors duration-300", isDark ? "bg-[#0a0a0a]" : "bg-[#111111]")} style={{ fontFamily: "'Nunito', sans-serif" }}>
             {/* Sidebar */}
@@ -44,12 +64,12 @@ export function AdminLayout() {
                     isExpanded ? "w-60" : "group/sidebar w-20 hover:w-60"
                 )}
             >
-                <div className="mb-6 flex items-center pl-4 w-full h-14">
+                <Link to={BASE_PATH} className="mb-6 flex items-center pl-4 w-full h-14 cursor-pointer hover:opacity-90 transition-opacity">
                     <img src="/logo.svg" alt="SlothubEdu" className="w-12 h-12 shrink-0 rounded-xl block" />
                     <span className={cn("ml-3 text-white font-extrabold text-lg whitespace-nowrap", labelClass)}>
                         Slothub<span className="text-[#FF6B4A]">Edu</span>
                     </span>
-                </div>
+                </Link>
 
                 <nav className="flex-1 flex flex-col gap-1 w-full px-2">
                     {navItems.map((item) => (
@@ -57,6 +77,7 @@ export function AdminLayout() {
                             key={item.label}
                             to={item.to}
                             end={item.end}
+                            onClick={handleNavClick(item)}
                             className={({ isActive }) =>
                                 cn(
                                     "flex items-center gap-3 py-3 px-3 rounded-2xl transition-all duration-200",
@@ -125,7 +146,7 @@ export function AdminLayout() {
                         backgroundBlendMode: 'normal',
                     }}
                 >
-                    <Outlet />
+                    <Outlet key={resetKey} />
                 </div>
             </main>
         </div>

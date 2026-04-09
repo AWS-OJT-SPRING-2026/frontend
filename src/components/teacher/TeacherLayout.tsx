@@ -1,4 +1,5 @@
-import { Outlet, NavLink } from 'react-router-dom';
+import { useState } from 'react';
+import { Outlet, NavLink, useNavigate, useLocation, Link } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import { useSettings } from '../../context/SettingsContext';
 import {
@@ -9,10 +10,15 @@ import { useActivityPing } from '../../lib/useActivityPing';
 import { UserMenu } from '../UserMenu';
 import { SettingsPanel } from '../SettingsPanel';
 
+const BASE_PATH = '/teacher';
+
 export function TeacherLayout() {
     const { logout } = useAuth();
     const { theme, sidebarMode, t } = useSettings();
     useActivityPing();
+    const navigate = useNavigate();
+    const location = useLocation();
+    const [resetKey, setResetKey] = useState(0);
 
     const isDark = theme === 'dark';
     const isExpanded = sidebarMode === 'visible';
@@ -29,6 +35,21 @@ export function TeacherLayout() {
         ? "opacity-100"
         : "opacity-0 group-hover/sidebar:opacity-100 transition-opacity duration-200 delay-100";
 
+    const handleNavClick = (item: typeof navItems[number]) => (e: React.MouseEvent) => {
+        const targetPath = item.to === '.' ? BASE_PATH : `${BASE_PATH}/${item.to}`;
+        const isActive = item.end
+            ? location.pathname === targetPath
+            : location.pathname === targetPath || location.pathname.startsWith(`${targetPath}/`);
+
+        if (isActive) {
+            e.preventDefault();
+            setResetKey(k => k + 1);
+            navigate(targetPath, { replace: true });
+            const mainContent = document.querySelector('main .overflow-auto');
+            if (mainContent) mainContent.scrollTo({ top: 0, behavior: 'smooth' });
+        }
+    };
+
     return (
         <div className={cn("min-h-screen flex transition-colors duration-300", isDark ? "bg-[#0a0a0a]" : "bg-[#111111]")} style={{ fontFamily: "'Nunito', sans-serif" }}>
             <aside className={cn(
@@ -36,12 +57,12 @@ export function TeacherLayout() {
                 "bg-[#0a0a0a]",
                 isExpanded ? "w-60" : "group/sidebar w-20 hover:w-60"
             )}>
-                <div className="mb-6 flex items-center pl-4 w-full h-14">
+                <Link to={BASE_PATH} className="mb-6 flex items-center pl-4 w-full h-14 cursor-pointer hover:opacity-90 transition-opacity">
                     <img src="/logo.svg" alt="SlothubEdu" className="w-12 h-12 shrink-0 rounded-xl block" />
                     <span className={cn("ml-3 text-white font-extrabold text-lg whitespace-nowrap", labelClass)}>
                         Slothub<span className="text-[#FF6B4A]">Edu</span>
                     </span>
-                </div>
+                </Link>
 
                 <nav className="flex-1 flex flex-col gap-1 w-full px-2">
                     {navItems.map((item) => (
@@ -49,6 +70,7 @@ export function TeacherLayout() {
                             key={item.label}
                             to={item.to}
                             end={item.end}
+                            onClick={handleNavClick(item)}
                             className={({ isActive }) =>
                                 cn(
                                     "flex items-center gap-3 py-3 px-3 rounded-2xl transition-all duration-200",
@@ -100,7 +122,7 @@ export function TeacherLayout() {
                         backgroundBlendMode: 'normal',
                     }}
                 >
-                    <Outlet />
+                    <Outlet key={resetKey} />
                 </div>
             </main>
         </div>

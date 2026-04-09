@@ -11,13 +11,24 @@ const DAY = 24 * HOUR;
 export const ONLINE_THRESHOLD_MS = 5 * MINUTE;
 
 /**
+ * Đảm bảo parse các string timezone-less như "+07:00" Vietnam Time.
+ */
+export function parseVnDate(value: string | null | undefined): Date {
+    if (!value) return new Date(NaN);
+    if (value.length === 19) {
+        return new Date(value + '+07:00');
+    }
+    return new Date(value);
+}
+
+/**
  * Kiểm tra user có đang online không dựa trên lastActiveAt.
  * @param lastActiveAt ISO string hoặc timestamp
  * @returns true nếu active trong vòng 5 phút
  */
 export function isUserOnline(lastActiveAt: string | null | undefined): boolean {
     if (!lastActiveAt) return false;
-    const diff = Date.now() - new Date(lastActiveAt).getTime();
+    const diff = Date.now() - parseVnDate(lastActiveAt).getTime();
     return diff <= ONLINE_THRESHOLD_MS;
 }
 
@@ -32,10 +43,10 @@ import { vi } from 'date-fns/locale';
 export function formatTimeAgo(dateStr: string | null | undefined): string {
     if (!dateStr) return 'Chưa hoạt động';
     
-    const diff = Date.now() - new Date(dateStr).getTime();
+    const diff = Date.now() - parseVnDate(dateStr).getTime();
     if (diff < ONLINE_THRESHOLD_MS) return 'Vừa xong';
 
-    return formatDistanceToNow(new Date(dateStr), {
+    return formatDistanceToNow(parseVnDate(dateStr), {
         addSuffix: true,
         locale: vi
     });
@@ -47,7 +58,7 @@ export function formatTimeAgo(dateStr: string | null | undefined): string {
  * @returns true nếu now > endTime + 24h
  */
 export function isPast24hAfterEnd(endTimeStr: string): boolean {
-    const endTime = new Date(endTimeStr).getTime();
+    const endTime = parseVnDate(endTimeStr).getTime();
     return Date.now() > endTime + DAY;
 }
 
@@ -57,7 +68,7 @@ export function isPast24hAfterEnd(endTimeStr: string): boolean {
  * @returns true nếu now >= startTime
  */
 export function hasClassStarted(startTimeStr: string): boolean {
-    return Date.now() >= new Date(startTimeStr).getTime();
+    return Date.now() >= parseVnDate(startTimeStr).getTime();
 }
 
 /**
@@ -66,5 +77,5 @@ export function hasClassStarted(startTimeStr: string): boolean {
  * @returns true nếu now > endTime
  */
 export function hasClassEnded(endTimeStr: string): boolean {
-    return Date.now() > new Date(endTimeStr).getTime();
+    return Date.now() > parseVnDate(endTimeStr).getTime();
 }

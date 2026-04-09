@@ -1,13 +1,18 @@
 import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
+import { api } from '../../services/api';
+import { MathRenderer } from '../ui/MathRenderer';
 import {
     CheckCircle, ClipboardText, Clock, BookOpen, CaretRight,
     ArrowCounterClockwise, Star, Hourglass, WarningCircle,
-    Medal, MagnifyingGlass, Funnel, ListNumbers, XCircle, Archive
+    Medal, MagnifyingGlass, Funnel, ListNumbers, XCircle, Archive,
+    ShieldWarning
 } from '@phosphor-icons/react';
 import { useSettings } from '../../context/SettingsContext';
 import { assignmentService, AssignmentResponse, AssignmentDetailResponse, SubmissionResponse, AssignmentAttemptResponse, AssignmentResultResponse } from '../../services/assignmentService';
-import { authService } from '../../services/authService';
+import { authService, UserData } from '../../services/authService';
+import { useQuizDraft } from '../../hooks/useQuizDraft';
+import { quizSessionGuard } from '../../lib/quizSessionGuard';
 
 type TestStatus = 'pending' | 'in_progress' | 'completed' | 'missing';
 type TestCategory = 'homework' | 'exam';
@@ -34,9 +39,17 @@ interface Test {
     _assignmentId?: number;
 }
 
+function parseVnDate(value: string | null | undefined): Date {
+    if (!value) return new Date(NaN);
+    if (value.length === 19) {
+        return new Date(value + '+07:00');
+    }
+    return new Date(value);
+}
+
 function formatDateTime(value?: string | null) {
     if (!value) return '---';
-    return new Date(value).toLocaleString('vi-VN', {
+    return parseVnDate(value).toLocaleString('vi-VN', {
         day: '2-digit',
         month: '2-digit',
         year: 'numeric',
@@ -47,7 +60,7 @@ function formatDateTime(value?: string | null) {
 
 function formatOpenTime(value?: string | null) {
     if (!value) return '---';
-    const d = new Date(value);
+    const d = parseVnDate(value);
     if (Number.isNaN(d.getTime())) return '---';
     const hh = String(d.getHours()).padStart(2, '0');
     const mm = String(d.getMinutes()).padStart(2, '0');
@@ -89,7 +102,7 @@ function parseDate(dateStr: string) {
 function getDueTimestamp(test: Test): number | null {
     const dueIso = test.deadlineIso;
     if (dueIso) {
-        const ms = new Date(dueIso).getTime();
+        const ms = parseVnDate(dueIso).getTime();
         if (!Number.isNaN(ms)) return ms;
     }
     if (test.dueDate) {
@@ -112,8 +125,8 @@ function getTimeAlert(test: Test, nowMs: number): TimeAlert {
     if (test.status === 'completed' || test.status === 'missing') return null;
 
     if (test.category === 'exam') {
-        const startMs = test.startTimeIso ? new Date(test.startTimeIso).getTime() : NaN;
-        const endMs = test.endTimeIso ? new Date(test.endTimeIso).getTime() : NaN;
+        const startMs = test.startTimeIso ? parseVnDate(test.startTimeIso).getTime() : NaN;
+        const endMs = test.endTimeIso ? parseVnDate(test.endTimeIso).getTime() : NaN;
 
         if (!Number.isNaN(startMs) && nowMs < startMs) {
             const diffToStart = startMs - nowMs;
@@ -182,7 +195,7 @@ function ExerciseCard({ test, onStart, isDark, nowMs }: { test: Test; onStart: (
     const timeAlert = getTimeAlert(test, nowMs);
     const urgent = !isCompleted && timeAlert !== null;
     const alertLabel = timeAlert === 'opening' ? 'SẮP MỞ' : timeAlert === 'deadline' ? 'SẮP HẾT' : null;
-    const startMs = test.startTimeIso ? new Date(test.startTimeIso).getTime() : NaN;
+    const startMs = test.startTimeIso ? parseVnDate(test.startTimeIso).getTime() : NaN;
     const isLockedUntilOpen = test.category === 'exam' && !isCompleted && !Number.isNaN(startMs) && nowMs < startMs;
     const openTooltip = isLockedUntilOpen ? `Mở sau: ${formatOpenTime(test.startTimeIso)}` : undefined;
     const shouldSlowBlink = isDark && timeAlert === 'opening';
@@ -255,10 +268,10 @@ function ExerciseCard({ test, onStart, isDark, nowMs }: { test: Test; onStart: (
 
                 {/* Score + action */}
                 <div className="shrink-0 flex items-center gap-3">
-                        {isCompleted && test.score != null && (
+                    {isCompleted && test.score != null && (
                         <div className="text-right">
-                                <div className={`text-3xl font-extrabold ${isMissing ? 'text-rose-500' : (isDark ? 'text-white' : 'text-[#1A1A1A]')}'`}>{test.score.toFixed(1)}</div>
-                                <div className="text-[10px] font-extrabold text-gray-400 uppercase tracking-widest">{isMissing ? 'BỎ LỠ' : 'Điểm số'}</div>
+                            <div className={`text-3xl font-extrabold ${isMissing ? 'text-rose-500' : (isDark ? 'text-white' : 'text-[#1A1A1A]')}'`}>{test.score.toFixed(1)}</div>
+                            <div className="text-[10px] font-extrabold text-gray-400 uppercase tracking-widest">{isMissing ? 'BỎ LỠ' : 'Điểm số'}</div>
                         </div>
                     )}
                     <button
@@ -311,7 +324,7 @@ function TestDetailView({
         test.startTimeIso &&
         !isCompleted &&
         !isInProgress &&
-        Date.now() < new Date(test.startTimeIso).getTime()
+        Date.now() < parseVnDate(test.startTimeIso).getTime()
     );
 
     return (
@@ -567,7 +580,9 @@ function DetailedReviewView({ test, result, detail, onBack, isDark }: {
                                         )}
                                     </div>
 
-                                    <p className="font-extrabold text-[#1A1A1A] mb-4">{q.question}</p>
+                                    <p className="font-extrabold text-[#1A1A1A] mb-4">
+                                        <MathRenderer content={q.question} />
+                                    </p>
 
                                     <div className="grid grid-cols-1 md:grid-cols-2 gap-2.5">
                                         {q.choices.map((choice) => {
@@ -583,7 +598,7 @@ function DetailedReviewView({ test, result, detail, onBack, isDark }: {
                                                 <div key={`${q.id}-${choice.label}`} className={`rounded-xl border-2 px-3 py-2.5 text-sm font-bold text-[#1A1A1A] ${className}`}>
                                                     <div className="flex items-start gap-2">
                                                         <span className="font-black">{choice.label}.</span>
-                                                        <span>{choice.text}</span>
+                                                        <span><MathRenderer content={choice.text} /></span>
                                                     </div>
                                                 </div>
                                             );
@@ -713,13 +728,13 @@ function TestTakingView({ test, result, onBack, onOpenDetailedReview, isDark }: 
                     </div>
                 </div>
             </div>
-    );
-}
+        );
+    }
 
 }
 
 // ─── Real API Test Taking View ────────────────────────────────────────────────
-function RealTestTakingView({ detail, attempt, answerSelections, onSelectAnswer, onBack, onSubmit, isSubmitting, isDark }: {
+function RealTestTakingView({ detail, attempt, answerSelections, onSelectAnswer, onBack, onSubmit, isSubmitting, isDark, initialCurrentQ, onCurrentQChange, onViolationsChange }: {
     detail: AssignmentDetailResponse;
     attempt: AssignmentAttemptResponse | null;
     answerSelections: Record<number, number>;
@@ -728,16 +743,126 @@ function RealTestTakingView({ detail, attempt, answerSelections, onSelectAnswer,
     onSubmit: () => void;
     isSubmitting: boolean;
     isDark: boolean;
+    /** Restored from draft — which question the student was on. */
+    initialCurrentQ?: number;
+    /** Notifies parent whenever the active question index changes (used for draft saving). */
+    onCurrentQChange?: (q: number) => void;
+    /** Notifies parent of current violation count so it can be sent on submit. */
+    onViolationsChange?: (count: number) => void;
 }) {
-    const [currentQ, setCurrentQ] = useState(0);
+    const [currentQ, setCurrentQ] = useState(initialCurrentQ ?? 0);
     const [timeLeft, setTimeLeft] = useState(detail.durationMinutes * 60);
     const autoSubmittedRef = useRef(false);
     const isCriticalTime = timeLeft <= 5 * 60;
 
+    // ─── Anti-cheat mode (only for TEST-type assignments) ──────────────────
+    const isExam = detail.assignmentType === 'TEST';
+    const MAX_VIOLATIONS = 3;
+    const [violations, setViolations] = useState(0);
+    const [showAntiCheatWarning, setShowAntiCheatWarning] = useState(false);
+    const [warningMessage, setWarningMessage] = useState('');
+    const violationLockRef = useRef(false);
+    const initTimeRef = useRef(Date.now());
+
+    const recordViolation = useCallback((message: string) => {
+        // Bỏ qua các cảnh báo do trình duyệt tự động trigger (như popup hướng dẫn nhấn ESC) trong 3 giây đầu
+        if (Date.now() - initTimeRef.current < 3000) return;
+        if (violationLockRef.current || autoSubmittedRef.current) return;
+        violationLockRef.current = true;
+        setViolations(v => {
+            const newV = v + 1;
+            console.warn(`[Anti-cheat] Vi phạm #${newV}: ${message}`);
+            onViolationsChange?.(newV);
+            return newV;
+        });
+        setWarningMessage(message);
+        setShowAntiCheatWarning(true);
+        // Debounce lock: prevent duplicate events (blur + visibilitychange fire together)
+        setTimeout(() => { violationLockRef.current = false; }, 1500);
+    }, [onViolationsChange]);
+
+    // Keep a stable ref to recordViolation to use in event listeners without re-running effects
+    const recordViolationRef = useRef(recordViolation);
+    useEffect(() => {
+        recordViolationRef.current = recordViolation;
+    }, [recordViolation]);
+
+    // ── Fullscreen management (exams only) ─────────────────────────────────
+    useEffect(() => {
+        if (!isExam) return;
+        const enterFullscreen = async () => {
+            try {
+                if (!document.fullscreenElement) {
+                    await document.documentElement.requestFullscreen();
+                }
+            } catch { /* user may deny – we still record the teaching environment */ }
+        };
+        // Small delay to ensure component is mounted before requesting fullscreen
+        const timer = setTimeout(enterFullscreen, 300);
+
+        const handleFullscreenChange = () => {
+            if (!document.fullscreenElement) {
+                recordViolationRef.current('Bạn đang rời khỏi chế độ làm bài kiểm tra. Hệ thống đã ghi nhận thao tác này.');
+            }
+        };
+        document.addEventListener('fullscreenchange', handleFullscreenChange);
+
+        return () => {
+            clearTimeout(timer);
+            document.removeEventListener('fullscreenchange', handleFullscreenChange);
+        };
+    }, [isExam]); // Removes recordViolation from dependency to prevent re-attaching listeners
+
+    // Exit fullscreen strictly on unmount
+    useEffect(() => {
+        return () => {
+            if (isExam && document.fullscreenElement) {
+                document.exitFullscreen().catch(() => { });
+            }
+        };
+    }, [isExam]);
+
+    // ── Tab switch / window blur detection (exams only) ───────────────────
+    useEffect(() => {
+        if (!isExam) return;
+        const handleVisibilityChange = () => {
+            if (document.hidden) {
+                recordViolation('Bạn đã chuyển tab. Hệ thống đã ghi nhận vi phạm này.');
+            }
+        };
+        const handleBlur = () => {
+            setTimeout(() => {
+                // Ensure focus is actually lost, preventing brief false positives from browser context menus or notifications
+                if (!document.hasFocus()) {
+                    recordViolation('Bạn đã rời khỏi cửa sổ làm bài. Hệ thống đã ghi nhận vi phạm này.');
+                }
+            }, 200);
+        };
+
+        document.addEventListener('visibilitychange', handleVisibilityChange);
+        window.addEventListener('blur', handleBlur);
+
+        return () => {
+            document.removeEventListener('visibilitychange', handleVisibilityChange);
+            window.removeEventListener('blur', handleBlur);
+        };
+    }, [isExam, recordViolation]);
+
+    // ── Auto-submit when violations exceed threshold ──────────────────────
+    useEffect(() => {
+        if (isExam && violations >= MAX_VIOLATIONS && !isSubmitting && !autoSubmittedRef.current) {
+            autoSubmittedRef.current = true;
+            // Small delay to let the warning display first
+            setTimeout(() => {
+                onSubmit();
+            }, 2000);
+        }
+    }, [violations, isExam, isSubmitting, onSubmit]);
+
     useEffect(() => {
         const recalcLeftSeconds = () => {
             if (attempt?.expiredAt) {
-                const diff = Math.floor((new Date(attempt.expiredAt).getTime() - Date.now()) / 1000);
+                const diff = Math.floor((parseVnDate(attempt.expiredAt).getTime() - Date.now()) / 1000);
                 return Math.max(0, diff);
             }
             return detail.durationMinutes * 60;
@@ -749,9 +874,14 @@ function RealTestTakingView({ detail, attempt, answerSelections, onSelectAnswer,
     }, [attempt?.expiredAt, detail.durationMinutes]);
 
     useEffect(() => {
-        setCurrentQ(0);
+        setCurrentQ(initialCurrentQ ?? 0);
         autoSubmittedRef.current = false;
-    }, [detail.assignmentID]);
+    }, [detail.assignmentID, initialCurrentQ]);
+
+    // Notify parent of question navigation so the draft can include currentQuestion
+    useEffect(() => {
+        onCurrentQChange?.(currentQ);
+    }, [currentQ, onCurrentQChange]);
 
     useEffect(() => {
         if (timeLeft === 0 && !isSubmitting && !autoSubmittedRef.current) {
@@ -781,9 +911,18 @@ function RealTestTakingView({ detail, attempt, answerSelections, onSelectAnswer,
     return (
         <div className="max-w-6xl mx-auto pb-20 flex flex-col lg:flex-row gap-6" style={{ fontFamily: "'Nunito', sans-serif" }}>
             <div className="flex-1 space-y-5">
-                <button onClick={onBack} className={`flex items-center gap-2 font-extrabold text-sm transition-colors ${isDark ? 'text-gray-400 hover:text-[#1A1A1A]' : 'text-gray-400 hover:text-[#1A1A1A]'}`}>
-                    ← Thoát làm bài
-                </button>
+                {/* Hide exit button for exams (anti-cheat), show for assignments */}
+                {!isExam && (
+                    <button onClick={onBack} className={`flex items-center gap-2 font-extrabold text-sm transition-colors ${isDark ? 'text-gray-400 hover:text-[#1A1A1A]' : 'text-gray-400 hover:text-[#1A1A1A]'}`}>
+                        ← Thoát làm bài
+                    </button>
+                )}
+                {isExam && (
+                    <div className="flex items-center gap-2 text-xs font-bold text-amber-600">
+                        <ShieldWarning className="w-4 h-4" weight="fill" />
+                        <span>Chế độ kiểm tra — Không thể thoát • Vi phạm: {violations}/{MAX_VIOLATIONS}</span>
+                    </div>
+                )}
 
                 {/* Header */}
                 <div className={`rounded-3xl p-6 flex flex-col md:flex-row justify-between gap-5 transition-colors ${isDark ? 'bg-[#1A1A1A] border-2 border-[#EEEEEE] shadow-[4px_4px_0_0_#EEEEEE] hover:shadow-[0_0_15px_#FF6B4A] transition-all duration-300' : 'bg-white border-2 border-[#1A1A1A]'} ${isCriticalTime ? (isDark ? 'border-red-400/60 bg-red-500/10' : 'border-red-500 bg-red-50') : ''}`}>
@@ -827,7 +966,7 @@ function RealTestTakingView({ detail, attempt, answerSelections, onSelectAnswer,
                                     Câu hỏi {currentQ + 1}
                                 </div>
                                 <h2 className={`text-xl font-extrabold leading-relaxed ${isDark ? 'text-[#1A1A1A]' : 'text-[#1A1A1A]'}`}>
-                                    {question.questionText}
+                                    <MathRenderer content={question.questionText} />
                                 </h2>
                             </div>
                             {question.difficultyLabel && (
@@ -852,7 +991,9 @@ function RealTestTakingView({ detail, attempt, answerSelections, onSelectAnswer,
                                         </div>
                                         <div>
                                             <div className={`font-extrabold text-sm mb-1 transition-colors ${isSelected ? 'text-[#FF6B4A]' : (isDark ? 'text-gray-500' : 'text-[#1A1A1A]/55')}`}>Đáp án {answerLabel}</div>
-                                            <p className={`font-semibold text-[15px] ${isDark ? 'text-[#f3f4f6]' : 'text-[#1A1A1A]'}`}>{ans.content}</p>
+                                            <p className={`font-semibold text-[15px] ${isDark ? 'text-[#f3f4f6]' : 'text-[#1A1A1A]'}`}>
+                                                <MathRenderer content={ans.content} />
+                                            </p>
                                         </div>
                                     </div>
                                 </button>
@@ -959,6 +1100,55 @@ function RealTestTakingView({ detail, attempt, answerSelections, onSelectAnswer,
                     </div>
                 </div>
             </div>
+
+            {/* ── Anti-cheat warning overlay ──────────────────────────────── */}
+            {isExam && showAntiCheatWarning && (
+                <div className="fixed inset-0 z-[10000] flex items-center justify-center bg-black/70 backdrop-blur-sm" style={{ fontFamily: "'Nunito', sans-serif" }}>
+                    <div className="bg-white rounded-3xl p-8 max-w-md mx-4 shadow-2xl border-2 border-red-200 animate-warning-pulse">
+                        <div className="flex flex-col items-center gap-4">
+                            <div className="w-16 h-16 rounded-full bg-red-100 flex items-center justify-center">
+                                <ShieldWarning className="w-10 h-10 text-red-500" weight="fill" />
+                            </div>
+                            <h3 className="text-xl font-black text-[#1A1A1A] text-center">⚠️ Cảnh báo vi phạm</h3>
+                            <p className="text-sm font-semibold text-[#1A1A1A]/70 text-center leading-relaxed">{warningMessage}</p>
+                            <div className="flex items-center gap-2 px-4 py-2 rounded-2xl bg-red-50 border border-red-200">
+                                <span className="text-sm font-extrabold text-red-600">
+                                    Vi phạm: {violations}/{MAX_VIOLATIONS}
+                                </span>
+                            </div>
+                            {violations < MAX_VIOLATIONS && (
+                                <p className="text-xs font-semibold text-[#1A1A1A]/50 text-center">
+                                    Còn {MAX_VIOLATIONS - violations} lần vi phạm trước khi bài thi bị nộp tự động.
+                                </p>
+                            )}
+                            {violations >= MAX_VIOLATIONS ? (
+                                <div className="text-center space-y-2">
+                                    <p className="text-sm font-bold text-red-600">
+                                        Bạn đã vi phạm quá số lần cho phép.
+                                    </p>
+                                    <p className="text-sm font-extrabold text-red-700 animate-pulse">
+                                        Bài làm đang được nộp tự động...
+                                    </p>
+                                </div>
+                            ) : (
+                                <button
+                                    onClick={async () => {
+                                        setShowAntiCheatWarning(false);
+                                        try {
+                                            if (!document.fullscreenElement) {
+                                                await document.documentElement.requestFullscreen();
+                                            }
+                                        } catch { /* user may deny */ }
+                                    }}
+                                    className="w-full px-6 py-3 bg-[#FF6B4A] text-white font-extrabold rounded-2xl hover:bg-[#ff5535] transition-colors shadow-md"
+                                >
+                                    Quay lại làm bài
+                                </button>
+                            )}
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     );
 }
@@ -985,7 +1175,7 @@ function apiAssignmentToTest(a: AssignmentResponse, isSubmitted: boolean, submis
         category: a.assignmentType === 'ASSIGNMENT' ? 'homework' : 'exam',
         score: submission?.score ?? a.score ?? undefined,
         submittedAt: submission?.submitTime
-            ? (() => { const d = new Date(submission.submitTime); return `${String(d.getDate()).padStart(2,'0')}/${String(d.getMonth()+1).padStart(2,'0')}/${d.getFullYear()}`; })()
+            ? (() => { const d = new Date(submission.submitTime); return `${String(d.getDate()).padStart(2, '0')}/${String(d.getMonth() + 1).padStart(2, '0')}/${d.getFullYear()}`; })()
             : undefined,
         correctCount,
         className: a.className,
@@ -1032,11 +1222,67 @@ export function StudentTests() {
     const [startTime, setStartTime] = useState<number>(Date.now());
     const [resultDetail, setResultDetail] = useState<AssignmentResultResponse | null>(null);
     const [nowMs, setNowMs] = useState<number>(Date.now());
+    // Tracks violation count reported by RealTestTakingView for the current exam session
+    const examViolationsRef = useRef(0);
 
     useEffect(() => {
         const t = setInterval(() => setNowMs(Date.now()), 1000);
         return () => clearInterval(t);
     }, []);
+
+    // ── Draft persistence ─────────────────────────────────────────────────────
+    // Scoped to the active assignment so drafts from different tests never mix.
+    const activeAssignmentId = (selectedTest as unknown as { _assignmentId?: number })?._assignmentId;
+    const { saveDraft, loadDraft, clearDraft, syncToServer, deleteDraftFromServer } = useQuizDraft(activeAssignmentId);
+
+    // Tracks which question the student is currently on inside RealTestTakingView.
+    // Updated via the onCurrentQChange callback so draft includes the right index.
+    const currentQRef = useRef(0);
+
+    // Tracks the initial question index restored from draft (passed to RealTestTakingView).
+    const [draftRestoredCurrentQ, setDraftRestoredCurrentQ] = useState(0);
+
+    // Keeps a stable ref to answerSelections so the server-sync interval can
+    // read the latest value without triggering interval recreation on every answer.
+    const answerSelectionsRef = useRef(answerSelections);
+    useEffect(() => { answerSelectionsRef.current = answerSelections; }, [answerSelections]);
+
+    // ── Quiz session guard + exam-mode sidebar lock ──────────────────────────
+    useEffect(() => {
+        const isTaking = exerciseViewMode === 'taking' && attemptInfo !== null;
+        const isExamActive = isTaking && takingDetail?.assignmentType === 'TEST';
+        if (isTaking) {
+            quizSessionGuard.enter();
+        } else {
+            quizSessionGuard.leave();
+        }
+        // Notify StudentLayout to hide sidebar during exams
+        window.dispatchEvent(new CustomEvent('educare:exam-mode', { detail: { active: isExamActive } }));
+        return () => {
+            quizSessionGuard.leave();
+            window.dispatchEvent(new CustomEvent('educare:exam-mode', { detail: { active: false } }));
+        };
+    }, [exerciseViewMode, attemptInfo, takingDetail]);
+
+    // ── Auto-save draft to localStorage on every answer change ────────────────
+    useEffect(() => {
+        if (exerciseViewMode !== 'taking' || !attemptInfo) return;
+        saveDraft(answerSelections, currentQRef.current);
+    }, [answerSelections, exerciseViewMode, attemptInfo, saveDraft]);
+
+    // ── Periodic server sync (every 30 s) — DB-level backup ──────────────────
+    useEffect(() => {
+        if (exerciseViewMode !== 'taking' || !attemptInfo) return;
+
+        const interval = setInterval(() => {
+            const token = authService.getToken();
+            if (token) {
+                void syncToServer(answerSelectionsRef.current, currentQRef.current, token);
+            }
+        }, 30_000);
+
+        return () => clearInterval(interval);
+    }, [exerciseViewMode, attemptInfo, syncToServer]);
 
     const loadApiData = useCallback(async () => {
         const token = authService.getToken();
@@ -1221,7 +1467,11 @@ export function StudentTests() {
             const result = await assignmentService.submit(takingDetail.assignmentID, {
                 timeTaken,
                 answers,
+                violationCount: examViolationsRef.current > 0 ? examViolationsRef.current : undefined,
             }, token);
+            // Clear local draft — submission accepted, progress is no longer needed
+            clearDraft();
+            void deleteDraftFromServer(token);
             const latestResult = await assignmentService.getResult(takingDetail.assignmentID, token).catch(() => null);
             setResultDetail(latestResult);
             setExerciseViewMode('detailedReview');
@@ -1290,7 +1540,32 @@ export function StudentTests() {
         try {
             const attempt = await assignmentService.start(realId, token);
             setAttemptInfo(attempt);
-            setStartTime(new Date(attempt.startedAt).getTime());
+            setStartTime(parseVnDate(attempt.startedAt).getTime());
+
+            // ── Draft restoration ─────────────────────────────────────────────
+            // Check whether the student has a saved draft for this assignment.
+            // This covers two cases:
+            //   1. A previous browser session was interrupted mid-quiz.
+            //   2. The access token silently refreshed and the component remounted.
+            const draft = loadDraft();
+            if (draft && Object.keys(draft.answers).length > 0) {
+                const savedCount = Object.keys(draft.answers).length;
+                const shouldResume = window.confirm(
+                    `Bạn có bản nháp chưa hoàn thành (${savedCount} câu đã chọn).\nBạn có muốn tiếp tục từ lần làm trước không?`
+                );
+                if (shouldResume) {
+                    setAnswerSelections(draft.answers);
+                    currentQRef.current = draft.currentQuestion;
+                    setDraftRestoredCurrentQ(draft.currentQuestion);
+                } else {
+                    // Student declined — clear stale draft so it won't appear again
+                    clearDraft();
+                    setDraftRestoredCurrentQ(0);
+                }
+            } else {
+                setDraftRestoredCurrentQ(0);
+            }
+
             setExerciseViewMode('taking');
         } catch (e: any) {
             alert(e.message ?? 'Không thể bắt đầu làm bài');
@@ -1359,6 +1634,9 @@ export function StudentTests() {
                         onSubmit={handleRealSubmit}
                         isSubmitting={isSubmitting}
                         isDark={isDark}
+                        initialCurrentQ={draftRestoredCurrentQ}
+                        onCurrentQChange={(q) => { currentQRef.current = q; }}
+                        onViolationsChange={(count) => { examViolationsRef.current = count; }}
                     />
                 </div>
             );
@@ -1450,11 +1728,11 @@ export function StudentTests() {
                         <div className={`font-extrabold text-lg ${isDark ? 'text-[#9ca3af]' : 'text-[#1A1A1A]/60'}`}>Đang tải bài tập...</div>
                     </div>
                     : filteredTests.length > 0
-                    ? filteredTests.map((t) => <ExerciseCard key={t.id} test={t} onStart={handleOpenTest} isDark={isDark} nowMs={nowMs} />)
-                    : <div className={`col-span-1 md:col-span-2 text-center py-20 rounded-3xl border-dashed ${isDark ? 'bg-[#1a1a1f] border-none' : 'bg-white/50 border-2 border-[#1A1A1A]/20'}`}>
-                        <Funnel className="w-12 h-12 text-[#1A1A1A]/20 mx-auto mb-3" />
-                        <div className={`font-extrabold text-lg ${isDark ? 'text-[#1A1A1A]/50' : 'text-[#1A1A1A]/60'}`}>Không tìm thấy bài tập phù hợp</div>
-                    </div>
+                        ? filteredTests.map((t) => <ExerciseCard key={t.id} test={t} onStart={handleOpenTest} isDark={isDark} nowMs={nowMs} />)
+                        : <div className={`col-span-1 md:col-span-2 text-center py-20 rounded-3xl border-dashed ${isDark ? 'bg-[#1a1a1f] border-none' : 'bg-white/50 border-2 border-[#1A1A1A]/20'}`}>
+                            <Funnel className="w-12 h-12 text-[#1A1A1A]/20 mx-auto mb-3" />
+                            <div className={`font-extrabold text-lg ${isDark ? 'text-[#1A1A1A]/50' : 'text-[#1A1A1A]/60'}`}>Không tìm thấy bài tập phù hợp</div>
+                        </div>
                 }
             </div>
         </div>

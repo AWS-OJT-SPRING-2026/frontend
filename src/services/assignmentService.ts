@@ -74,6 +74,7 @@ export interface StudentSubmissionSummary {
   submitTime: string | null;
   submissionStatus?: 'IN_PROGRESS' | 'SUBMITTED' | 'MISSING' | null;
   submissionTimingStatus?: 'ON_TIME' | 'LATE' | 'MISSING' | null;
+  violationCount?: number | null;
 }
 
 export interface QuestionStatistic {
@@ -167,6 +168,14 @@ export interface QuestionBankResponse {
   createdAt: string;
 }
 
+export interface QuizDraftResponse {
+  assignmentId: number;
+  submissionId: number;
+  answers: { questionId: number; answerRefId: number | null }[];
+  currentQuestion: number;
+  lastSavedAt: string;
+}
+
 interface ApiWrapper<T> {
   code: number;
   message: string;
@@ -249,7 +258,7 @@ export const assignmentService = {
   start: (assignmentId: number, token: string) =>
     api.authPost<ApiWrapper<AssignmentAttemptResponse>>(`/assignments/${assignmentId}/start`, {}, token).then(r => r.result),
 
-  submit: (assignmentId: number, data: { timeTaken: number; answers: { questionId: number; answerRefId: number | null; selectedAnswer: string | null }[] }, token: string) =>
+  submit: (assignmentId: number, data: { timeTaken: number; answers: { questionId: number; answerRefId: number | null; selectedAnswer: string | null }[]; violationCount?: number }, token: string) =>
     api.authPost<ApiWrapper<SubmissionResponse>>(`/assignments/${assignmentId}/submit`, data, token).then(r => r.result),
 
   getMySubmission: (assignmentId: number, token: string) =>
@@ -257,4 +266,18 @@ export const assignmentService = {
 
   getResult: (assignmentId: number, token: string) =>
     api.get<ApiWrapper<AssignmentResultResponse>>(`/assignments/${assignmentId}/results`, token).then(r => r.result),
+
+  // ── Quiz Draft (partial-save backup) ──────────────────────────────────────
+  saveDraft: (
+    assignmentId: number,
+    data: { answers: { questionId: number; answerRefId: number | null }[]; currentQuestion: number },
+    token: string
+  ) =>
+    api.authPut<ApiWrapper<QuizDraftResponse>>(`/quiz-drafts/${assignmentId}`, data, token).then(r => r.result),
+
+  getDraft: (assignmentId: number, token: string) =>
+    api.get<ApiWrapper<QuizDraftResponse>>(`/quiz-drafts/${assignmentId}`, token).then(r => r.result),
+
+  deleteDraft: (assignmentId: number, token: string) =>
+    api.authDelete<ApiWrapper<void>>(`/quiz-drafts/${assignmentId}`, token),
 };

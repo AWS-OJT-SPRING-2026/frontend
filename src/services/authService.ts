@@ -221,6 +221,72 @@ export const authService = {
     await signOut({ global: false, oauth: { redirectUrl } });
   },
 
+  /**
+   * Returns true if the stored access token's `exp` claim is in the past.
+   * Checks the raw JWT directly — does NOT call fetchAuthSession, so Amplify
+   * cannot silently refresh before we get a chance to act.
+   */
+  isAccessTokenExpired(): boolean {
+    const token = this.getToken();
+    if (!token) return true;
+    const payload = tryDecodeJwt(token);
+    if (!payload?.exp) return true;
+    // 10-second buffer to account for clock skew
+    return payload.exp < Math.floor(Date.now() / 1000) + 10;
+  },
+
+  /**
+   * Wipes every Cognito / Amplify key from both localStorage and sessionStorage,
+   * including our own custom keys and Amplify's internal keys.
+   */
+  clearAllCognitoKeys(): void {
+    const storage = getAuthStorage();
+    storage.removeItem(COGNITO_ACCESS_TOKEN_KEY);
+    storage.removeItem(COGNITO_ID_TOKEN_KEY);
+    storage.removeItem(COGNITO_REFRESH_TOKEN_KEY);
+
+    // Amplify v6 writes CognitoIdentityServiceProvider.* and amplify-* keys.
+    const clearFromStorage = (s: Storage) => {
+      const toRemove: string[] = [];
+      for (let i = 0; i < s.length; i++) {
+        const key = s.key(i);
+        if (
+          key &&
+          (key.startsWith('CognitoIdentityServiceProvider') ||
+            key.startsWith('amplify-') ||
+            key.startsWith('aws-amplify'))
+        ) {
+          toRemove.push(key);
+        }
+      }
+      toRemove.forEach((k) => s.removeItem(k));
+    };
+
+    clearFromStorage(localStorage);
+    clearFromStorage(sessionStorage);
+
+    // Legacy keys from the old local-JWT flow
+    localStorage.removeItem('auth_token');
+    localStorage.removeItem('token');
+  },
+
+  /**
+   * Hard logout: invalidates the session server-side via Cognito's global
+   * signOut (revokes the refresh token), then wipes all local credentials.
+   * Always resolves — errors from signOut are swallowed so the local wipe
+   * always completes.
+   */
+  async hardLogout(): Promise<void> {
+    try {
+      await signOut({ global: true });
+    } catch {
+      // Even if signOut fails we still clear local storage below.
+    }
+    this.clearAllCognitoKeys();
+    this.removeUser();
+    this.clearQuickDemoSession();
+  },
+
   saveToken(token: string): void {
     getAuthStorage().setItem(COGNITO_ACCESS_TOKEN_KEY, token);
   },

@@ -1,14 +1,12 @@
 import { useState, useEffect } from 'react';
 import { confirmSignIn, fetchAuthSession, getCurrentUser, signIn } from 'aws-amplify/auth';
 import { User as UserIcon, Lock, AlertCircle, Eye, EyeOff, ShieldOff } from 'lucide-react';
-import { ArrowRight, ShieldCheck, Lightning, GraduationCap, Student as StudentIcon, Shield } from '@phosphor-icons/react';
-import type { QuickLoginRole } from '../services/authService';
+import { ArrowRight, ShieldCheck, Lightning } from '@phosphor-icons/react';
 import { useAuth } from '../context/AuthContext';
 import { useSettings } from '../context/SettingsContext';
 import type { User } from '../types/auth';
 import { useNavigate } from 'react-router-dom';
 import { api } from '../services/api';
-// import { ApiError } from '../services/api';        // OLD: used for typed error handling on local auth
 import { LanguageSwitcher } from './LanguageSwitcher';
 import { ThemeSwitcher } from './ThemeSwitcher';
 import { cn } from '../lib/utils';
@@ -164,29 +162,13 @@ export function Login({ onSwitchToForgotPassword }: LoginProps) {
     e.preventDefault();
     setError('');
     setIsLocked(false);
-    setLoading(true);
 
-    // OLD: local backend authentication (commented — replaced by Cognito Hosted UI):
-    // try {
-    //   const response = await authService.login({ username, password });
-    //   login(response.token, response.user);
-    // } catch (err) {
-    //   if (err instanceof ApiError) {
-    //     if (err.message === 'ACCOUNT_LOCKED') {
-    //       setIsLocked(true);
-    //     } else if (err.status === 0) {
-    //       setError('Không thể kết nối đến máy chủ. Vui lòng thử lại sau hoặc liên hệ quản trị viên.');
-    //     } else if (err.status === 401 || err.status === 403) {
-    //       setError('Tên đăng nhập hoặc mật khẩu không đúng.');
-    //     } else {
-    //       setError(err.message);
-    //     }
-    //   } else {
-    //     setError('Đã xảy ra lỗi. Vui lòng thử lại sau.');
-    //   }
-    // } finally {
-    //   setLoading(false);
-    // }
+    if (!username.trim() && !password.trim()) {
+      setError('Vui lòng nhập tài khoản mật khẩu để đăng nhập');
+      return;
+    }
+
+    setLoading(true);
 
     try {
       const { isSignedIn, nextStep } = await signIn({ username, password });
@@ -264,29 +246,6 @@ export function Login({ onSwitchToForgotPassword }: LoginProps) {
     } finally {
       setLoading(false);
     }
-  };
-
-  const handleQuickRoleLogin = async (_role: QuickLoginRole) => {
-    setError('');
-    setIsLocked(false);
-    setLoading(true);
-
-    // OLD: bypass backend with hardcoded demo credentials (commented):
-    // try {
-    //   const response = await authService.quickDemoLogin(role);
-    //   login(response.token, response.user);
-    // } catch (err) {
-    //   if (err instanceof ApiError) {
-    //     setError(err.message || 'Không thể đăng nhập nhanh.');
-    //   } else {
-    //     setError('Đã xảy ra lỗi. Vui lòng thử lại sau.');
-    //   }
-    // } finally {
-    //   setLoading(false);
-    // }
-
-    setLoading(false);
-    setError('Vui lòng nhập tài khoản và mật khẩu để đăng nhập.');
   };
 
   return (
@@ -525,44 +484,11 @@ export function Login({ onSwitchToForgotPassword }: LoginProps) {
                   Đang đăng nhập...
                 </>
               ) : (
-                <>
-                  Đăng nhập hệ thống
-                  <ArrowRight className="w-4 h-4" />
-                </>
+                <>Đăng nhập hệ thống</>
               )}
             </button>
             </form>
           )}
-
-          {/* Quick role login */}
-          {!requireNewPassword && <div className="mt-8">
-            <p className={cn('text-center text-xs font-extrabold uppercase tracking-widest mb-4', isDark ? 'text-gray-500' : 'text-gray-400')}>
-              Hoặc chọn vai trò
-            </p>
-            <div className="grid grid-cols-3 gap-3">
-              {[
-                { label: 'Quản trị', icon: <Shield className="w-5 h-5" weight="fill" />, role: 'admin' as const },
-                { label: 'Giáo viên', icon: <GraduationCap className="w-5 h-5" weight="fill" />, role: 'teacher' as const },
-                { label: 'Học sinh', icon: <StudentIcon className="w-5 h-5" weight="fill" />, role: 'student' as const },
-              ].map((item) => (
-                <button
-                  key={item.label}
-                  type="button"
-                  onClick={() => handleQuickRoleLogin(item.role)}
-                  disabled={loading}
-                  className={cn(
-                    'flex flex-col items-center gap-1.5 py-3 px-2 border rounded-2xl font-extrabold text-xs transition-all hover:scale-105 active:scale-95 disabled:opacity-60 disabled:cursor-not-allowed',
-                    isDark
-                      ? 'border-white/10 bg-[#111722] hover:bg-[#151d2a] text-white'
-                      : 'border-gray-100 bg-gray-50 hover:bg-gray-100 text-[#1A1A1A]'
-                  )}
-                >
-                  <span className="text-[#FF6B4A]">{item.icon}</span>
-                  {item.label}
-                </button>
-              ))}
-            </div>
-          </div>}
 
           <div className="mt-6 text-center">
             <p className={cn('text-sm font-semibold', isDark ? 'text-gray-400' : 'text-gray-400')}>

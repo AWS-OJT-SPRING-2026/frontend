@@ -439,3 +439,44 @@ html.dark body.admin-mode .admin-logo {
   box-shadow: 0 8px 18px rgba(0, 0, 0, 0.35);
 }
 
+/* ── Fix duplicate icons on datetime-local inputs ──
+   Hides the native browser calendar/clock picker icon so only
+   the custom CalendarBlank icon is visible. The native indicator
+   remains clickable (transparent) so the picker still opens. */
+input[type="datetime-local"]::-webkit-calendar-picker-indicator {
+  opacity: 0;
+  cursor: pointer;
+  position: absolute;
+  right: 0;
+  top: 0;
+  width: 2.5rem;
+  height: 100%;
+}
+input[type="datetime-local"]::-webkit-inner-spin-button {
+  display: none;
+}
+/* Firefox – hide native icons */
+input[type="datetime-local"] {
+  -moz-appearance: textfield;
+  appearance: textfield;
+}
+
+/* ── Anti-cheat fullscreen mode ── */
+.anti-cheat-fullscreen {
+  position: fixed !important;
+  inset: 0 !important;
+  z-index: 9999 !important;
+  width: 100vw !important;
+  height: 100vh !important;
+  overflow: auto !important;
+}
+
+@keyframes warningPulse {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.4); }
+  50% { box-shadow: 0 0 0 12px rgba(239, 68, 68, 0); }
+}
+
+.animate-warning-pulse {
+  animation: warningPulse 1.5s ease-in-out infinite;
+}
+

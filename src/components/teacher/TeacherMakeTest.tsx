@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback } from 'react';
 import {
     CalendarBlank, Lightning, Eye, Trash, PaperPlaneTilt,
     Plus, SquaresFour, ChartBar, Clock,
-    BookOpen, Warning, ArrowsClockwise, Users
+    BookOpen, Warning, ArrowsClockwise, Users, ShieldWarning
 } from '@phosphor-icons/react';
 import { Input } from '../ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
@@ -11,6 +11,7 @@ import { assignmentService, AssignmentResponse, AssignmentDetailResponse, Assign
 import { authService } from '../../services/authService';
 import { classroomService } from '../../services/classroomService';
 import { ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip, LabelList, Cell } from 'recharts';
+import { MathRenderer } from '../ui/MathRenderer';
 
 type View = 'dashboard' | 'create' | 'detail' | 'report';
 
@@ -30,15 +31,23 @@ function StatusBadge({ status }: { status: string }) {
     );
 }
 
+function parseVnDate(value: string | null | undefined): Date {
+    if (!value) return new Date(NaN);
+    if (value.length === 19) {
+        return new Date(value + '+07:00');
+    }
+    return new Date(value);
+}
+
 function formatDeadline(dt: string | null) {
     if (!dt) return '';
-    const d = new Date(dt);
+    const d = parseVnDate(dt);
     return d.toLocaleString('vi-VN', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' });
 }
 
 function formatRelativeTime(dt: string | null) {
     if (!dt) return 'Chưa nộp';
-    const target = new Date(dt);
+    const target = parseVnDate(dt);
     if (Number.isNaN(target.getTime())) return formatDeadline(dt);
 
     const diffMs = Date.now() - target.getTime();
@@ -300,7 +309,9 @@ function QuestionCard({ q, index, isDark, onRefresh, onRemove, refreshing }: {
                 </div>
             ) : (
                 <>
-                    <p className={`font-extrabold mb-5 leading-relaxed ${isDark ? 'text-gray-100' : 'text-[#1A1A1A]'}`}>{q.questionText}</p>
+                    <p className={`font-extrabold mb-5 leading-relaxed ${isDark ? 'text-gray-100' : 'text-[#1A1A1A]'}`}>
+                        <MathRenderer content={q.questionText} />
+                    </p>
                     {q.answers.length > 0 && (
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                             {q.answers.map((ans, ai) => (
@@ -313,7 +324,7 @@ function QuestionCard({ q, index, isDark, onRefresh, onRemove, refreshing }: {
                                         {ans.label || ['A', 'B', 'C', 'D'][ai]}
                                     </div>
                                     <span className={`text-sm font-bold ${ans.isCorrect ? 'text-[#FF6B4A]' : isDark ? 'text-gray-200' : 'text-[#1A1A1A]/70'}`}>
-                                        {ans.content}
+                                        <MathRenderer content={ans.content} />
                                     </span>
                                 </div>
                             ))}
@@ -1400,6 +1411,7 @@ function ReportView({ id, isDark }: { id: number; isDark: boolean }) {
                                 <th className="text-center pb-3 pr-4">Thời gian</th>
                                 <th className="text-center pb-3 pr-4">Trạng thái</th>
                                 <th className="text-center pb-3 px-4">Nộp lúc</th>
+                                <th className="text-center pb-3 pr-4">Vi phạm</th>
                                 <th className="text-center pb-3">Chi tiết</th>
                             </tr>
                         </thead>
@@ -1438,6 +1450,16 @@ function ReportView({ id, isDark }: { id: number; isDark: boolean }) {
                                                 <span title={formatDeadline(s.submitTime)}>{formatRelativeTime(s.submitTime)}</span>
                                             ) : 'N/A'}
                                         </td>
+                                        <td className="py-2.5 pr-4 text-center">
+                                            {isSubmitted && (s.violationCount ?? 0) > 0 ? (
+                                                <span className="inline-flex items-center gap-1 text-[11px] font-extrabold px-2 py-1 rounded-xl bg-red-100 text-red-700 border border-red-300">
+                                                    <ShieldWarning className="w-3.5 h-3.5" weight="fill" />
+                                                    {s.violationCount}
+                                                </span>
+                                            ) : (
+                                                <span className={`text-[11px] font-semibold ${sub}`}>{isSubmitted ? '0' : 'N/A'}</span>
+                                            )}
+                                        </td>
                                         <td className="py-2.5 text-center">
                                             {isSubmitted && (
                                                 <button
@@ -1457,7 +1479,7 @@ function ReportView({ id, isDark }: { id: number; isDark: boolean }) {
                                 );
                             })}
                             {filteredStudents.length === 0 && (
-                                <tr><td colSpan={7} className={`py-10 text-center font-bold ${sub}`}>
+                                <tr><td colSpan={8} className={`py-10 text-center font-bold ${sub}`}>
                                     {tableFilter === 'missing' ? 'Tất cả học sinh đã nộp bài!' : 'Chưa có dữ liệu'}
                                 </td></tr>
                             )}
@@ -1482,10 +1504,12 @@ function ReportView({ id, isDark }: { id: number; isDark: boolean }) {
                         return (
                             <div key={qs.questionId} className={`rounded-xl p-4 border ${isDark ? 'border-white/5 bg-white/[0.02]' : 'border-gray-100 bg-gray-50/50'}`}>
                                 <div className="flex items-start justify-between mb-2 flex-wrap gap-2">
-                                    <p className={`text-sm font-bold flex-1 min-w-0 ${txt}`}>
+                                    <div className={`text-sm font-bold flex-1 min-w-0 ${txt}`}>
                                         <span className={`mr-2 text-xs font-semibold ${sub}`}>Câu {i + 1}</span>
-                                        {qs.questionText.length > 100 ? qs.questionText.slice(0, 100) + '…' : qs.questionText}
-                                    </p>
+                                        <span className="break-words line-clamp-2">
+                                            <MathRenderer content={qs.questionText} />
+                                        </span>
+                                    </div>
                                     <div className="flex items-center gap-1.5 shrink-0 flex-wrap">
                                         {isFirst && <span className="text-[10px] font-extrabold px-2 py-0.5 rounded-full bg-green-100 text-green-700">Dễ nhất</span>}
                                         {isLast && !isFirst && <span className="text-[10px] font-extrabold px-2 py-0.5 rounded-full bg-red-100 text-red-700">Khó nhất</span>}
@@ -1516,10 +1540,10 @@ function ReportView({ id, isDark }: { id: number; isDark: boolean }) {
                                         {optionBreakdown.map(opt => (
                                             <div key={opt.optionId}>
                                                 <div className="flex items-center justify-between gap-3">
-                                                    <p className={`text-xs font-semibold ${txt}`}>
-                                                        {opt.optionLabel}. {opt.optionContent}
+                                                    <div className={`text-xs font-semibold ${txt}`}>
+                                                        {opt.optionLabel}. <MathRenderer content={opt.optionContent} />
                                                         {opt.isCorrect && <span className="ml-1 text-green-600 font-bold"> (Đúng)</span>}
-                                                    </p>
+                                                    </div>
                                                     <span className={`text-xs font-bold shrink-0 ${sub}`}>{opt.selectedCount} lượt</span>
                                                 </div>
                                                 <div className={`mt-1 w-full rounded-full h-1.5 ${isDark ? 'bg-white/10' : 'bg-gray-100'}`}>
@@ -1606,13 +1630,13 @@ function ReportView({ id, isDark }: { id: number; isDark: boolean }) {
                                             <div key={`${ans.questionId}-${ans.order}`} className={`rounded-xl border p-3 ${ans.isCorrect
                                                 ? (isDark ? 'border-green-900/50 bg-green-900/10' : 'border-green-200 bg-green-50/40')
                                                 : (isDark ? 'border-red-900/50 bg-red-900/10' : 'border-red-200 bg-red-50/40')}`}>
-                                                <p className={`text-xs font-bold mb-1 ${txt}`}>Câu {ans.order}: {ans.questionText}</p>
-                                                <p className={`text-xs ${ans.isCorrect ? 'text-green-700' : 'text-red-700'}`}>
-                                                    {ans.isCorrect ? '✓ Đúng' : '✗ Sai'} · Đã chọn: {ans.selectedAnswer ?? 'Chưa trả lời'}
-                                                </p>
+                                                <div className={`text-xs font-bold mb-1 ${txt}`}>Câu {ans.order}: <MathRenderer content={ans.questionText} /></div>
+                                                <div className={`text-xs ${ans.isCorrect ? 'text-green-700' : 'text-red-700'}`}>
+                                                    {ans.isCorrect ? '✓ Đúng' : '✗ Sai'} · Đã chọn: <MathRenderer content={ans.selectedAnswer ?? 'Chưa trả lời'} />
+                                                </div>
                                                 {!ans.isCorrect && (
                                                     <div className="mt-1.5 text-xs text-green-700 bg-green-50 border border-green-200 rounded-lg px-2.5 py-1.5">
-                                                        Đáp án đúng: {ans.correctAnswer}
+                                                        Đáp án đúng: <MathRenderer content={ans.correctAnswer} />
                                                     </div>
                                                 )}
                                             </div>
