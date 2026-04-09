@@ -102,6 +102,7 @@ export function StudentReview() {
     const [searchParams, setSearchParams] = useSearchParams();
     const urlSubject = searchParams.get('subject');
     const urlQuestions = searchParams.get('questions');
+    const initialUrlTopics = useRef(searchParams.get('topics'));
     const urlApplied = useRef(false);
 
     const getAuthToken = (): string | null => {
@@ -224,13 +225,33 @@ export function StudentReview() {
             fetch(`${FAST_API_URL}/subjects/${selectedSubjectId}/lessons`)
                 .then(res => res.json())
                 .then(data => {
-                    const formattedLessons = data.map((ls: any, i: number) => ({
-                        id: ls.id,
-                        label: ls.title,
-                        level: levels[i % levels.length].level,
-                        levelBg: levels[i % levels.length].levelBg,
-                        selected: i === 0
-                    }));
+                    let topicsArray: string[] = [];
+                    if (initialUrlTopics.current) {
+                        topicsArray = initialUrlTopics.current.split(',').map(t => t.trim().toLowerCase()).filter(Boolean);
+                    }
+
+                    const formattedLessons = data.map((ls: any, i: number) => {
+                        let isSelected = i === 0;
+                        if (topicsArray.length > 0) {
+                            isSelected = topicsArray.some(t => ls.title.toLowerCase().includes(t));
+                        }
+                        return {
+                            id: ls.id,
+                            label: ls.title,
+                            level: levels[i % levels.length].level,
+                            levelBg: levels[i % levels.length].levelBg,
+                            selected: isSelected
+                        };
+                    });
+
+                    // If topics were provided but none matched, fallback to first
+                    if (topicsArray.length > 0 && !formattedLessons.some((l: any) => l.selected) && formattedLessons.length > 0) {
+                        formattedLessons[0].selected = true;
+                    }
+                    
+                    // Once applied to lessons, we can clear this to not re-apply to different subject
+                    initialUrlTopics.current = null;
+
                     setLessons(formattedLessons);
                     setSelectedLessons(formattedLessons.map((l: any) => l.selected));
                 })

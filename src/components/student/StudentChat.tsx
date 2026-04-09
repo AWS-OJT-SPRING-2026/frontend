@@ -461,7 +461,7 @@ export function StudentChat() {
                                                         return <DocumentWidget key={si} bookId={seg.params[0]} sectionId={seg.params[1]} />;
                                                     }
                                                     if (seg.widgetType === 'QUIZ') {
-                                                        return <QuizWidget key={si} subjectName={seg.params[0]} numQuestions={seg.params[1]} />;
+                                                        return <QuizWidget key={si} subjectName={seg.params[0]} numQuestions={seg.params[1]} topics={seg.params[2]} />;
                                                     }
                                                     return null;
                                                 }

@@ -50,7 +50,7 @@ export const RoadmapWidget = ({ subjectName, totalWeeks }: { subjectName?: strin
     );
 };
 
-export const QuizWidget = ({ subjectName, numQuestions }: { subjectName?: string, numQuestions?: string }) => {
+export const QuizWidget = ({ subjectName, numQuestions, topics }: { subjectName?: string, numQuestions?: string, topics?: string }) => {
     const navigate = useNavigate();
 
     const handleClick = (e: React.MouseEvent) => {
@@ -59,6 +59,7 @@ export const QuizWidget = ({ subjectName, numQuestions }: { subjectName?: string
         const query = new URLSearchParams();
         if (subjectName) query.set('subject', subjectName);
         if (numQuestions) query.set('questions', numQuestions);
+        if (topics) query.set('topics', topics);
         navigate(`/student/review?${query.toString()}`);
     };
 
@@ -81,6 +82,15 @@ export const QuizWidget = ({ subjectName, numQuestions }: { subjectName?: string
                             <div className="flex gap-1.5 items-center shrink-0">
                                 <span className="opacity-60">Số câu:</span>
                                 <span className="text-[#7C6FE0]">{numQuestions} câu</span>
+                            </div>
+                        </>
+                    )}
+                    {topics && (
+                        <>
+                            <div className="w-px h-3 bg-[#1A1A1A]/20 shrink-0 hidden sm:block"></div>
+                            <div className="flex gap-1.5 items-center shrink-0 max-w-[200px]">
+                                <span className="opacity-60">Chủ đề:</span>
+                                <span className="text-[#7C6FE0] truncate" title={topics}>{topics}</span>
                             </div>
                         </>
                     )}
