@@ -105,6 +105,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [transitionPhase, setTransitionPhase] = useState<TransitionPhase>(null);
   const [sessionExpired, setSessionExpired] = useState(false);
   const isCheckingSessionRef = useRef(false);
+  const isHydratingRef = useRef(false);
 
   useEffect(() => {
     let isCancelled = false;
@@ -156,6 +157,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     let isCancelled = false;
 
     const hydrateUser = async () => {
+      isHydratingRef.current = true;
       try {
         const sessionAuth = await getAmplifySessionAuth();
         if (!sessionAuth) return;
@@ -181,7 +183,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           setUser(nextUser);
         }
       } catch {
-        // Ignore hydration errors; account page can still fetch profile independently.
+        // Hydration errors are non-fatal. The isHydratingRef flag prevents the
+        // SESSION_EXPIRED_EVENT (fired by axios interceptor before this catch runs)
+        // from forcing a full logout during profile loading.
+      } finally {
+        isHydratingRef.current = false;
       }
     };
 
@@ -292,6 +298,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   // ── Listen for 401 event fired by api.ts ─────────────────────────────────
   useEffect(() => {
     const handler = () => {
+      // Ignore 401s that come from the background profile hydration call:
+      // hydrateUser is best-effort and a failure there should not log the user out.
+      if (isHydratingRef.current) return;
       if (isProtectedPath(window.location.pathname)) {
         // Use hardLogout so the refresh token is also revoked and cleared.
         void hardLogout();
