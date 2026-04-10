@@ -419,6 +419,24 @@ export function StudentSchedule() {
         return { start, end };
     }, [monday]);
 
+    const scheduleRange = useMemo(() => {
+        if (viewMode === 'month') {
+            const start = new Date(currentDate.getFullYear(), currentDate.getMonth(), 1, 0, 0, 0, 0);
+            const end = new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 0, 23, 59, 59, 999);
+            return { start, end };
+        }
+
+        if (viewMode === 'day') {
+            const start = new Date(currentDate);
+            start.setHours(0, 0, 0, 0);
+            const end = new Date(currentDate);
+            end.setHours(23, 59, 59, 999);
+            return { start, end };
+        }
+
+        return weekRange;
+    }, [viewMode, currentDate, weekRange]);
+
     const statsCards = useMemo(() => {
         return STATS_META.map((item) => {
             let value = '0';
@@ -439,14 +457,10 @@ export function StudentSchedule() {
             try {
                 setScheduleError(null);
 
-                const [statsResult, scheduleResult] = await Promise.all([
-                    timetableService.getStudentScheduleStats(weekRange.start, weekRange.end),
-                    timetableService.getStudentSchedule(weekRange.start, weekRange.end),
-                ]);
+                const scheduleResult = await timetableService.getStudentSchedule(scheduleRange.start, scheduleRange.end);
 
                 if (!isMounted) return;
 
-                setWeeklyStats(statsResult);
                 setScheduleEvents(scheduleResult.map((item, index) => mapStudentScheduleToEntry(item, index)));
             } catch (error) {
                 if (!isMounted) return;
@@ -461,7 +475,28 @@ export function StudentSchedule() {
         return () => {
             isMounted = false;
         };
-    }, [weekRange.start, weekRange.end]);
+    }, [scheduleRange.start.getTime(), scheduleRange.end.getTime()]);
+
+    useEffect(() => {
+        let isMounted = true;
+
+        const fetchWeeklyStats = async () => {
+            try {
+                const statsResult = await timetableService.getStudentScheduleStats(weekRange.start, weekRange.end);
+
+                if (!isMounted) return;
+                setWeeklyStats(statsResult);
+            } catch {
+                if (!isMounted) return;
+            }
+        };
+
+        void fetchWeeklyStats();
+
+        return () => {
+            isMounted = false;
+        };
+    }, [weekRange.start.getTime(), weekRange.end.getTime()]);
 
     // Keep "now" fresh
     useEffect(() => {
@@ -828,7 +863,10 @@ export function StudentSchedule() {
                             const durationMins = (ev.endHour - ev.startHour) * 60 + (ev.endMin - ev.startMin);
                             const topOffset = ((ev.startHour - HOURS_START) * 60 + ev.startMin) * (80 / 60);
                             const heightPx = durationMins * (80 / 60);
-                            
+                            const isDayCard = viewMode === 'day';
+                            const isCompactDayCard = isDayCard && heightPx < 120;
+                            const isUltraCompactDayCard = isDayCard && heightPx < 90;
+
                             const colIdx = dayCols.findIndex(d => d.dateKey === ev.dateKey);
                             if (colIdx < 0) return null;
                             const dayColumnWidth = viewMode === 'week' ? 'calc((100% - 60px) / 7)' : 'calc(100% - 60px)';
@@ -857,52 +895,70 @@ export function StudentSchedule() {
                                     }}
                                 >
                                     <div
-                                        className={`group relative h-full rounded-2xl px-3 py-2 cursor-pointer transition-all duration-200 overflow-hidden flex flex-col ${isDark ? 'border' : 'border-2'} ${selectedEvent?.id === ev.id ? (isDark ? 'shadow-lg scale-[1.02] ring-2 ring-white/20' : 'shadow-lg scale-[1.02] ring-2 ring-[#1A1A1A]/20') : 'hover:shadow-md hover:-translate-y-0.5'} ${status === 'ongoing' ? 'animate-border-blink shadow-xl scale-[1.01]' : ''}`}
+                                        className={`group relative h-full rounded-2xl cursor-pointer transition-all duration-200 overflow-hidden flex flex-col ${isCompactDayCard ? 'px-2.5 py-1.5' : 'px-3 py-2'} ${isDark ? 'border' : 'border-2'} ${selectedEvent?.id === ev.id ? (isDark ? 'shadow-lg scale-[1.02] ring-2 ring-white/20' : 'shadow-lg scale-[1.02] ring-2 ring-[#1A1A1A]/20') : 'hover:shadow-md hover:-translate-y-0.5'} ${status === 'ongoing' ? 'animate-border-blink shadow-xl scale-[1.01]' : ''}`}
                                         style={{ backgroundColor: style.bg, borderColor: style.border, opacity: status === 'past' ? 0.76 : 1 }}
                                         onClick={() => setSelectedEvent(ev)}
                                         onMouseEnter={(e) => { setHoveredEventId(ev.id); showTooltip(ev, e); }}
                                         onMouseLeave={() => { setHoveredEventId(null); hideTooltip(); }}
                                     >
                                         {status === 'ongoing' && (
-                                            <span className="absolute top-2.5 right-2.5 flex w-2 h-2">
+                                            <span className={`absolute right-2.5 flex w-2 h-2 ${isCompactDayCard ? 'top-2' : 'top-2.5'}`}>
                                                 <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
                                                 <span className="relative inline-flex rounded-full w-2 h-2 bg-emerald-500"></span>
                                             </span>
                                         )}
 
                                         {ev.attendanceStatus === 'present' && (
-                                            <div className="absolute top-2.5 right-2.5 flex" title="Đã điểm danh">
-                                                <CheckCircle className="text-emerald-500 w-4 h-4" weight="fill" />
+                                            <div className={`absolute right-2.5 flex ${isCompactDayCard ? 'top-2' : 'top-2.5'}`} title="Đã điểm danh">
+                                                <CheckCircle className={`${isCompactDayCard ? 'w-3.5 h-3.5' : 'w-4 h-4'} text-emerald-500`} weight="fill" />
                                             </div>
                                         )}
                                         {ev.attendanceStatus === 'absent' && (
-                                            <div className="absolute top-2.5 right-2.5 flex" title="Vắng mặt">
-                                                <XCircle className="text-red-500 w-4 h-4" weight="fill" />
+                                            <div className={`absolute right-2.5 flex ${isCompactDayCard ? 'top-2' : 'top-2.5'}`} title="Vắng mặt">
+                                                <XCircle className={`${isCompactDayCard ? 'w-3.5 h-3.5' : 'w-4 h-4'} text-red-500`} weight="fill" />
                                             </div>
                                         )}
-                                        
-                                        <div className={`font-extrabold leading-tight ${isDark ? 'text-[#1A1A1A]' : 'text-[#1A1A1A]'} ${viewMode === 'day' ? 'text-[17px]' : 'text-[13px]'}`}>{ev.subject}</div>
-                                        <div className={`font-extrabold mt-0.5 ${isDark ? 'text-[#1A1A1A]/50' : 'text-[#1A1A1A]/75'} ${viewMode === 'day' ? 'text-[13px]' : 'text-[11px]'}`}>Lớp {ev.className}</div>
-                                        <div className={`font-extrabold ${isDark ? 'text-[#e5e7eb]' : 'text-[#1A1A1A]'} ${viewMode === 'day' ? 'text-[13px] mt-1 line-clamp-1' : 'text-[11px] mt-0.5 line-clamp-1'}`}>
-                                            GV: {ev.teacher}
-                                        </div>
-                                        
-                                        {viewMode === 'day' && (
-                                            <div className={`font-semibold text-[12px] mt-1.5 line-clamp-1 ${isDark ? 'text-[#1A1A1A]/50' : 'text-[#1A1A1A]/80'}`}>{ev.topic}</div>
-                                        )}
 
-                                        <div className="mt-auto flex items-center justify-between gap-2 pt-2">
-                                            <span className={`font-extrabold ${isDark ? 'text-gray-500' : 'text-[#1A1A1A]/80'} ${viewMode === 'day' ? 'text-[12px]' : 'text-[10px]'}`}>
+                                        <div className="min-h-0">
+                                            {isDayCard ? (
+                                                <>
+                                                    <div className={`font-extrabold leading-tight line-clamp-1 pr-6 ${isDark ? 'text-[#1A1A1A]' : 'text-[#1A1A1A]'} ${isCompactDayCard ? 'text-[15px]' : 'text-[17px]'}`}>
+                                                        {ev.subject} - Lớp {ev.className || '—'}
+                                                    </div>
+
+                                                    {!isUltraCompactDayCard && (
+                                                        <div className={`font-extrabold mt-0.5 line-clamp-1 ${isDark ? 'text-[#1A1A1A]/65' : 'text-[#1A1A1A]/80'} ${isCompactDayCard ? 'text-[12px]' : 'text-[13px]'}`}>
+                                                            GV: {ev.teacher}
+                                                        </div>
+                                                    )}
+
+                                                    {!isCompactDayCard && ev.topic && (
+                                                        <div className={`font-semibold text-[12px] mt-1 line-clamp-1 ${isDark ? 'text-[#1A1A1A]/50' : 'text-[#1A1A1A]/80'}`}>{ev.topic}</div>
+                                                    )}
+                                                </>
+                                            ) : (
+                                                <>
+                                                    <div className={`font-extrabold leading-tight line-clamp-1 pr-6 ${isDark ? 'text-[#1A1A1A]' : 'text-[#1A1A1A]'} text-[13px]`}>{ev.subject}</div>
+                                                    <div className={`font-extrabold mt-0.5 line-clamp-1 ${isDark ? 'text-[#1A1A1A]/50' : 'text-[#1A1A1A]/75'} text-[11px]`}>Lớp {ev.className}</div>
+                                                    <div className={`font-extrabold mt-1 line-clamp-1 ${isDark ? 'text-[#e5e7eb]' : 'text-[#1A1A1A]'} text-[11px]`}>
+                                                        GV: {ev.teacher}
+                                                    </div>
+                                                </>
+                                            )}
+                                        </div>
+
+                                        <div className={`mt-auto flex items-center justify-between gap-2 ${isUltraCompactDayCard ? 'pt-1' : 'pt-2'}`}>
+                                            <span className={`font-extrabold line-clamp-1 ${isDark ? 'text-gray-500' : 'text-[#1A1A1A]/80'} ${isDayCard ? (isCompactDayCard ? 'text-[11px]' : 'text-[12px]') : 'text-[10px]'}`}>
                                                 {pad(ev.startHour)}:{pad(ev.startMin)} - {pad(ev.endHour)}:{pad(ev.endMin)}
                                             </span>
-                                            <div className="flex items-center gap-1.5 justify-end">
-                                            {ev.hasHomework && status !== 'ongoing' && (
+                                            <div className="flex items-center gap-1.5 justify-end shrink-0">
+                                            {ev.hasHomework && status !== 'ongoing' && !isUltraCompactDayCard && (
                                                 <div className={`rounded-lg p-1 ${isDark ? 'bg-white/10 text-[#f4b27a]' : 'bg-white/50 text-[#D97706]'}`} title="Có bài tập">
                                                     <WarningCircle className="w-3.5 h-3.5" weight="bold" />
                                                 </div>
                                             )}
-                                            {ev.meet && (viewMode === 'day' || status !== 'past') ? (
-                                                <a href={ev.meet} target="_blank" rel="noreferrer" onClick={e => e.stopPropagation()} className={`rounded-lg px-1.5 py-1 flex items-center gap-1 text-[9px] font-extrabold ${isJoinable ? (isDark ? 'bg-emerald-500/20 text-emerald-200 animate-pulse' : 'bg-emerald-100 text-emerald-700 animate-pulse') : (isDark ? 'bg-white/10 text-emerald-300' : 'bg-white/60 text-[#047857]')}`} title={isJoinable ? 'Vào học ngay' : 'Có link Meet'}>
+                                            {ev.meet && (isDayCard || status !== 'past') ? (
+                                                <a href={ev.meet} target="_blank" rel="noreferrer" onClick={e => e.stopPropagation()} className={`rounded-lg px-1.5 py-1 flex items-center gap-1 font-extrabold ${isCompactDayCard ? 'text-[10px]' : 'text-[9px]'} ${isJoinable ? (isDark ? 'bg-emerald-500/20 text-emerald-200 animate-pulse' : 'bg-emerald-100 text-emerald-700 animate-pulse') : (isDark ? 'bg-white/10 text-emerald-300' : 'bg-white/60 text-[#047857]')}`} title={isJoinable ? 'Vào học ngay' : 'Có link Meet'}>
                                                     <Video className="w-3 h-3" weight="fill" />
                                                 </a>
                                             ) : null}
@@ -1088,7 +1144,7 @@ export function StudentSchedule() {
             </Dialog>
 
             <Dialog open={!!selectedNotification} onOpenChange={(open) => !open && setSelectedNotification(null)}>
-                <DialogContent className={`rounded-3xl max-w-md ${isDark ? 'border border-[#1A1A1A]/20 bg-[#1b1b22]' : 'border-2 border-[#1A1A1A] bg-white'}`}>
+                <DialogContent className={`rounded-2xl max-w-md ${isDark ? 'border border-[#1A1A1A]/20 bg-[#1b1b22]' : 'border-2 border-[#1A1A1A] bg-white'}`}>
                     <DialogHeader>
                         <DialogTitle className={`text-xl font-extrabold flex items-center gap-2 ${isDark ? 'text-[#1A1A1A]' : 'text-[#1A1A1A]'}`}>
                             <Bell className="w-5 h-5 text-[#FF6B4A]" weight="fill" /> Chi tiết thông báo
