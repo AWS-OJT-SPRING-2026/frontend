@@ -1,8 +1,8 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import {
     CalendarBlank, Lightning, Eye, Trash, PaperPlaneTilt,
-    Plus, SquaresFour, ChartBar, Clock,
-    BookOpen, Warning, ArrowsClockwise, Users, ShieldWarning
+    Plus, SquaresFour, ChartBar, Clock, TextB, TextItalic,
+    BookOpen, Warning, ArrowsClockwise, Users, ShieldWarning, ChatsCircle, CheckCircle, XCircle, FilePdf
 } from '@phosphor-icons/react';
 import { Input } from '../ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
@@ -10,6 +10,7 @@ import { useSettings } from '../../context/SettingsContext';
 import { assignmentService, AssignmentResponse, AssignmentDetailResponse, AssignmentReportResponse, QuestionPreviewResponse, QuestionBankResponse, SubmissionResponse, DisplayAnswerMode } from '../../services/assignmentService';
 import { authService } from '../../services/authService';
 import { classroomService } from '../../services/classroomService';
+import { feedbackService } from '../../services/feedbackService';
 import { ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip, LabelList, Cell } from 'recharts';
 import { MathRenderer } from '../ui/MathRenderer';
 
@@ -1058,6 +1059,116 @@ function DetailView({ id, isDark, onReport, onDeleted }: { id: number; isDark: b
     );
 }
 
+
+// ─── Teacher Feedback Form ───
+function TeacherFeedbackForm({ submission, isDark, onDownloadPdf }: { submission: SubmissionResponse; isDark: boolean; onDownloadPdf?: () => void }) {
+    const [comment, setComment] = useState('');
+    const [submitting, setSubmitting] = useState(false);
+    const [success, setSuccess] = useState(false);
+    const editorRef = useRef<HTMLDivElement>(null);
+
+    const txt = isDark ? 'text-gray-100' : 'text-[#1A1A1A]';
+    const sub = isDark ? 'text-gray-400' : 'text-[#1A1A1A]/50';
+
+    const handleSubmit = async () => {
+        if (!comment.trim()) return;
+        setSubmitting(true);
+        setSuccess(false);
+        try {
+            await feedbackService.createFeedback({
+                studentId: submission.userId,
+                assignmentId: submission.assignmentId || 0,
+                comment: comment.trim(),
+            });
+            setSuccess(true);
+            setComment('');
+            if (editorRef.current) editorRef.current.innerHTML = '';
+            setTimeout(() => setSuccess(false), 3000);
+        } catch (e: any) {
+            alert(e.message || 'Lỗi gửi nhận xét');
+        } finally {
+            setSubmitting(false);
+        }
+    };
+
+    const formatText = (command: string) => {
+        document.execCommand(command, false, undefined);
+        if (editorRef.current) {
+            setComment(editorRef.current.innerHTML);
+            editorRef.current.focus();
+        }
+    };
+
+    return (
+        <div className="flex flex-col h-full">
+            <div className="flex-1 min-h-[250px] flex flex-col">
+                <div className="flex items-center gap-2 mb-3">
+                    <ChatsCircle className="w-5 h-5 text-emerald-500" weight="fill" />
+                    <h4 className={`font-extrabold text-sm ${txt}`}>Nhận xét của giáo viên (Tùy chọn)</h4>
+                </div>
+                
+                {/* Simulated Rich Text Editor */}
+                <div className={`flex-1 flex flex-col rounded-xl border focus-within:ring-2 focus-within:ring-emerald-500/50 transition-all ${isDark ? 'border-white/10 bg-[#20242b]' : 'border-[#1A1A1A]/20 bg-[#F7F7F2]'}`}>
+                    {/* Toolbar */}
+                    <div className={`flex items-center gap-1.5 p-2 border-b ${isDark ? 'border-white/10' : 'border-[#1A1A1A]/10'}`}>
+                        <button 
+                            type="button" 
+                            onMouseDown={(e) => { e.preventDefault(); formatText('bold'); }}
+                            className="p-1.5 rounded hover:bg-black/5 dark:hover:bg-white/10 text-gray-500"
+                        >
+                            <TextB weight="bold" className="w-4 h-4" />
+                        </button>
+                        <button 
+                            type="button"
+                            onMouseDown={(e) => { e.preventDefault(); formatText('italic'); }}
+                            className="p-1.5 rounded hover:bg-black/5 dark:hover:bg-white/10 text-gray-500"
+                        >
+                            <TextItalic className="w-4 h-4" />
+                        </button>
+                    </div>
+                    {/* Textarea replacement: contentEditable */}
+                    <div
+                        ref={editorRef}
+                        contentEditable
+                        suppressContentEditableWarning
+                        onInput={(e) => setComment(e.currentTarget.innerHTML)}
+                        data-placeholder="Gõ nhận xét chi tiết, lời động viên hoặc giải thích lỗi sai tại đây..."
+                        className="flex-1 w-full p-4 text-sm bg-transparent outline-none overflow-y-auto empty:before:content-[attr(data-placeholder)] empty:before:opacity-50 min-h-[120px]"
+                    />
+                </div>
+                
+                {success && (
+                    <span className="text-xs font-bold text-emerald-500 mt-2 block text-right animate-pulse">
+                        ✓ Đã gửi nhận xét thành công
+                    </span>
+                )}
+            </div>
+
+            {/* Action Footer Button Group */}
+            <div className={`mt-5 pt-5 border-t flex items-center justify-between gap-3 ${isDark ? 'border-white/10' : 'border-gray-200'}`}>
+                {onDownloadPdf && (
+                    <button
+                        onClick={onDownloadPdf}
+                        className="flex items-center gap-1.5 px-3 py-2.5 rounded-xl border border-gray-300 dark:border-white/20 text-xs font-extrabold hover:bg-gray-50 dark:hover:bg-white/5 transition-colors"
+                    >
+                        <FilePdf weight="fill" className="w-4 h-4 text-[#d64b2e]" />
+                        <span className={sub}>Tải bản PDF</span>
+                    </button>
+                )}
+                
+                <button
+                    onClick={handleSubmit}
+                    disabled={submitting || !comment.trim()}
+                    className="flex-1 flex items-center justify-center gap-2 px-6 py-3 rounded-xl text-sm font-extrabold bg-emerald-500 hover:bg-emerald-600 text-white disabled:opacity-50 transition-colors shadow-lg shadow-emerald-500/20"
+                >
+                    {submitting ? 'Đang gửi...' : 'Gửi nhận xét'}
+                    <PaperPlaneTilt weight="fill" className="w-4 h-4" />
+                </button>
+            </div>
+        </div>
+    );
+}
+
 // ─── Report View ──────────────────────────────────────────────────────────────
 function ReportView({ id, isDark }: { id: number; isDark: boolean }) {
     const [report, setReport] = useState<AssignmentReportResponse | null>(null);
@@ -1568,7 +1679,7 @@ function ReportView({ id, isDark }: { id: number; isDark: boolean }) {
             {/* ── Submission Detail Modal ── */}
             {selectedSubmission && (
                 <div className="fixed inset-0 z-50 bg-black/40 backdrop-blur-sm flex items-center justify-center p-4">
-                    <div className={`w-full max-w-2xl rounded-2xl border p-5 shadow-2xl ${isDark ? 'bg-[#171b20] border-white/10' : 'bg-white border-gray-200'}`}>
+                    <div className={`w-full max-w-6xl h-[85vh] rounded-2xl border shadow-2xl flex flex-col md:flex-row overflow-hidden ${isDark ? 'bg-[#171b20] border-white/10' : 'bg-white border-gray-200'}`}>
                         {(() => {
                             const correctAnswerByQuestionId = new Map(
                                 questionAnalysis.map(q => {
@@ -1591,71 +1702,112 @@ function ReportView({ id, isDark }: { id: number; isDark: boolean }) {
 
                             return (
                                 <>
-                                    <div className="flex items-start justify-between gap-4">
-                                        <div>
-                                            <h4 className={`text-base font-extrabold ${txt}`}>Chi tiết bài làm</h4>
-                                            <p className={`text-xs mt-1 ${sub}`}>
-                                                {selectedSubmission.studentName} · Điểm {selectedSubmission.score?.toFixed(2) ?? '0.00'}
-                                            </p>
-                                        </div>
-                                        <button
-                                            onClick={() => setSelectedSubmission(null)}
-                                            className={`text-xs font-bold px-3 py-1.5 rounded-xl border transition-colors ${isDark ? 'border-white/20 hover:bg-white/5' : 'border-gray-200 hover:bg-gray-50'}`}
-                                        >
-                                            Đóng
-                                        </button>
-                                    </div>
-
-                                    <div className={`mt-4 flex items-center gap-1 p-1 rounded-xl w-fit ${isDark ? 'bg-white/5' : 'bg-gray-100'}`}>
-                                        <button
-                                            onClick={() => setDetailFilter('all')}
-                                            className={`text-xs font-bold px-3 py-1.5 rounded-lg transition-colors ${detailFilter === 'all'
-                                                ? 'bg-[#FF6B4A] text-white'
-                                                : isDark ? 'text-gray-400 hover:text-gray-200' : 'text-gray-500 hover:text-gray-800'}`}
-                                        >
-                                            Tất cả ({detailItems.length})
-                                        </button>
-                                        <button
-                                            onClick={() => setDetailFilter('wrong')}
-                                            className={`text-xs font-bold px-3 py-1.5 rounded-lg transition-colors ${detailFilter === 'wrong'
-                                                ? 'bg-[#FF6B4A] text-white'
-                                                : isDark ? 'text-gray-400 hover:text-gray-200' : 'text-gray-500 hover:text-gray-800'}`}
-                                        >
-                                            Câu sai ({wrongCount})
-                                        </button>
-                                    </div>
-
-                                    <div className="mt-4 max-h-[55vh] overflow-auto space-y-2">
-                                        {filteredItems.length ? filteredItems.map((ans) => (
-                                            <div key={`${ans.questionId}-${ans.order}`} className={`rounded-xl border p-3 ${ans.isCorrect
-                                                ? (isDark ? 'border-green-900/50 bg-green-900/10' : 'border-green-200 bg-green-50/40')
-                                                : (isDark ? 'border-red-900/50 bg-red-900/10' : 'border-red-200 bg-red-50/40')}`}>
-                                                <div className={`text-xs font-bold mb-1 ${txt}`}>Câu {ans.order}: <MathRenderer content={ans.questionText} /></div>
-                                                <div className={`text-xs ${ans.isCorrect ? 'text-green-700' : 'text-red-700'}`}>
-                                                    {ans.isCorrect ? '✓ Đúng' : '✗ Sai'} · Đã chọn: <MathRenderer content={ans.selectedAnswer ?? 'Chưa trả lời'} />
+                                    {/* Left Column (2/3 width) */}
+                                    <div className="flex-1 flex flex-col md:w-2/3 border-b md:border-b-0 md:border-r border-gray-200 dark:border-white/10 h-full overflow-hidden">
+                                        <div className="p-6 pb-2">
+                                            <div className="flex items-center justify-between">
+                                                <div>
+                                                    <h4 className={`text-xl font-extrabold ${txt}`}>Chi tiết bài làm - {selectedSubmission.studentName}</h4>
+                                                    <p className={`text-sm mt-1 font-semibold ${sub}`}>
+                                                        Điểm {selectedSubmission.score?.toFixed(2) ?? '0.00'}
+                                                    </p>
                                                 </div>
-                                                {!ans.isCorrect && (
-                                                    <div className="mt-1.5 text-xs text-green-700 bg-green-50 border border-green-200 rounded-lg px-2.5 py-1.5">
-                                                        Đáp án đúng: <MathRenderer content={ans.correctAnswer} />
-                                                    </div>
-                                                )}
+                                                <button
+                                                    onClick={() => setSelectedSubmission(null)}
+                                                    className="md:hidden p-2 rounded-full hover:bg-black/5 dark:hover:bg-white/10 transition-colors"
+                                                >
+                                                    <XCircle className="w-7 h-7 text-gray-400" />
+                                                </button>
                                             </div>
-                                        )) : (
-                                            <p className={`text-sm py-6 text-center ${sub}`}>
-                                                {detailFilter === 'wrong'
-                                                    ? 'Học sinh không có câu trả lời sai.'
-                                                    : 'Bài nộp này chưa có dữ liệu câu trả lời.'}
-                                            </p>
-                                        )}
+
+                                            <div className={`mt-5 flex items-center gap-1 p-1 rounded-xl w-fit ${isDark ? 'bg-white/5' : 'bg-gray-100'}`}>
+                                                <button
+                                                    onClick={() => setDetailFilter('all')}
+                                                    className={`text-xs font-bold px-4 py-2 rounded-lg transition-colors ${detailFilter === 'all'
+                                                        ? 'bg-[#FF6B4A] text-white shadow-sm'
+                                                        : isDark ? 'text-gray-400 hover:text-gray-200' : 'text-gray-500 hover:text-gray-800'}`}
+                                                >
+                                                    Tất cả ({detailItems.length})
+                                                </button>
+                                                <button
+                                                    onClick={() => setDetailFilter('wrong')}
+                                                    className={`text-xs font-bold px-4 py-2 rounded-lg transition-colors ${detailFilter === 'wrong'
+                                                        ? 'bg-[#FF6B4A] text-white shadow-sm'
+                                                        : isDark ? 'text-gray-400 hover:text-gray-200' : 'text-gray-500 hover:text-gray-800'}`}
+                                                >
+                                                    Câu sai ({wrongCount})
+                                                </button>
+                                            </div>
+                                        </div>
+
+                                        <div className="p-6 overflow-y-auto flex-1 space-y-4">
+                                            {filteredItems.length ? filteredItems.map((ans) => (
+                                                <div key={`${ans.questionId}-${ans.order}`} className={`rounded-xl border p-5 bg-white dark:bg-transparent ${isDark ? 'border-white/10' : 'border-gray-200 shadow-sm'}`}>
+                                                    <div className={`text-sm font-bold mb-4 leading-relaxed ${txt}`}>
+                                                        Câu {ans.order}: <MathRenderer content={ans.questionText} />
+                                                    </div>
+                                                    <div className="space-y-3">
+                                                        <div className={`text-sm font-semibold flex items-start gap-2 ${ans.isCorrect ? 'text-green-600' : 'text-[#FF6B4A]'}`}>
+                                                            {ans.isCorrect ? <CheckCircle weight="fill" className="w-5 h-5 mt-0.5 shrink-0" /> : <XCircle weight="fill" className="w-5 h-5 mt-0.5 shrink-0" />}
+                                                            <div>
+                                                                <span className="opacity-80 font-medium mr-1">{ans.isCorrect ? 'Đúng' : 'Sai'} · Đã chọn:</span>
+                                                                <MathRenderer content={ans.selectedAnswer ?? 'Chưa trả lời'} />
+                                                            </div>
+                                                        </div>
+                                                        {!ans.isCorrect && (
+                                                            <div className="text-sm font-semibold flex items-start gap-2 text-green-700 bg-green-50/60 dark:bg-green-900/10 border border-green-200 dark:border-green-900/30 p-3 rounded-xl mt-2">
+                                                                <CheckCircle weight="fill" className="w-5 h-5 mt-0.5 shrink-0" />
+                                                                <div>
+                                                                    <span className="opacity-80 font-medium mr-1">Đáp án đúng:</span>
+                                                                    <MathRenderer content={ans.correctAnswer} />
+                                                                </div>
+                                                            </div>
+                                                        )}
+                                                    </div>
+                                                </div>
+                                            )) : (
+                                                <p className={`text-sm py-10 text-center font-semibold ${sub}`}>
+                                                    {detailFilter === 'wrong'
+                                                        ? 'Học sinh không có câu trả lời sai.'
+                                                        : 'Bài nộp này chưa có dữ liệu câu trả lời.'}
+                                                </p>
+                                            )}
+                                        </div>
                                     </div>
 
-                                    <div className="mt-4 flex justify-end">
-                                        <button
-                                            onClick={handleDownloadDetailPdf}
-                                            className="text-xs font-extrabold px-4 py-2 rounded-xl bg-[#FF6B4A] hover:bg-[#ff5535] text-white transition-colors"
-                                        >
-                                            Tải kết quả (PDF)
-                                        </button>
+                                    {/* Right Column (1/3 width) */}
+                                    <div className="md:w-1/3 flex flex-col h-full bg-[#fafafa] dark:bg-black/20">
+                                        <div className="p-6 border-b border-gray-200 dark:border-white/10 flex items-start justify-between">
+                                            <div>
+                                                <h4 className={`text-lg font-extrabold ${txt}`}>{selectedSubmission.studentName}</h4>
+                                                <p className={`text-sm mt-1 font-semibold ${sub}`}>
+                                                    Nộp lúc: {selectedSubmission.submitTime ? new Date(selectedSubmission.submitTime).toLocaleString('vi-VN', { timeStyle: 'short', dateStyle: 'short' }) : 'N/A'}
+                                                </p>
+                                            </div>
+                                            <button
+                                                onClick={() => setSelectedSubmission(null)}
+                                                className="hidden md:block p-2 -mr-2 -mt-2 rounded-full hover:bg-black/5 dark:hover:bg-white/10 transition-colors"
+                                            >
+                                                <XCircle className="w-8 h-8 text-gray-400 hover:text-gray-600 dark:hover:text-white transition-colors" />
+                                            </button>
+                                        </div>
+                                        
+                                        <div className="p-6 pb-0">
+                                            <div className={`rounded-2xl p-6 text-center border ${isDark ? 'bg-[#171b20] border-white/10' : 'bg-white border-gray-200'} shadow-sm`}>
+                                                <p className={`text-xs font-bold uppercase tracking-wider mb-2 ${sub}`}>Điểm bài thi</p>
+                                                <p className={`text-5xl font-black ${(selectedSubmission.score || 0) >= 5 ? 'text-green-500' : 'text-[#FF6B4A]'}`}>
+                                                    {selectedSubmission.score?.toFixed(2) ?? '0.00'} <span className="text-xl font-bold opacity-30">/ 10</span>
+                                                </p>
+                                            </div>
+                                        </div>
+
+                                        <div className="flex-1 overflow-hidden p-6">
+                                            <TeacherFeedbackForm 
+                                                submission={selectedSubmission} 
+                                                isDark={isDark} 
+                                                onDownloadPdf={handleDownloadDetailPdf} 
+                                            />
+                                        </div>
                                     </div>
                                 </>
                             );

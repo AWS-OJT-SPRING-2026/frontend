@@ -9,6 +9,9 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } f
 import { DropdownMenu, DropdownMenuContent, DropdownMenuTrigger } from '../ui/dropdown-menu';
 import { useSettings } from '../../context/SettingsContext';
 import { StudentClassmate, StudentScheduleItem, StudentWeeklyStats, timetableService } from '../../services/timetableService';
+import { weeklyProgressService, WeeklyProgressData } from '../../services/weeklyProgressService';
+import { NotificationDropdown } from './NotificationDropdown';
+import { notificationService, NotificationItem as NotifItem } from '../../services/notificationService';
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL;
 
@@ -384,6 +387,12 @@ export function StudentSchedule() {
     const [isNotificationsOpen, setIsNotificationsOpen] = useState(false);
     const [selectedNotification, setSelectedNotification] = useState<NotificationItem | null>(null);
 
+    // ── Weekly Progress state ──────────────────────────────────────────────
+    const [weeklyProgress, setWeeklyProgress] = useState<WeeklyProgressData | null>(null);
+
+    // ── Real notification unread count ─────────────────────────────────────
+    const [realUnreadCount, setRealUnreadCount] = useState(0);
+
     useEffect(() => {
         const handleOpenClassmates = (e: any) => setShowClassmates(e.detail);
         window.addEventListener('openClassmates', handleOpenClassmates);
@@ -395,6 +404,26 @@ export function StudentSchedule() {
         setBrokenAvatarIds(new Set());
     }, [showClassmates?.id]);
 
+    // ── Fetch weekly progress ─────────────────────────────────────────────
+    useEffect(() => {
+        let cancelled = false;
+        weeklyProgressService.getMyWeeklyProgress()
+            .then(data => { if (!cancelled) setWeeklyProgress(data); })
+            .catch(() => {});
+        return () => { cancelled = true; };
+    }, []);
+
+    // ── Fetch real notification count ─────────────────────────────────────
+    useEffect(() => {
+        let cancelled = false;
+        notificationService.getMyNotifications('ALL')
+            .then(items => {
+                if (!cancelled) setRealUnreadCount(items.filter(n => !n.isRead).length);
+            })
+            .catch(() => {});
+        return () => { cancelled = true; };
+    }, [isNotificationsOpen]); // refresh count when dropdown closes
+
     const showTooltip = (ev: ScheduleEntry, e: React.MouseEvent) => {
         clearTimeout(tooltipTimeout.current);
         setTooltipData({ event: ev, x: e.clientX, y: e.clientY });
@@ -404,7 +433,7 @@ export function StudentSchedule() {
         tooltipTimeout.current = setTimeout(() => setTooltipData(null), 200);
     };
 
-    const unreadNotificationsCount = NOTIFICATIONS.filter(n => !n.read).length;
+    const unreadNotificationsCount = realUnreadCount;
 
     const monday = useMemo(() => getMonday(currentDate), [currentDate]);
 
@@ -643,51 +672,21 @@ export function StudentSchedule() {
                     </div>
                 </div>
                 <div className="flex items-center gap-3 flex-wrap">
-                    <DropdownMenu open={isNotificationsOpen} onOpenChange={setIsNotificationsOpen}>
-                        <DropdownMenuTrigger asChild>
-                            <button className={`relative w-10 h-10 rounded-2xl flex items-center justify-center transition-colors ${isDark ? 'bg-[#1a1a1f] border-none hover:bg-white/5' : 'bg-white border-2 border-[#1A1A1A]/20 hover:bg-[#1A1A1A]/5'}`}>
-                                <Bell className={`w-5 h-5 ${isDark ? 'text-[#f3f4f6]' : 'text-[#1A1A1A]'}`} weight="fill" />
-                                {unreadNotificationsCount > 0 && (
-                                    <span className={`absolute -top-1.5 -right-1.5 min-w-5 h-5 px-1 rounded-full bg-red-500 text-white text-[10px] font-extrabold flex items-center justify-center ${isDark ? 'border border-[#111]' : 'border-2 border-white'}`}>
-                                        {unreadNotificationsCount}
-                                    </span>
-                                )}
-                            </button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end" sideOffset={8} className={`w-[340px] p-0 rounded-2xl shadow-2xl overflow-hidden ${isDark ? 'border border-[#1A1A1A]/20 bg-[#1b1b22]' : 'border-2 border-[#1A1A1A]/20 bg-white'}`}>
-                            <div className={`px-4 py-3 flex items-center justify-between ${isDark ? 'bg-[#111217] text-white border-b border-[#1A1A1A]/20' : 'bg-[#1A1A1A] text-white'}`}>
-                                <h3 className="font-extrabold text-base flex items-center gap-2">
-                                    <Bell className="w-4 h-4" weight="fill" /> Thông báo
-                                </h3>
-                                <span className="bg-red-500 text-white text-[10px] font-extrabold px-2 py-0.5 rounded-full">{unreadNotificationsCount} mới</span>
-                            </div>
-                            <div className={`max-h-[320px] overflow-y-auto px-2 py-2 space-y-2 ${isDark ? 'bg-[#1A1A1A] border-2 border-[#EEEEEE] shadow-[4px_4px_0_0_#EEEEEE] hover:shadow-[0_0_15px_#FF6B4A] transition-all duration-300' : 'bg-white'}`}>
-                                {NOTIFICATIONS.map((notif, i) => (
-                                    <div key={i} className={`rounded-xl border p-3 ${notif.read ? (isDark ? 'border-[#1A1A1A]/20 bg-white/[0.02]' : 'border-[#1A1A1A]/10') : (isDark ? 'border-red-400/40 bg-red-500/10' : 'border-2 border-red-200 bg-red-50/50')}`}>
-                                        <div className="flex items-start justify-between gap-2">
-                                            <div className="min-w-0">
-                                                <p className={`text-sm font-extrabold ${notif.read ? (isDark ? 'text-[#f3f4f6]' : 'text-[#1A1A1A]') : 'text-red-500'}`}>{notif.title}</p>
-                                                <p className={`text-xs font-semibold mt-1 line-clamp-2 ${isDark ? 'text-gray-500' : 'text-[#1A1A1A]/70'}`}>{notif.desc}</p>
-                                            </div>
-                                            {!notif.read && <span className="w-2 h-2 rounded-full bg-red-500 shrink-0 mt-1" />}
-                                        </div>
-                                        <div className="mt-2 flex items-center justify-between">
-                                            <span className={`text-[11px] font-bold ${isDark ? 'text-[#94a3b8]' : 'text-gray-400'}`}>{notif.time}</span>
-                                            <button
-                                                onClick={() => {
-                                                    setSelectedNotification(notif);
-                                                    setIsNotificationsOpen(false);
-                                                }}
-                                                className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[11px] font-extrabold transition-colors ${isDark ? 'bg-white/10 text-white hover:bg-white/15' : 'bg-[#1A1A1A] text-white hover:bg-[#333]'}`}
-                                            >
-                                                <Eye className="w-3.5 h-3.5" weight="bold" /> Chi tiết
-                                            </button>
-                                        </div>
-                                    </div>
-                                ))}
-                            </div>
-                        </DropdownMenuContent>
-                    </DropdownMenu>
+                    {/* Real notification dropdown */}
+                    <div className="relative">
+                        <button
+                            onClick={() => setIsNotificationsOpen(prev => !prev)}
+                            className={`relative w-10 h-10 rounded-2xl flex items-center justify-center transition-colors ${isDark ? 'bg-[#1a1a1f] border-none hover:bg-white/5' : 'bg-white border-2 border-[#1A1A1A]/20 hover:bg-[#1A1A1A]/5'}`}
+                        >
+                            <Bell className={`w-5 h-5 ${isDark ? 'text-[#f3f4f6]' : 'text-[#1A1A1A]'}`} weight="fill" />
+                            {unreadNotificationsCount > 0 && (
+                                <span className={`absolute -top-1.5 -right-1.5 min-w-5 h-5 px-1 rounded-full bg-red-500 text-white text-[10px] font-extrabold flex items-center justify-center ${isDark ? 'border border-[#111]' : 'border-2 border-white'}`}>
+                                    {unreadNotificationsCount}
+                                </span>
+                            )}
+                        </button>
+                        <NotificationDropdown open={isNotificationsOpen} onClose={() => setIsNotificationsOpen(false)} />
+                    </div>
                     <div className={`flex rounded-2xl p-1 ${isDark ? 'bg-[#18181b] border-none' : 'bg-[#1A1A1A]/5 border-2 border-[#1A1A1A]/10'}`}>
                         <button
                             onClick={() => { setViewMode('day'); setSelectedEvent(null); }}
@@ -745,16 +744,40 @@ export function StudentSchedule() {
                     </div>
                 ))}
                 
-                {/* Gamification Progress */}
+                {/* Weekly Progress – live API data */}
                 <div className={`rounded-3xl p-5 flex flex-col justify-between hover:-translate-y-0.5 transition-all shadow-sm ${isDark ? 'border border-[#1A1A1A]/20 bg-[#232328]' : 'border-2 border-[#1A1A1A] bg-white'}`}>
                     <div className="flex items-center justify-between mb-2">
                         <span className={`text-xs font-extrabold uppercase tracking-widest ${isDark ? 'text-[#1A1A1A]/50' : 'text-gray-400'}`}>Tiến độ tuần</span>
-                        <span className={`text-sm font-extrabold ${isDark ? 'text-[#1A1A1A]' : 'text-[#1A1A1A]'}`}>75%</span>
+                        <span className={`text-sm font-extrabold ${weeklyProgress && weeklyProgress.progressPercent >= 80 ? 'text-emerald-500' : weeklyProgress && weeklyProgress.progressPercent >= 50 ? 'text-amber-500' : 'text-[#FF6B4A]'}`}>
+                            {weeklyProgress?.progressPercent ?? 0}%
+                        </span>
                     </div>
                     <div className={`w-full h-2.5 rounded-full overflow-hidden ${isDark ? 'bg-white/10' : 'bg-[#1A1A1A]/10'}`}>
-                        <div className="bg-[#ff7849] h-full rounded-full w-3/4"></div>
+                        <div
+                            className={`h-full rounded-full transition-all duration-500 ${
+                                weeklyProgress && weeklyProgress.progressPercent >= 80 ? 'bg-emerald-500'
+                                : weeklyProgress && weeklyProgress.progressPercent >= 50 ? 'bg-amber-500'
+                                : 'bg-[#ff7849]'
+                            }`}
+                            style={{ width: `${weeklyProgress?.progressPercent ?? 0}%` }}
+                        />
                     </div>
-                    <p className={`text-[10px] font-bold mt-2 ${isDark ? 'text-[#1A1A1A]/50' : 'text-gray-400'}`}>Đã hoàn thành 6/8 nhiệm vụ</p>
+                    <p className={`text-[10px] font-bold mt-2 ${isDark ? 'text-[#1A1A1A]/50' : 'text-gray-400'}`}>
+                        Đã hoàn thành {weeklyProgress?.completedTasks ?? 0}/{weeklyProgress?.totalTasks ?? 0} nhiệm vụ
+                    </p>
+                    {weeklyProgress?.breakdown && (
+                        <div className="flex items-center gap-3 mt-1.5 flex-wrap">
+                            <span className={`text-[9px] font-bold px-2 py-0.5 rounded-full ${isDark ? 'bg-blue-500/20 text-blue-300' : 'bg-blue-50 text-blue-600 border border-blue-200'}`}>
+                                📝 BT: {weeklyProgress.breakdown.assignmentDone}/{weeklyProgress.breakdown.assignmentTotal}
+                            </span>
+                            <span className={`text-[9px] font-bold px-2 py-0.5 rounded-full ${isDark ? 'bg-purple-500/20 text-purple-300' : 'bg-purple-50 text-purple-600 border border-purple-200'}`}>
+                                📋 KT: {weeklyProgress.breakdown.testDone}/{weeklyProgress.breakdown.testTotal}
+                            </span>
+                            <span className={`text-[9px] font-bold px-2 py-0.5 rounded-full ${isDark ? 'bg-emerald-500/20 text-emerald-300' : 'bg-emerald-50 text-emerald-600 border border-emerald-200'}`}>
+                                ✅ ĐD: {weeklyProgress.breakdown.attendanceDone}/{weeklyProgress.breakdown.attendanceTotal}
+                            </span>
+                        </div>
+                    )}
                 </div>
             </div>
 

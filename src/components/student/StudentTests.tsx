@@ -6,13 +6,14 @@ import {
     CheckCircle, ClipboardText, Clock, BookOpen, CaretRight,
     ArrowCounterClockwise, Star, Hourglass, WarningCircle,
     Medal, MagnifyingGlass, Funnel, ListNumbers, XCircle, Archive,
-    ShieldWarning
+    ShieldWarning, ChatsCircle, PaperPlaneTilt
 } from '@phosphor-icons/react';
 import { useSettings } from '../../context/SettingsContext';
 import { assignmentService, AssignmentResponse, AssignmentDetailResponse, SubmissionResponse, AssignmentAttemptResponse, AssignmentResultResponse } from '../../services/assignmentService';
 import { authService, UserData } from '../../services/authService';
 import { useQuizDraft } from '../../hooks/useQuizDraft';
 import { quizSessionGuard } from '../../lib/quizSessionGuard';
+import { feedbackService, FeedbackItem } from '../../services/feedbackService';
 
 type TestStatus = 'pending' | 'in_progress' | 'completed' | 'missing';
 type TestCategory = 'homework' | 'exam';
@@ -624,6 +625,78 @@ function DetailedReviewView({ test, result, detail, onBack, isDark }: {
     );
 }
 
+// ─── Teacher Feedback Section (in result page) ──────────────────────────────
+function TeacherFeedbackSection({ assignmentId, isDark }: { assignmentId: number; isDark: boolean }) {
+    const [feedbacks, setFeedbacks] = useState<FeedbackItem[]>([]);
+    const [loading, setLoading] = useState(true);
+
+    useEffect(() => {
+        let cancelled = false;
+        setLoading(true);
+        feedbackService.getMyFeedbackForAssignment(assignmentId)
+            .then(items => { if (!cancelled) setFeedbacks(items); })
+            .catch(() => {})
+            .finally(() => { if (!cancelled) setLoading(false); });
+        return () => { cancelled = true; };
+    }, [assignmentId]);
+
+    if (loading) {
+        return (
+            <div className={`rounded-2xl border-2 p-5 ${isDark ? 'border-[#1A1A1A]/20 bg-white/[0.02]' : 'border-[#1A1A1A]/10 bg-[#F7F7F2]'}`}>
+                <div className="flex items-center gap-2 mb-3">
+                    <ChatsCircle className="w-5 h-5 text-[#FF6B4A]" weight="fill" />
+                    <h4 className="font-extrabold text-[#1A1A1A]">Nhận xét từ Giáo viên</h4>
+                </div>
+                <div className="flex justify-center py-4">
+                    <div className="w-5 h-5 border-2 border-[#FF6B4A] border-t-transparent rounded-full animate-spin" />
+                </div>
+            </div>
+        );
+    }
+
+    if (feedbacks.length === 0) {
+        return (
+            <div className={`rounded-2xl border-2 p-5 ${isDark ? 'border-[#1A1A1A]/20 bg-white/[0.02]' : 'border-[#1A1A1A]/10 bg-[#F7F7F2]'}`}>
+                <div className="flex items-center gap-2 mb-2">
+                    <ChatsCircle className="w-5 h-5 text-gray-400" weight="fill" />
+                    <h4 className="font-extrabold text-[#1A1A1A]">Nhận xét từ Giáo viên</h4>
+                </div>
+                <p className="text-sm font-semibold text-[#1A1A1A]/50 italic">
+                    Giáo viên chưa gửi nhận xét cho bài làm này.
+                </p>
+            </div>
+        );
+    }
+
+    return (
+        <div className="space-y-3">
+            {feedbacks.map(fb => (
+                <div key={fb.feedbackId} className={`rounded-2xl border-2 p-5 ${isDark ? 'border-emerald-500/30 bg-emerald-500/5' : 'border-emerald-200 bg-emerald-50'}`}>
+                    <div className="flex items-center gap-2 mb-3">
+                        <ChatsCircle className="w-5 h-5 text-emerald-600" weight="fill" />
+                        <h4 className="font-extrabold text-emerald-700">Nhận xét từ Giáo viên</h4>
+                    </div>
+                    <p 
+                        className={`text-sm font-semibold leading-relaxed ${isDark ? 'text-emerald-200' : 'text-[#1A1A1A]/80'}`}
+                        dangerouslySetInnerHTML={{ __html: fb.comment }}
+                    />
+                    <div className="flex items-center justify-between mt-3 pt-3 border-t border-emerald-200/50">
+                        <span className="text-xs font-extrabold text-emerald-600/80">
+                            {fb.teacherName}
+                        </span>
+                        <span className="text-[10px] font-bold text-emerald-600/60">
+                            {new Date(fb.createdAt).toLocaleDateString('vi-VN', {
+                                day: '2-digit', month: '2-digit', year: 'numeric',
+                                hour: '2-digit', minute: '2-digit'
+                            })}
+                        </span>
+                    </div>
+                </div>
+            ))}
+        </div>
+    );
+}
+
 function TestTakingView({ test, result, onBack, onOpenDetailedReview, isDark }: { test: Test; result: AssignmentResultResponse | null; onBack: () => void; onOpenDetailedReview: () => void; isDark: boolean }) {
     if (test.status === 'completed' || test.status === 'missing') {
         const bg = SUBJECT_BG[test.subject] ?? '#FCE38A';
@@ -713,6 +786,11 @@ function TestTakingView({ test, result, onBack, onOpenDetailedReview, isDark }: 
                                 Bạn nắm rất vững các kiến thức cơ bản. Tuy nhiên, phần vận dụng cao vẫn còn thiếu sót, đặc biệt là các câu phân tích chuyên sâu. Hãy ôn tập lại chương 2 và làm thêm bài tập tư duy nhé!
                             </p>
                         </div>
+                    </div>
+
+                    {/* Teacher Feedback Section */}
+                    <div className="mb-8">
+                        <TeacherFeedbackSection assignmentId={test._assignmentId ?? test.id} isDark={isDark} />
                     </div>
 
                     <div className="flex justify-center gap-4">
@@ -1364,6 +1442,7 @@ export function StudentTests() {
         const params = new URLSearchParams(location.search);
         const tabParam = params.get('tab');
         const categoryParam = params.get('category');
+        const resultIdStr = params.get('resultId'); // Handle notification redirect
 
         if (tabParam === 'available' || tabParam === 'completed') {
             setActiveTab(tabParam);
@@ -1383,7 +1462,31 @@ export function StudentTests() {
             setFilterCategory('homework');
             setSearchQuery(subject);
         }
-    }, [location.search]);
+
+        // Open specific result if requested
+        if (resultIdStr && apiCompletedTests.length > 0) {
+            const resultId = Number(resultIdStr);
+            const testToOpen = apiCompletedTests.find(t => t._assignmentId === resultId);
+            
+            if (testToOpen && (!selectedTest || selectedTest._assignmentId !== resultId)) {
+                setSelectedTest(testToOpen);
+                setActiveTab('completed');
+                
+                const token = authService.getToken();
+                if (token) {
+                    assignmentService.getResult(resultId, token).then(result => {
+                        setResultDetail(result);
+                        setExerciseViewMode('taking'); // Opens TestTakingView summary for a completed test
+                        
+                        // Drop resultId from URL so if they click "Quay lại danh sách" it won't reopen instantly
+                        const nextParams = new URLSearchParams(location.search);
+                        nextParams.delete('resultId');
+                        navigate({ search: nextParams.toString() }, { replace: true });
+                    }).catch(() => {});
+                }
+            }
+        }
+    }, [location.search, apiCompletedTests, selectedTest]);
 
     const availableTests = apiActiveAssignments;
     const completedTests = apiCompletedTests;

@@ -1,22 +1,18 @@
 import { useRef, useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
-    MagnifyingGlass, Bell, ArrowRight, CheckCircle, Info,
-    Fire, Timer, NotePencil, Play, Pause, ArrowCounterClockwise,
+    MagnifyingGlass, Bell, ArrowRight, CheckCircle,
+    Timer, NotePencil, Play, Pause, ArrowCounterClockwise,
     Warning, MapTrifold, BookOpen, CalendarBlank, Trash, Plus,
-    Eye, Gear, ArrowLeft, X, CoffeeBean,
+    Eye, Gear, ArrowLeft, X, CoffeeBean, ChartBar,
 } from '@phosphor-icons/react';
 import { useSettings } from '../../context/SettingsContext';
 import { API_BASE_URL } from '../../services/env';
+import { NotificationDropdown } from './NotificationDropdown';
+import { weeklyProgressService, WeeklyProgressData } from '../../services/weeklyProgressService';
+import { notificationService } from '../../services/notificationService';
 
-// ─── Mock data ───────────────────────────────────────────────────────────────
-
-const mockNotificationsData = [
-    { id: 1, title: 'Lịch học mới', desc: 'Thầy Bình vừa cập nhật tài liệu cho tiết Toán học sáng nay.', time: '5 phút trước', icon: Info, iconColor: '#2563EB', unread: true },
-    { id: 2, title: 'Bài tập sắp đến hạn', desc: 'Bạn còn 2 bài tập Tiếng Anh cần nộp trước 23:59 hôm nay.', time: '2 giờ trước', icon: Bell, iconColor: '#FF6B4A', unread: true },
-    { id: 3, title: 'Kết quả bài kiểm tra', desc: 'Chúc mừng! Bạn đã đạt 9.5 điểm trong bài kiểm tra Hóa học.', time: 'Hôm qua', icon: CheckCircle, iconColor: '#10B981', unread: false },
-    { id: 4, title: 'Lời mời nhóm học', desc: 'Lê Văn Cường đã mời bạn vào nhóm ôn tập "Toán 12A1".', time: '2 ngày trước', icon: Info, iconColor: '#2563EB', unread: false },
-];
+// ─── Static data ─────────────────────────────────────────────────────────────
 
 const roadmapSteps = [
     { week: 1, title: 'Hàm số & Đồ thị', done: true },
@@ -38,16 +34,6 @@ const deadlineItems = [
     { id: 6, subject: 'Lịch Sử', color: '#FFB5B5', title: 'Kiểm tra nhanh Chương 2', due: 'Đã quá hạn', urgent: false, action: 'exercises', missing: true },
 ];
 
-const streakDays = [
-    { label: 'T2', done: true },
-    { label: 'T3', done: true },
-    { label: 'T4', done: true },
-    { label: 'T5', done: true, today: true },
-    { label: 'T6', done: false },
-    { label: 'T7', done: false },
-    { label: 'CN', done: false },
-];
-
 const DEADLINE_TABS = ['Tất cả', 'Toán học', 'Tiếng Anh', 'Ngữ Văn'];
 const POMODORO_WORK = 25 * 60;
 
@@ -60,9 +46,11 @@ export function StudentHomepage() {
 
     // Notification dropdown
     const [showNotifications, setShowNotifications] = useState(false);
-    const [notifications, setNotifications] = useState(mockNotificationsData);
+    const [unreadCount, setUnreadCount] = useState(0);
     const notificationsRef = useRef<HTMLDivElement>(null);
-    const unreadCount = notifications.filter(n => n.unread).length;
+
+    // Weekly progress
+    const [weeklyProgress, setWeeklyProgress] = useState<WeeklyProgressData | null>(null);
 
     // Quote
     const [quote, setQuote] = useState<{ q: string; a: string } | null>(null);
@@ -104,6 +92,20 @@ export function StudentHomepage() {
         fetch(`${API_BASE_URL}/quotes/today`)
             .then(r => r.json())
             .then(d => { if (Array.isArray(d) && d.length > 0) setQuote({ q: d[0].q, a: d[0].a }); })
+            .catch(() => {});
+    }, []);
+
+    // Fetch unread notification count on mount
+    useEffect(() => {
+        notificationService.getMyNotifications('ALL')
+            .then(items => setUnreadCount(items.filter(n => !n.isRead).length))
+            .catch(() => {});
+    }, []);
+
+    // Fetch weekly progress on mount
+    useEffect(() => {
+        weeklyProgressService.getMyWeeklyProgress()
+            .then(data => setWeeklyProgress(data))
             .catch(() => {});
     }, []);
 
@@ -180,9 +182,6 @@ export function StudentHomepage() {
         localStorage.setItem('slozy_quickNotes', JSON.stringify(updated));
     };
 
-    const markAllAsRead = () => setNotifications(p => p.map(n => ({ ...n, unread: false })));
-    const markAsRead = (id: number) => setNotifications(p => p.map(n => n.id === id ? { ...n, unread: false } : n));
-
     const filteredDeadlines = deadlineTab === 'Tất cả'
         ? deadlineItems
         : deadlineItems.filter(d => d.subject === deadlineTab);
@@ -243,33 +242,10 @@ export function StudentHomepage() {
                             {unreadCount > 0 && <span className="absolute top-2.5 right-2.5 w-2 h-2 bg-[#FF6B4A] rounded-full" />}
                         </button>
 
-                        {showNotifications && (
-                            <div className={`absolute right-0 mt-3 w-80 rounded-3xl shadow-2xl z-[100] overflow-hidden ${isDark ? 'bg-[#1A1A1A] border-2 border-[#EEEEEE]' : 'bg-white border-2 border-[#1A1A1A]/5'}`}>
-                                <div className={`px-6 py-4 flex items-center justify-between ${isDark ? 'border-b border-white/10 bg-[#15161a]' : 'border-b border-gray-100 bg-gray-50/50'}`}>
-                                    <h3 className={`font-extrabold text-sm ${text}`}>Thông báo</h3>
-                                    <button onClick={markAllAsRead} disabled={unreadCount === 0} className="text-[10px] font-extrabold text-[#FF6B4A] hover:underline uppercase tracking-widest disabled:opacity-50">
-                                        Đánh dấu đã đọc
-                                    </button>
-                                </div>
-                                <div className="max-h-[360px] overflow-y-auto">
-                                    {notifications.slice(0, 5).map(n => (
-                                        <div key={n.id} onClick={() => markAsRead(n.id)} className={`px-6 py-4 flex gap-4 cursor-pointer relative ${hoverRow} ${n.unread ? (isDark ? 'bg-[#FF6B4A]/10' : 'bg-blue-50/10') : ''}`}>
-                                            <div className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0" style={{ backgroundColor: n.iconColor + '15' }}>
-                                                <n.icon className="w-5 h-5" style={{ color: n.iconColor }} weight="fill" />
-                                            </div>
-                                            <div className="space-y-1 pr-2">
-                                                <div className="flex items-center justify-between gap-2">
-                                                    <p className={`text-xs font-extrabold ${text}`}>{n.title}</p>
-                                                    <span className={`text-[10px] font-bold whitespace-nowrap ${textMuted}`}>{n.time}</span>
-                                                </div>
-                                                <p className={`text-[11px] font-semibold leading-relaxed ${textMuted}`}>{n.desc}</p>
-                                            </div>
-                                            {n.unread && <div className="absolute top-1/2 -translate-y-1/2 right-4 w-1.5 h-1.5 bg-[#FF6B4A] rounded-full" />}
-                                        </div>
-                                    ))}
-                                </div>
-                            </div>
-                        )}
+                        <NotificationDropdown
+                            open={showNotifications}
+                            onClose={() => setShowNotifications(false)}
+                        />
                     </div>
 
                     <div className="w-12 h-12 bg-[#FF6B4A] rounded-2xl flex items-center justify-center text-white font-extrabold text-lg shadow-sm cursor-pointer" onClick={() => navigate('/student/account')}>V</div>
@@ -278,29 +254,47 @@ export function StudentHomepage() {
 
             {/* ── Stat strip ────────────────────────────────────────────── */}
             <div className="grid grid-cols-3 gap-4 mb-6">
-                {/* Streak */}
-                <button
-                    onClick={() => navigate('/student/roadmap')}
-                    className={`rounded-3xl p-5 flex items-center gap-4 cursor-pointer text-left ${card}`}
-                >
-                    <div className="w-12 h-12 rounded-2xl bg-[#FF6B4A]/15 flex items-center justify-center shrink-0">
-                        <Fire className="w-6 h-6 text-[#FF6B4A]" weight="fill" />
-                    </div>
-                    <div className="flex-1">
-                        <p className={`text-xs font-extrabold uppercase tracking-widest mb-0.5 ${textMuted}`}>Streak học tập</p>
-                        <p className={`text-2xl font-extrabold ${text}`}>15 ngày 🔥</p>
-                        <div className="flex gap-1 mt-2">
-                            {streakDays.map(d => (
-                                <div key={d.label} className="flex flex-col items-center gap-1">
-                                    <div className={`w-5 h-5 rounded-full flex items-center justify-center ${d.done ? 'bg-[#FF6B4A]' : d.today ? 'border-2 border-[#FF6B4A]' : (isDark ? 'bg-white/10' : 'bg-gray-100')}`}>
-                                        {d.done && <CheckCircle className="w-3 h-3 text-white" weight="fill" />}
-                                    </div>
-                                    <span className={`text-[9px] font-bold ${d.today ? 'text-[#FF6B4A]' : textMuted}`}>{d.label}</span>
+                {/* Weekly progress */}
+                {(() => {
+                    const pct = weeklyProgress?.progressPercent ?? 0;
+                    const progressColor = pct >= 70 ? '#10B981' : pct >= 40 ? '#F59E0B' : '#EF4444';
+                    const remaining = (weeklyProgress?.totalTasks ?? 0) - (weeklyProgress?.completedTasks ?? 0);
+                    return (
+                        <div className={`rounded-3xl p-5 flex flex-col gap-3 ${card}`}>
+                            <div className="flex items-center gap-3">
+                                <div className="w-10 h-10 rounded-2xl flex items-center justify-center shrink-0" style={{ backgroundColor: progressColor + '20' }}>
+                                    <ChartBar className="w-5 h-5" style={{ color: progressColor }} weight="fill" />
                                 </div>
-                            ))}
+                                <div className="flex-1 min-w-0">
+                                    <p className={`text-xs font-extrabold uppercase tracking-widest ${textMuted}`}>Tiến độ tuần này</p>
+                                    <p className={`text-xl font-extrabold ${text}`} style={{ color: progressColor }}>{pct}%</p>
+                                </div>
+                            </div>
+                            {/* Bar */}
+                            <div>
+                                <div className={`h-2 rounded-full overflow-hidden ${isDark ? 'bg-white/10' : 'bg-gray-100'}`}>
+                                    <div className="h-full rounded-full transition-all duration-500" style={{ width: `${pct}%`, backgroundColor: progressColor }} />
+                                </div>
+                                <p className={`text-[11px] font-semibold mt-1 ${textMuted}`}>
+                                    Hoàn thành {weeklyProgress?.completedTasks ?? 0}/{weeklyProgress?.totalTasks ?? 0} nhiệm vụ
+                                </p>
+                            </div>
+                            {/* Breakdown */}
+                            {weeklyProgress && (
+                                <div className="flex gap-3 text-[10px] font-bold">
+                                    <span className={textMuted}>BT: {weeklyProgress.breakdown.assignmentDone}/{weeklyProgress.breakdown.assignmentTotal}</span>
+                                    <span className={textMuted}>KT: {weeklyProgress.breakdown.testDone}/{weeklyProgress.breakdown.testTotal}</span>
+                                    <span className={textMuted}>HD: {weeklyProgress.breakdown.attendanceDone}/{weeklyProgress.breakdown.attendanceTotal}</span>
+                                </div>
+                            )}
+                            {remaining > 0 && (
+                                <p className={`text-[10px] font-semibold ${textMuted}`}>
+                                    Còn {remaining} nhiệm vụ cần hoàn thành tuần này
+                                </p>
+                            )}
                         </div>
-                    </div>
-                </button>
+                    );
+                })()}
 
                 {/* Sessions today */}
                 <div className={`rounded-3xl p-5 flex items-center gap-4 ${card}`}>
@@ -651,29 +645,18 @@ export function StudentHomepage() {
                         ))}
                     </div>
 
-                    {/* Recent notifications */}
-                    <div className={`mt-4 pt-4 border-t ${isDark ? 'border-white/10' : 'border-gray-100'}`}>
-                        <p className={`text-xs font-extrabold uppercase tracking-widest mb-3 ${textMuted}`}>Thông báo gần đây</p>
-                        <div className="flex flex-col gap-2">
-                            {notifications.filter(n => n.unread).slice(0, 2).map(n => (
-                                <div
-                                    key={n.id}
-                                    onClick={() => markAsRead(n.id)}
-                                    className={`flex items-center gap-3 p-3 rounded-2xl cursor-pointer transition-colors ${isDark ? 'bg-[#FF6B4A]/10 hover:bg-[#FF6B4A]/15' : 'bg-[#FF6B4A]/5 hover:bg-[#FF6B4A]/10'}`}
-                                >
-                                    <div className="w-8 h-8 rounded-xl flex items-center justify-center shrink-0" style={{ backgroundColor: n.iconColor + '20' }}>
-                                        <n.icon className="w-4 h-4" style={{ color: n.iconColor }} weight="fill" />
-                                    </div>
-                                    <div className="flex-1 min-w-0">
-                                        <p className={`text-xs font-extrabold truncate ${text}`}>{n.title}</p>
-                                        <p className={`text-[11px] font-semibold truncate ${textMuted}`}>{n.desc}</p>
-                                    </div>
-                                    <span className={`text-[10px] font-bold whitespace-nowrap ${textMuted}`}>{n.time}</span>
-                                    <div className="w-1.5 h-1.5 bg-[#FF6B4A] rounded-full shrink-0" />
-                                </div>
-                            ))}
+                    {/* Recent notifications hint */}
+                    {unreadCount > 0 && (
+                        <div className={`mt-4 pt-4 border-t ${isDark ? 'border-white/10' : 'border-gray-100'}`}>
+                            <button
+                                onClick={() => setShowNotifications(true)}
+                                className={`w-full flex items-center justify-between p-3 rounded-2xl transition-colors ${isDark ? 'bg-[#FF6B4A]/10 hover:bg-[#FF6B4A]/15' : 'bg-[#FF6B4A]/5 hover:bg-[#FF6B4A]/10'}`}
+                            >
+                                <p className={`text-xs font-extrabold ${text}`}>Bạn có {unreadCount} thông báo chưa đọc</p>
+                                <Bell className="w-4 h-4 text-[#FF6B4A]" weight="fill" />
+                            </button>
                         </div>
-                    </div>
+                    )}
                 </div>
 
                 {/* Quick Notes — col-span-1 */}
