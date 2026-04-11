@@ -3,15 +3,14 @@ import { useNavigate } from 'react-router-dom';
 import {
     CalendarBlank, Clock, BookOpen, ChalkboardTeacher, CaretLeft, CaretRight,
     Video, Rows, SquaresFour, WarningCircle, MapPin, X, Target, CalendarDots,
-    CheckCircle, XCircle, Bell, PaperPlaneRight, FileText, Users, Student, Eye
+    CheckCircle, XCircle, Bell, PaperPlaneRight, FileText, Users, Student, ClipboardText
 } from '@phosphor-icons/react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '../ui/dialog';
-import { DropdownMenu, DropdownMenuContent, DropdownMenuTrigger } from '../ui/dropdown-menu';
 import { useSettings } from '../../context/SettingsContext';
 import { StudentClassmate, StudentScheduleItem, StudentWeeklyStats, timetableService } from '../../services/timetableService';
 import { weeklyProgressService, WeeklyProgressData } from '../../services/weeklyProgressService';
 import { NotificationDropdown } from './NotificationDropdown';
-import { notificationService, NotificationItem as NotifItem } from '../../services/notificationService';
+import { notificationService } from '../../services/notificationService';
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL;
 
@@ -86,12 +85,6 @@ const UPCOMING = [
     { subject: 'Seminar Vật lý', dateOffset: 2, time: '14:00', type: 'event', bg: '#95E1D3', color: '#1A1A1A' },
     { subject: 'Kiểm tra Hóa học', dateOffset: 4, time: '09:00', type: 'test', bg: '#FFB5B5', color: '#1A1A1A' },
     { subject: 'Nộp bài Tiếng Anh', dateOffset: 5, time: '23:59', type: 'hw', bg: '#B8B5FF', color: '#1A1A1A', progress: 30 },
-];
-
-const NOTIFICATIONS: NotificationItem[] = [
-    { title: 'Bài kiểm tra 15 phút', desc: 'Có bài kiểm tra môn Toán lúc 10:00.', time: '10 phút trước', read: false, level: 'urgent' },
-    { title: 'Phản hồi bài tập', desc: 'Cô Lan đã nhận xét bài tập Ngữ văn.', time: '2 giờ trước', read: false, level: 'urgent' },
-    { title: 'Thay đổi lịch', desc: 'Môn Vật lý đổi phòng tuần này sang Lab Lý 1.', time: 'Hôm qua', read: true, level: 'info' },
 ];
 
 const EVENT_STATUS_STYLES: Record<EventStatus, { bg: string; border: string; dot: string; text: string }> = {
@@ -386,6 +379,7 @@ export function StudentSchedule() {
     const [showClassmates, setShowClassmates] = useState<ScheduleEntry | null>(null);
     const [isNotificationsOpen, setIsNotificationsOpen] = useState(false);
     const [selectedNotification, setSelectedNotification] = useState<NotificationItem | null>(null);
+    const notificationsRef = useRef<HTMLDivElement | null>(null);
 
     // ── Weekly Progress state ──────────────────────────────────────────────
     const [weeklyProgress, setWeeklyProgress] = useState<WeeklyProgressData | null>(null);
@@ -403,6 +397,19 @@ export function StudentSchedule() {
         // Reset avatar fail cache each time modal data changes.
         setBrokenAvatarIds(new Set());
     }, [showClassmates?.id]);
+
+    useEffect(() => {
+        if (!isNotificationsOpen) return;
+
+        const handleClickOutside = (event: MouseEvent) => {
+            if (!notificationsRef.current?.contains(event.target as Node)) {
+                setIsNotificationsOpen(false);
+            }
+        };
+
+        document.addEventListener('mousedown', handleClickOutside);
+        return () => document.removeEventListener('mousedown', handleClickOutside);
+    }, [isNotificationsOpen]);
 
     // ── Fetch weekly progress ─────────────────────────────────────────────
     useEffect(() => {
@@ -673,19 +680,19 @@ export function StudentSchedule() {
                 </div>
                 <div className="flex items-center gap-3 flex-wrap">
                     {/* Real notification dropdown */}
-                    <div className="relative">
+                    <div className="relative" ref={notificationsRef}>
                         <button
                             onClick={() => setIsNotificationsOpen(prev => !prev)}
                             className={`relative w-10 h-10 rounded-2xl flex items-center justify-center transition-colors ${isDark ? 'bg-[#1a1a1f] border-none hover:bg-white/5' : 'bg-white border-2 border-[#1A1A1A]/20 hover:bg-[#1A1A1A]/5'}`}
                         >
-                            <Bell className={`w-5 h-5 ${isDark ? 'text-[#f3f4f6]' : 'text-[#1A1A1A]'}`} weight="fill" />
+                            <Bell className={`w-5 h-5 ${isDark ? 'text-[#f3f4f6]' : 'text-[#1A1A1A]'}`} weight={isNotificationsOpen ? 'fill' : 'regular'} />
                             {unreadNotificationsCount > 0 && (
                                 <span className={`absolute -top-1.5 -right-1.5 min-w-5 h-5 px-1 rounded-full bg-red-500 text-white text-[10px] font-extrabold flex items-center justify-center ${isDark ? 'border border-[#111]' : 'border-2 border-white'}`}>
                                     {unreadNotificationsCount}
                                 </span>
                             )}
                         </button>
-                        <NotificationDropdown open={isNotificationsOpen} onClose={() => setIsNotificationsOpen(false)} />
+                        <NotificationDropdown open={isNotificationsOpen} onClose={() => setIsNotificationsOpen(false)} compact />
                     </div>
                     <div className={`flex rounded-2xl p-1 ${isDark ? 'bg-[#18181b] border-none' : 'bg-[#1A1A1A]/5 border-2 border-[#1A1A1A]/10'}`}>
                         <button
@@ -762,19 +769,19 @@ export function StudentSchedule() {
                             style={{ width: `${weeklyProgress?.progressPercent ?? 0}%` }}
                         />
                     </div>
-                    <p className={`text-[10px] font-bold mt-2 ${isDark ? 'text-[#1A1A1A]/50' : 'text-gray-400'}`}>
-                        Đã hoàn thành {weeklyProgress?.completedTasks ?? 0}/{weeklyProgress?.totalTasks ?? 0} nhiệm vụ
-                    </p>
                     {weeklyProgress?.breakdown && (
-                        <div className="flex items-center gap-3 mt-1.5 flex-wrap">
-                            <span className={`text-[9px] font-bold px-2 py-0.5 rounded-full ${isDark ? 'bg-blue-500/20 text-blue-300' : 'bg-blue-50 text-blue-600 border border-blue-200'}`}>
-                                📝 BT: {weeklyProgress.breakdown.assignmentDone}/{weeklyProgress.breakdown.assignmentTotal}
+                        <div className="flex items-center gap-2 mt-1.5 flex-nowrap overflow-x-auto">
+                            <span className={`shrink-0 text-[9px] font-bold px-2 py-0.5 rounded-full ${isDark ? 'bg-blue-500/20 text-blue-300' : 'bg-blue-50 text-blue-600 border border-blue-200'}`}>
+                                <BookOpen className="inline-block w-3 h-3 mr-1" weight="fill" />
+                                BT: {weeklyProgress.breakdown.assignmentDone}/{weeklyProgress.breakdown.assignmentTotal}
                             </span>
-                            <span className={`text-[9px] font-bold px-2 py-0.5 rounded-full ${isDark ? 'bg-purple-500/20 text-purple-300' : 'bg-purple-50 text-purple-600 border border-purple-200'}`}>
-                                📋 KT: {weeklyProgress.breakdown.testDone}/{weeklyProgress.breakdown.testTotal}
+                            <span className={`shrink-0 text-[9px] font-bold px-2 py-0.5 rounded-full ${isDark ? 'bg-purple-500/20 text-purple-300' : 'bg-purple-50 text-purple-600 border border-purple-200'}`}>
+                                <ClipboardText className="inline-block w-3 h-3 mr-1" weight="fill" />
+                                KT: {weeklyProgress.breakdown.testDone}/{weeklyProgress.breakdown.testTotal}
                             </span>
-                            <span className={`text-[9px] font-bold px-2 py-0.5 rounded-full ${isDark ? 'bg-emerald-500/20 text-emerald-300' : 'bg-emerald-50 text-emerald-600 border border-emerald-200'}`}>
-                                ✅ ĐD: {weeklyProgress.breakdown.attendanceDone}/{weeklyProgress.breakdown.attendanceTotal}
+                            <span className={`shrink-0 text-[9px] font-bold px-2 py-0.5 rounded-full ${isDark ? 'bg-emerald-500/20 text-emerald-300' : 'bg-emerald-50 text-emerald-600 border border-emerald-200'}`}>
+                                <CheckCircle className="inline-block w-3 h-3 mr-1" weight="fill" />
+                                ĐD: {weeklyProgress.breakdown.attendanceDone}/{weeklyProgress.breakdown.attendanceTotal}
                             </span>
                         </div>
                     )}

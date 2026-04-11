@@ -19,6 +19,8 @@ export interface NotificationItem {
   type: NotificationType;
   title: string;
   content: string;
+  assignmentDeadline?: string | null;
+  testStartTime?: string | null;
   isRead: boolean;
   actionUrl: string | null;
   createdAt: string;

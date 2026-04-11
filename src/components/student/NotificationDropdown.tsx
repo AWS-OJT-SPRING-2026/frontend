@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { formatDistanceToNow, isToday, isYesterday, parseISO } from 'date-fns';
+import { format, formatDistanceToNow, isToday, isYesterday, parseISO } from 'date-fns';
 import { vi } from 'date-fns/locale';
 import {
     Bell, CheckCircle, Warning, Info, Calendar,
@@ -49,9 +49,43 @@ const GROUP_ORDER = ['Hôm nay', 'Hôm qua', 'Trước đó'];
 
 // ─── CTA label ───────────────────────────────────────────────────────────────
 
-function getCtaLabel(type: string): string {
-    if (type === 'ASSIGNMENT_DUE_SOON' || type === 'TEST_STARTING') return 'Bắt đầu ngay';
+function getCtaLabel(item: NotificationItem): string {
+    if (item.type === 'ASSIGNMENT_NEW' && item.assignmentDeadline) return 'Làm ngay';
+    if (item.type === 'ASSIGNMENT_NEW' && item.testStartTime) return 'Xem chi tiết';
+    if (item.type === 'TEST_UPCOMING' || item.type === 'TEST_STARTING') return 'Bắt đầu kiểm tra';
+    if (item.type === 'ASSIGNMENT_DUE_SOON' || item.type === 'ASSIGNMENT_OVERDUE') return 'Làm ngay';
     return 'Xem chi tiết';
+}
+
+function formatDateTime(dateIso: string): string {
+    return format(parseISO(dateIso), 'dd/MM/yyyy HH:mm');
+}
+
+function isDeadlineNear(deadlineIso?: string | null): boolean {
+    if (!deadlineIso) return false;
+    const deadline = parseISO(deadlineIso);
+    const now = new Date();
+    const diffMs = deadline.getTime() - now.getTime();
+    return diffMs > 0 && diffMs <= 24 * 60 * 60 * 1000;
+}
+
+function getExtraInfo(item: NotificationItem): { label: string; className: string } | null {
+    if (item.assignmentDeadline) {
+        return {
+            label: `Hạn nộp: ${formatDateTime(item.assignmentDeadline)}`,
+            className: isDeadlineNear(item.assignmentDeadline) ? 'text-red-500' : 'text-red-400',
+        };
+    }
+
+    if (item.testStartTime) {
+        const relative = formatDistanceToNow(parseISO(item.testStartTime), { addSuffix: true, locale: vi });
+        return {
+            label: `Bắt đầu lúc: ${formatDateTime(item.testStartTime)} (${relative})`,
+            className: 'text-orange-400',
+        };
+    }
+
+    return null;
 }
 
 // ─── Component ───────────────────────────────────────────────────────────────
@@ -60,9 +94,48 @@ interface Props {
     /** Controlled open state managed by the parent (StudentHomepage). */
     open: boolean;
     onClose: () => void;
+    compact?: boolean;
 }
 
-export function NotificationDropdown({ open, onClose }: Props) {
+function isNewTestNotification(item: NotificationItem): boolean {
+    return item.type === 'ASSIGNMENT_NEW' && !!item.testStartTime;
+}
+
+function mapTestUrlToExerciseUrl(item: NotificationItem): string | null {
+    if (!item.actionUrl || !item.actionUrl.startsWith('/student/tests/')) {
+        return null;
+    }
+
+    const assignmentId = item.actionUrl.split('/').pop();
+    if (!assignmentId) {
+        return '/student/exercises';
+    }
+
+    if (item.type === 'TEST_RESULT' || item.type === 'FEEDBACK_RECEIVED') {
+        return `/student/exercises?resultId=${assignmentId}`;
+    }
+
+    if (item.type === 'ASSIGNMENT_NEW') {
+        if (item.testStartTime) {
+            return `/student/exercises?tab=available&category=exam`;
+        }
+        if (item.assignmentDeadline) {
+            return `/student/exercises?tab=available&category=homework`;
+        }
+    }
+
+    if (item.type === 'TEST_UPCOMING' || item.type === 'TEST_STARTING') {
+        return `/student/exercises?tab=available&category=exam`;
+    }
+
+    if (item.type === 'ASSIGNMENT_DUE_SOON' || item.type === 'ASSIGNMENT_OVERDUE') {
+        return `/student/exercises?tab=available&category=homework`;
+    }
+
+    return '/student/exercises';
+}
+
+export function NotificationDropdown({ open, onClose, compact = false }: Props) {
     const navigate = useNavigate();
     const { theme } = useSettings();
     const isDark = theme === 'dark';
@@ -113,11 +186,9 @@ export function NotificationDropdown({ open, onClose }: Props) {
         onClose();
         if (item.actionUrl) {
             let url = item.actionUrl;
-            // The backend sends "/student/tests/{id}" for feedback notifications.
-            // We map this to the exercises view with a ?resultId= parameter.
-            if (url.startsWith('/student/tests/')) {
-                const id = url.split('/').pop();
-                url = `/student/exercises?resultId=${id}`;
+            const mappedUrl = mapTestUrlToExerciseUrl(item);
+            if (mappedUrl) {
+                url = mappedUrl;
             }
             navigate(url);
         }
@@ -126,9 +197,9 @@ export function NotificationDropdown({ open, onClose }: Props) {
     // ── Derived ──────────────────────────────────────────────────────────────
 
     const unreadCount = items.filter(n => !n.isRead).length;
-    const visibleItems = items.slice(0, (page + 1) * PAGE_SIZE);
+    const visibleItems = compact ? items : items.slice(0, (page + 1) * PAGE_SIZE);
     const grouped = groupByDate(visibleItems);
-    const hasMore = items.length > (page + 1) * PAGE_SIZE;
+    const hasMore = !compact && items.length > (page + 1) * PAGE_SIZE;
 
     // ── Style helpers ─────────────────────────────────────────────────────────
 
@@ -186,7 +257,7 @@ export function NotificationDropdown({ open, onClose }: Props) {
             </div>
 
             {/* List */}
-            <div className="max-h-[420px] overflow-y-auto">
+            <div className={compact ? 'max-h-[260px] overflow-y-auto' : 'max-h-[420px] overflow-y-auto'}>
                 {loading ? (
                     <div className="py-10 flex justify-center">
                         <div className="w-5 h-5 border-2 border-[#FF6B4A] border-t-transparent rounded-full animate-spin" />
@@ -207,6 +278,7 @@ export function NotificationDropdown({ open, onClose }: Props) {
                             {grouped[groupKey].map(n => {
                                 const { icon: Icon, color } = getTypeStyle(n.type);
                                 const isImportant = getCategoryOf(n.type) === 'IMPORTANT';
+                                const extraInfo = getExtraInfo(n);
                                 const relTime = formatDistanceToNow(parseISO(n.createdAt), {
                                     addSuffix: true,
                                     locale: vi,
@@ -244,13 +316,18 @@ export function NotificationDropdown({ open, onClose }: Props) {
                                             <p className={`text-[11px] font-semibold leading-relaxed line-clamp-2 ${textMuted}`}>
                                                 {n.content}
                                             </p>
+                                            {extraInfo && (
+                                                <p className={`mt-1 text-[11px] font-bold ${extraInfo.className}`}>
+                                                    {extraInfo.label}
+                                                </p>
+                                            )}
                                             {/* CTA */}
                                             {n.actionUrl && (
                                                 <button
                                                     onClick={e => { e.stopPropagation(); handleCta(n); }}
-                                                    className={`mt-1.5 flex items-center gap-1 text-[10px] font-extrabold uppercase tracking-wider ${isImportant ? 'text-red-500' : 'text-[#FF6B4A]'} hover:underline`}
+                                                    className={`mt-1.5 flex items-center gap-1 text-[10px] font-extrabold uppercase tracking-wider ${isNewTestNotification(n) ? 'text-[#2563EB]' : isImportant ? 'text-red-500' : 'text-[#FF6B4A]'} hover:underline`}
                                                 >
-                                                    {getCtaLabel(n.type)}
+                                                    {getCtaLabel(n)}
                                                     <ArrowRight className="w-3 h-3" />
                                                 </button>
                                             )}
@@ -258,7 +335,7 @@ export function NotificationDropdown({ open, onClose }: Props) {
 
                                         {/* Unread dot */}
                                         {!n.isRead && (
-                                            <div className={`absolute top-1/2 -translate-y-1/2 right-3 w-1.5 h-1.5 rounded-full ${isImportant ? 'bg-red-500' : 'bg-[#FF6B4A]'}`} />
+                                            <div className="absolute top-1/2 -translate-y-1/2 right-3 w-1.5 h-1.5 rounded-full bg-red-500" />
                                         )}
                                     </div>
                                 );
