@@ -69,4 +69,8 @@ export const notificationService = {
   async markAllAsRead(): Promise<void> {
     await api.authPut<BackendResponse<void>>('/notifications/read-all', {});
   },
+
+  async deleteNotification(notificationId: number): Promise<void> {
+    await api.authDelete<BackendResponse<void>>(`/notifications/${notificationId}`);
+  },
 };

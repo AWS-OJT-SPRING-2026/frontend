@@ -1,5 +1,5 @@
 import { useMemo, useState, useEffect, useRef } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 import {
     CalendarBlank, Clock, BookOpen, ChalkboardTeacher, CaretLeft, CaretRight,
     Video, Rows, SquaresFour, WarningCircle, MapPin, X, Target, CalendarDots,
@@ -49,6 +49,7 @@ function isSameDay(d1: Date, d2: Date): boolean {
 }
 
 interface ScheduleEntry {
+    timetableID: number;
     id: string;
     dateKey: string;
     dayOfWeek: number;
@@ -187,6 +188,7 @@ function mapStudentScheduleToEntry(item: StudentScheduleItem, index: number): Sc
     const end = new Date(item.endTime);
 
     return {
+        timetableID: item.timetableID,
         id: `evt-${item.timetableID}-${item.startTime}`,
         dateKey: toDateKey(start),
         dayOfWeek: (start.getDay() + 6) % 7,
@@ -371,6 +373,7 @@ export function StudentSchedule() {
     const { theme } = useSettings();
     const isDark = theme === 'dark';
     const navigate = useNavigate();
+    const location = useLocation();
     const today = new Date();
     const [now, setNow] = useState(new Date());
     const [currentDate, setCurrentDate] = useState(today);
@@ -396,6 +399,7 @@ export function StudentSchedule() {
     const [isNotificationsOpen, setIsNotificationsOpen] = useState(false);
     const [selectedNotification, setSelectedNotification] = useState<NotificationItem | null>(null);
     const notificationsRef = useRef<HTMLDivElement | null>(null);
+    const focusedNotificationRef = useRef<string | null>(null);
 
     // ── Weekly Progress state ──────────────────────────────────────────────
     const [weeklyProgress, setWeeklyProgress] = useState<WeeklyProgressData | null>(null);
@@ -679,6 +683,47 @@ export function StudentSchedule() {
     }, [currentDate, today]);
 
     const allEvents = useMemo(() => scheduleEvents, [scheduleEvents]);
+
+    useEffect(() => {
+        const params = new URLSearchParams(location.search);
+        const dateParam = params.get('date');
+        if (!dateParam) {
+            return;
+        }
+
+        const targetDate = new Date(`${dateParam}T00:00:00`);
+        if (Number.isNaN(targetDate.getTime())) {
+            return;
+        }
+
+        setCurrentDate(targetDate);
+        setViewMode('day');
+    }, [location.search]);
+
+    useEffect(() => {
+        const params = new URLSearchParams(location.search);
+        const focusTimetableId = params.get('focusTimetableId');
+        if (!focusTimetableId) {
+            return;
+        }
+
+        if (focusedNotificationRef.current === focusTimetableId) {
+            return;
+        }
+
+        const parsedId = Number(focusTimetableId);
+        if (Number.isNaN(parsedId)) {
+            return;
+        }
+
+        const focusedEvent = scheduleEvents.find(e => e.timetableID === parsedId);
+        if (!focusedEvent) {
+            return;
+        }
+
+        focusedNotificationRef.current = focusTimetableId;
+        setSelectedEvent(focusedEvent);
+    }, [location.search, scheduleEvents]);
 
     const displayEvents = viewMode === 'day'
         ? allEvents.filter(e => e.dateKey === dayCols[0].dateKey)

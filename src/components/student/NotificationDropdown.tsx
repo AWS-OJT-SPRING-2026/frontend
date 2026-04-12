@@ -4,7 +4,7 @@ import { format, formatDistanceToNow, isToday, isYesterday, parseISO } from 'dat
 import { vi } from 'date-fns/locale';
 import {
     Bell, CheckCircle, Warning, Info, Calendar,
-    BookOpen, ChatsCircle, ArrowRight, Checks,
+    BookOpen, ChatsCircle, ArrowRight, Checks, Trash,
 } from '@phosphor-icons/react';
 import { useSettings } from '../../context/SettingsContext';
 import {
@@ -182,6 +182,16 @@ export function NotificationDropdown({ open, onClose, compact = false }: Props) 
         } catch { /* ignore */ }
     };
 
+    const handleDelete = async (id: number) => {
+        const previous = items;
+        setItems(prev => prev.filter(n => n.notificationId !== id));
+        try {
+            await notificationService.deleteNotification(id);
+        } catch {
+            setItems(previous);
+        }
+    };
+
     const handleCta = (item: NotificationItem) => {
         handleMarkRead(item.notificationId);
         onClose();
@@ -310,9 +320,19 @@ export function NotificationDropdown({ open, onClose, compact = false }: Props) 
                                                 <p className={`text-xs font-extrabold leading-snug line-clamp-1 ${text} ${isImportant && !n.isRead ? 'text-red-500' : ''}`}>
                                                     {n.title}
                                                 </p>
-                                                <span className={`text-[10px] font-semibold whitespace-nowrap shrink-0 ${textMuted}`}>
-                                                    {relTime}
-                                                </span>
+                                                <div className="flex items-center gap-2 shrink-0">
+                                                    <span className={`text-[10px] font-semibold whitespace-nowrap ${textMuted}`}>
+                                                        {relTime}
+                                                    </span>
+                                                    <button
+                                                        onClick={e => { e.stopPropagation(); handleDelete(n.notificationId); }}
+                                                        className={`p-1 rounded-md transition-colors ${isDark ? 'hover:bg-white/10 text-[#94a3b8]' : 'hover:bg-gray-100 text-gray-400'}`}
+                                                        aria-label="Xóa thông báo"
+                                                        title="Xóa thông báo"
+                                                    >
+                                                        <Trash className="w-3.5 h-3.5" weight="bold" />
+                                                    </button>
+                                                </div>
                                             </div>
                                             <p className={`text-[11px] font-semibold leading-relaxed whitespace-pre-line ${textMuted}`}>
                                                 {n.content}
