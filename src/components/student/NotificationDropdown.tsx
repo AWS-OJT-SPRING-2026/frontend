@@ -50,6 +50,7 @@ const GROUP_ORDER = ['Hôm nay', 'Hôm qua', 'Trước đó'];
 // ─── CTA label ───────────────────────────────────────────────────────────────
 
 function getCtaLabel(item: NotificationItem): string {
+    if (item.type === 'SCHEDULE_CHANGED' || item.type === 'TEACHER_CHANGED') return 'Xem lịch';
     if (item.type === 'ASSIGNMENT_NEW' && item.assignmentDeadline) return 'Làm ngay';
     if (item.type === 'ASSIGNMENT_NEW' && item.testStartTime) return 'Xem chi tiết';
     if (item.type === 'TEST_UPCOMING' || item.type === 'TEST_STARTING') return 'Bắt đầu kiểm tra';
@@ -313,7 +314,7 @@ export function NotificationDropdown({ open, onClose, compact = false }: Props) 
                                                     {relTime}
                                                 </span>
                                             </div>
-                                            <p className={`text-[11px] font-semibold leading-relaxed line-clamp-2 ${textMuted}`}>
+                                            <p className={`text-[11px] font-semibold leading-relaxed whitespace-pre-line ${textMuted}`}>
                                                 {n.content}
                                             </p>
                                             {extraInfo && (

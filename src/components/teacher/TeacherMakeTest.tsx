@@ -916,7 +916,10 @@ function DetailView({ id, isDark, onReport, onDeleted }: { id: number; isDark: b
                                     <div>
                                         <p className={`text-xs font-extrabold mb-1.5 ${sub}`}>Thời gian bắt đầu</p>
                                         {isEditing ? (
-                                            <Input type="datetime-local" value={editStartTime} onChange={e => setEditStartTime(e.target.value)} className={isDark ? 'bg-[#20242b] border-white/15 text-gray-100' : 'bg-[#F7F7F2] border-[#1A1A1A]/20'} />
+                                            <div className="relative">
+                                                <Input type="datetime-local" value={editStartTime} onChange={e => setEditStartTime(e.target.value)} onClick={(e) => 'showPicker' in e.target && (e.target as any).showPicker()} className={`pr-10 ${isDark ? 'bg-[#20242b] border-white/15 text-gray-100' : 'bg-[#F7F7F2] border-[#1A1A1A]/20'}`} />
+                                                <CalendarBlank className="absolute right-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400 pointer-events-none" />
+                                            </div>
                                         ) : (
                                             <Input readOnly value={formatDeadline(detail.startTime || '')} className={isDark ? 'bg-[#20242b] border-white/10 text-gray-100' : 'bg-[#F7F7F2] border-[#1A1A1A]/15'} />
                                         )}
@@ -924,7 +927,10 @@ function DetailView({ id, isDark, onReport, onDeleted }: { id: number; isDark: b
                                     <div>
                                         <p className={`text-xs font-extrabold mb-1.5 ${sub}`}>Thời gian kết thúc</p>
                                         {isEditing ? (
-                                            <Input type="datetime-local" value={editEndTime} onChange={e => setEditEndTime(e.target.value)} className={isDark ? 'bg-[#20242b] border-white/15 text-gray-100' : 'bg-[#F7F7F2] border-[#1A1A1A]/20'} />
+                                            <div className="relative">
+                                                <Input type="datetime-local" value={editEndTime} onChange={e => setEditEndTime(e.target.value)} onClick={(e) => 'showPicker' in e.target && (e.target as any).showPicker()} className={`pr-10 ${isDark ? 'bg-[#20242b] border-white/15 text-gray-100' : 'bg-[#F7F7F2] border-[#1A1A1A]/20'}`} />
+                                                <CalendarBlank className="absolute right-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400 pointer-events-none" />
+                                            </div>
                                         ) : (
                                             <Input readOnly value={formatDeadline(detail.endTime || '')} className={isDark ? 'bg-[#20242b] border-white/10 text-gray-100' : 'bg-[#F7F7F2] border-[#1A1A1A]/15'} />
                                         )}
@@ -934,7 +940,10 @@ function DetailView({ id, isDark, onReport, onDeleted }: { id: number; isDark: b
                                 <div className="md:col-span-2">
                                     <p className={`text-xs font-extrabold mb-1.5 ${sub}`}>Hạn nộp</p>
                                     {isEditing ? (
-                                        <Input type="datetime-local" value={editDeadline} onChange={e => setEditDeadline(e.target.value)} className={isDark ? 'bg-[#20242b] border-white/15 text-gray-100' : 'bg-[#F7F7F2] border-[#1A1A1A]/20'} />
+                                        <div className="relative">
+                                            <Input type="datetime-local" value={editDeadline} onChange={e => setEditDeadline(e.target.value)} onClick={(e) => 'showPicker' in e.target && (e.target as any).showPicker()} className={`pr-10 ${isDark ? 'bg-[#20242b] border-white/15 text-gray-100' : 'bg-[#F7F7F2] border-[#1A1A1A]/20'}`} />
+                                            <CalendarBlank className="absolute right-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400 pointer-events-none" />
+                                        </div>
                                     ) : (
                                         <Input readOnly value={formatDeadline(detail.deadline || '')} className={isDark ? 'bg-[#20242b] border-white/10 text-gray-100' : 'bg-[#F7F7F2] border-[#1A1A1A]/15'} />
                                     )}

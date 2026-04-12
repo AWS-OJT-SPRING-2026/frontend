@@ -1,7 +1,7 @@
 import { useRef, useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
-    MagnifyingGlass, Bell, ArrowRight, CheckCircle,
+    MagnifyingGlass, Bell, ArrowRight, CheckCircle, Fire,
     Timer, NotePencil, Play, Pause, ArrowCounterClockwise,
     Warning, MapTrifold, BookOpen, CalendarBlank, Trash, Plus,
     Eye, Gear, ArrowLeft, X, CoffeeBean, ChartBar,
@@ -13,6 +13,16 @@ import { weeklyProgressService, WeeklyProgressData } from '../../services/weekly
 import { notificationService } from '../../services/notificationService';
 
 // ─── Static data ─────────────────────────────────────────────────────────────
+
+const streakDays = [
+    { label: 'T2', done: true },
+    { label: 'T3', done: true },
+    { label: 'T4', done: true },
+    { label: 'T5', done: true, today: true },
+    { label: 'T6', done: false },
+    { label: 'T7', done: false },
+    { label: 'CN', done: false },
+];
 
 const roadmapSteps = [
     { week: 1, title: 'Hàm số & Đồ thị', done: true },
@@ -254,47 +264,29 @@ export function StudentHomepage() {
 
             {/* ── Stat strip ────────────────────────────────────────────── */}
             <div className="grid grid-cols-3 gap-4 mb-6">
-                {/* Weekly progress */}
-                {(() => {
-                    const pct = weeklyProgress?.progressPercent ?? 0;
-                    const progressColor = pct >= 70 ? '#10B981' : pct >= 40 ? '#F59E0B' : '#EF4444';
-                    const remaining = (weeklyProgress?.totalTasks ?? 0) - (weeklyProgress?.completedTasks ?? 0);
-                    return (
-                        <div className={`rounded-3xl p-5 flex flex-col gap-3 ${card}`}>
-                            <div className="flex items-center gap-3">
-                                <div className="w-10 h-10 rounded-2xl flex items-center justify-center shrink-0" style={{ backgroundColor: progressColor + '20' }}>
-                                    <ChartBar className="w-5 h-5" style={{ color: progressColor }} weight="fill" />
+                {/* Streak */}
+                <button
+                    onClick={() => navigate('/student/roadmap')}
+                    className={`rounded-3xl p-5 flex items-center gap-4 cursor-pointer text-left ${card}`}
+                >
+                    <div className="w-12 h-12 rounded-2xl bg-[#FF6B4A]/15 flex items-center justify-center shrink-0">
+                        <Fire className="w-6 h-6 text-[#FF6B4A]" weight="fill" />
+                    </div>
+                    <div className="flex-1">
+                        <p className={`text-xs font-extrabold uppercase tracking-widest mb-0.5 ${textMuted}`}>Streak học tập</p>
+                        <p className={`text-2xl font-extrabold ${text}`}>15 ngày 🔥</p>
+                        <div className="flex gap-1 mt-2">
+                            {streakDays.map(d => (
+                                <div key={d.label} className="flex flex-col items-center gap-1">
+                                    <div className={`w-5 h-5 rounded-full flex items-center justify-center ${d.done ? 'bg-[#FF6B4A]' : d.today ? 'border-2 border-[#FF6B4A]' : (isDark ? 'bg-white/10' : 'bg-gray-100')}`}>
+                                        {d.done && <CheckCircle className="w-3 h-3 text-white" weight="fill" />}
+                                    </div>
+                                    <span className={`text-[9px] font-bold ${d.today ? 'text-[#FF6B4A]' : textMuted}`}>{d.label}</span>
                                 </div>
-                                <div className="flex-1 min-w-0">
-                                    <p className={`text-xs font-extrabold uppercase tracking-widest ${textMuted}`}>Tiến độ tuần này</p>
-                                    <p className={`text-xl font-extrabold ${text}`} style={{ color: progressColor }}>{pct}%</p>
-                                </div>
-                            </div>
-                            {/* Bar */}
-                            <div>
-                                <div className={`h-2 rounded-full overflow-hidden ${isDark ? 'bg-white/10' : 'bg-gray-100'}`}>
-                                    <div className="h-full rounded-full transition-all duration-500" style={{ width: `${pct}%`, backgroundColor: progressColor }} />
-                                </div>
-                                <p className={`text-[11px] font-semibold mt-1 ${textMuted}`}>
-                                    Hoàn thành {weeklyProgress?.completedTasks ?? 0}/{weeklyProgress?.totalTasks ?? 0} nhiệm vụ
-                                </p>
-                            </div>
-                            {/* Breakdown */}
-                            {weeklyProgress && (
-                                <div className="flex gap-3 text-[10px] font-bold">
-                                    <span className={textMuted}>BT: {weeklyProgress.breakdown.assignmentDone}/{weeklyProgress.breakdown.assignmentTotal}</span>
-                                    <span className={textMuted}>KT: {weeklyProgress.breakdown.testDone}/{weeklyProgress.breakdown.testTotal}</span>
-                                    <span className={textMuted}>HD: {weeklyProgress.breakdown.attendanceDone}/{weeklyProgress.breakdown.attendanceTotal}</span>
-                                </div>
-                            )}
-                            {remaining > 0 && (
-                                <p className={`text-[10px] font-semibold ${textMuted}`}>
-                                    Còn {remaining} nhiệm vụ cần hoàn thành tuần này
-                                </p>
-                            )}
+                            ))}
                         </div>
-                    );
-                })()}
+                    </div>
+                </button>
 
                 {/* Sessions today */}
                 <div className={`rounded-3xl p-5 flex items-center gap-4 ${card}`}>

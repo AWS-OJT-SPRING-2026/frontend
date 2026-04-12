@@ -1592,6 +1592,8 @@ export function ClassManage() {
         (c.teacherName ?? '').toLowerCase().includes(search.toLowerCase())
     );
 
+    const isLastPage = currentPage >= totalPages;
+
     const openAssign = (cls: ClassroomResponse) => { setActiveClass(cls); setModal('assignTeacher'); };
     const openAddStudent = (cls: ClassroomResponse) => { setActiveClass(cls); setModal('addStudent'); };
     const openDetail = (cls: ClassroomResponse) => { setActiveClass(cls); setModal('classDetail'); };
@@ -1789,17 +1791,19 @@ export function ClassManage() {
                         );
                     })}
 
-                    {/* Add new card */}
-                    <div
-                        onClick={() => setModal('createClass')}
-                        className="rounded-3xl border-2 border-dashed border-[#1A1A1A]/20 dark:border-white/25 bg-white dark:bg-[#111827] flex flex-col items-center justify-center p-8 text-center cursor-pointer hover:border-[#FF6B4A] hover:bg-[#FF6B4A]/5 dark:hover:bg-[#FF6B4A]/10 transition-colors min-h-[300px] group"
-                    >
-                        <div className="w-14 h-14 rounded-full bg-gray-100 dark:bg-slate-800 border-2 border-gray-200 dark:border-white/15 group-hover:bg-[#FF6B4A]/10 group-hover:border-[#FF6B4A]/30 flex items-center justify-center text-gray-400 dark:text-slate-300 group-hover:text-[#FF6B4A] mb-4 transition-colors">
-                            <Plus className="w-7 h-7" weight="bold" />
+                    {/* Add new card (only appears on last page) */}
+                    {isLastPage && (
+                        <div
+                            onClick={() => setModal('createClass')}
+                            className="rounded-3xl border-2 border-dashed border-[#1A1A1A]/20 dark:border-white/25 bg-white dark:bg-[#111827] flex flex-col items-center justify-center p-8 text-center cursor-pointer hover:border-[#FF6B4A] hover:bg-[#FF6B4A]/5 dark:hover:bg-[#FF6B4A]/10 transition-colors min-h-[300px] group"
+                        >
+                            <div className="w-14 h-14 rounded-full bg-gray-100 dark:bg-slate-800 border-2 border-gray-200 dark:border-white/15 group-hover:bg-[#FF6B4A]/10 group-hover:border-[#FF6B4A]/30 flex items-center justify-center text-gray-400 dark:text-slate-300 group-hover:text-[#FF6B4A] mb-4 transition-colors">
+                                <Plus className="w-7 h-7" weight="bold" />
+                            </div>
+                            <h3 className="font-extrabold text-[#1A1A1A] dark:text-slate-100 mb-2 group-hover:text-[#FF6B4A] transition-colors">Thêm lớp học mới</h3>
+                            <p className="text-sm text-[#1A1A1A]/40 dark:text-slate-400 font-semibold max-w-[180px]">Tạo lớp mới cho học kỳ tới</p>
                         </div>
-                        <h3 className="font-extrabold text-[#1A1A1A] dark:text-slate-100 mb-2 group-hover:text-[#FF6B4A] transition-colors">Thêm lớp học mới</h3>
-                        <p className="text-sm text-[#1A1A1A]/40 dark:text-slate-400 font-semibold max-w-[180px]">Tạo lớp mới cho học kỳ tới</p>
-                    </div>
+                    )}
                 </div>
             )}
 

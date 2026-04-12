@@ -11,6 +11,7 @@ import { StudentClassmate, StudentScheduleItem, StudentWeeklyStats, timetableSer
 import { weeklyProgressService, WeeklyProgressData } from '../../services/weeklyProgressService';
 import { NotificationDropdown } from './NotificationDropdown';
 import { notificationService } from '../../services/notificationService';
+import { upcomingTaskService, UpcomingTask } from '../../services/upcomingTaskService';
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL;
 
@@ -22,7 +23,6 @@ const HOURS_END = 18;
 const HOURS = Array.from({ length: HOURS_END - HOURS_START }, (_, i) => i + HOURS_START);
 
 type ViewMode = 'week' | 'day' | 'month';
-type TabType = 'all' | 'test' | 'hw' | 'event';
 type EventStatus = 'past' | 'upcoming' | 'ongoing';
 
 interface NotificationItem {
@@ -79,13 +79,29 @@ const STATS_META = [
     { key: 'totalExams', label: 'Bài kiểm tra', icon: CalendarBlank, bg: '#FFB5B5' },
 ] as const;
 
-const UPCOMING = [
-    { subject: 'Kiểm tra Toán giữa kỳ', dateOffset: 0, time: '10:00', type: 'test', bg: '#FF6B4A', color: '#fff', isUrgent: true },
-    { subject: 'Nộp bài Văn học', dateOffset: 0, time: '17:00', type: 'hw', bg: '#FCE38A', color: '#1A1A1A', progress: 85, isUrgent: true },
-    { subject: 'Seminar Vật lý', dateOffset: 2, time: '14:00', type: 'event', bg: '#95E1D3', color: '#1A1A1A' },
-    { subject: 'Kiểm tra Hóa học', dateOffset: 4, time: '09:00', type: 'test', bg: '#FFB5B5', color: '#1A1A1A' },
-    { subject: 'Nộp bài Tiếng Anh', dateOffset: 5, time: '23:59', type: 'hw', bg: '#B8B5FF', color: '#1A1A1A', progress: 30 },
-];
+// Upcoming task colors by type
+const UPCOMING_BG: Record<string, string> = {
+    TEST: '#FFB5B5',
+    ASSIGNMENT: '#FCE38A',
+};
+
+/** Return a human-readable countdown string and urgency flag. */
+function formatCountdown(targetDate: Date, now: Date): { text: string; isUrgent: boolean } {
+    const diffMs = targetDate.getTime() - now.getTime();
+    if (diffMs <= 0) return { text: 'Đã hết hạn', isUrgent: true };
+
+    const diffMinutes = Math.floor(diffMs / 60000);
+    const diffHours = Math.floor(diffMs / 3600000);
+
+    if (diffMinutes < 60) {
+        return { text: `Còn ${diffMinutes} phút`, isUrgent: true };
+    }
+    if (diffHours < 24) {
+        return { text: `Còn ${diffHours} giờ`, isUrgent: true };
+    }
+    // >= 24h: not urgent, show normal date
+    return { text: '', isUrgent: false };
+}
 
 const EVENT_STATUS_STYLES: Record<EventStatus, { bg: string; border: string; dot: string; text: string }> = {
     past: { bg: '#F3F4F6', border: '#D1D5DB', dot: 'bg-gray-400', text: 'text-gray-500' },
@@ -361,7 +377,7 @@ export function StudentSchedule() {
     const [viewMode, setViewMode] = useState<ViewMode>('week');
     const [selectedEvent, setSelectedEvent] = useState<ScheduleEntry | null>(null);
     const [sidebarOpen, setSidebarOpen] = useState(true);
-    const [upcomingTab, setUpcomingTab] = useState<TabType>('all');
+    const [upcomingTab, setUpcomingTab] = useState<'all' | 'test' | 'hw'>('all');
     const [hoveredEventId, setHoveredEventId] = useState<string | null>(null);
     const [tooltipData, setTooltipData] = useState<{ event: ScheduleEntry; x: number; y: number } | null>(null);
     const tooltipTimeout = useRef<ReturnType<typeof setTimeout>>();
@@ -383,6 +399,9 @@ export function StudentSchedule() {
 
     // ── Weekly Progress state ──────────────────────────────────────────────
     const [weeklyProgress, setWeeklyProgress] = useState<WeeklyProgressData | null>(null);
+
+    // ── Upcoming tasks from API ───────────────────────────────────────────
+    const [upcomingTasks, setUpcomingTasks] = useState<UpcomingTask[]>([]);
 
     // ── Real notification unread count ─────────────────────────────────────
     const [realUnreadCount, setRealUnreadCount] = useState(0);
@@ -418,6 +437,22 @@ export function StudentSchedule() {
             .then(data => { if (!cancelled) setWeeklyProgress(data); })
             .catch(() => {});
         return () => { cancelled = true; };
+    }, []);
+
+    // ── Fetch upcoming tasks (re-fetch every 3 minutes) ────────────────────
+    useEffect(() => {
+        let cancelled = false;
+
+        const fetchUpcoming = () => {
+            upcomingTaskService.getUpcomingTasks()
+                .then(data => { if (!cancelled) setUpcomingTasks(data); })
+                .catch(() => {});
+        };
+
+        fetchUpcoming(); // initial fetch
+        const interval = setInterval(fetchUpcoming, 3 * 60 * 1000); // every 3 min
+
+        return () => { cancelled = true; clearInterval(interval); };
     }, []);
 
     // ── Fetch real notification count ─────────────────────────────────────
@@ -542,19 +577,36 @@ export function StudentSchedule() {
 
 
     const upcomingEvents = useMemo(() => {
-        return UPCOMING.map(u => {
-            const d = new Date(now);
-            d.setDate(d.getDate() + u.dateOffset);
+        return upcomingTasks.map(task => {
+            const rawDate = task.type === 'TEST' ? task.startTime : task.deadline;
+            const fullDate = rawDate ? new Date(rawDate) : new Date();
+            const tabType = task.type === 'TEST' ? 'test' : 'hw';
+            const bg = UPCOMING_BG[task.type] || '#B8B5FF';
+            const countdown = formatCountdown(fullDate, now);
+
             return {
-                ...u,
-                fullDate: d,
-                displayDate: isSameDay(d, now) ? 'Hôm nay' : isSameDay(new Date(now.getTime() + 86400000), d) ? 'Ngày mai' : `${DAYS[(d.getDay() + 6) % 7]}, ${pad(d.getDate())}/${pad(d.getMonth() + 1)}`
+                id: task.id,
+                subject: task.title,
+                type: tabType,
+                bg,
+                color: '#1A1A1A',
+                fullDate,
+                time: `${pad(fullDate.getHours())}:${pad(fullDate.getMinutes())}`,
+                displayDate: isSameDay(fullDate, now)
+                    ? 'Hôm nay'
+                    : isSameDay(new Date(now.getTime() + 86400000), fullDate)
+                        ? 'Ngày mai'
+                        : `${DAYS[(fullDate.getDay() + 6) % 7]}, ${pad(fullDate.getDate())}/${pad(fullDate.getMonth() + 1)}`,
+                isUrgent: countdown.isUrgent,
+                countdownText: countdown.text,
+                progress: task.progress ?? undefined,
+                actionUrl: task.actionUrl,
             };
         }).filter(u => upcomingTab === 'all' || u.type === upcomingTab);
-    }, [now, upcomingTab]);
+    }, [upcomingTasks, now, upcomingTab]);
 
     const filteredUpcoming = useMemo(() => {
-        return upcomingEvents.sort((a, b) => a.fullDate.getTime() - b.fullDate.getTime());
+        return [...upcomingEvents].sort((a, b) => a.fullDate.getTime() - b.fullDate.getTime());
     }, [upcomingEvents]);
 
     const weekDays = useMemo(() => {
@@ -1041,7 +1093,7 @@ export function StudentSchedule() {
                                 {[{ id: 'all', label: 'Tất cả' }, { id: 'test', label: 'Kiểm tra' }, { id: 'hw', label: 'Bài tập' }].map(t => (
                                     <button
                                         key={t.id}
-                                        onClick={() => setUpcomingTab(t.id as TabType)}
+                                        onClick={() => setUpcomingTab(t.id as 'all' | 'test' | 'hw')}
                                         className={`flex-1 py-1.5 text-xs font-extrabold rounded-xl transition-colors ${upcomingTab === t.id ? (isDark ? 'bg-[#1A1A1A] border-2 border-[#EEEEEE] shadow-[4px_4px_0_0_#EEEEEE] hover:shadow-[0_0_15px_#FF6B4A] transition-all duration-300 text-white shadow-sm' : 'bg-[#1A1A1A] text-white shadow-sm') : (isDark ? 'text-[#1A1A1A]/50 hover:bg-white/5' : 'text-[#1A1A1A]/50 hover:bg-[#1A1A1A]/5')}`}
                                     >
                                         {t.label}
@@ -1063,9 +1115,9 @@ export function StudentSchedule() {
                                                 <div className="flex justify-between items-start mb-1">
                                                     <div>
                                                         <p className={`font-extrabold text-sm leading-tight pr-4 ${ev.isUrgent ? (isDark ? 'text-[#f5b1a8]' : 'text-red-600') : (isDark ? 'text-[#1A1A1A]' : 'text-[#1A1A1A]')}`}>{ev.subject}</p>
-                                                        {ev.isUrgent && (
+                                                        {ev.isUrgent && ev.countdownText && (
                                                             <span className={`inline-flex items-center gap-1 mt-1 text-[9px] font-extrabold px-1.5 py-0.5 rounded animate-pulse ${isDark ? 'text-[#ffd5d0] bg-[#8f4b45]/40' : 'text-red-600 bg-red-100'}`}>
-                                                                <WarningCircle className="w-3 h-3" /> Hạn chót &lt; 2h
+                                                                <WarningCircle className="w-3 h-3" /> {ev.countdownText}
                                                             </span>
                                                         )}
                                                     </div>
@@ -1091,13 +1143,14 @@ export function StudentSchedule() {
                                                         <div className={`w-full h-1.5 rounded-full overflow-hidden ${isDark ? 'bg-white/10' : 'bg-[#1A1A1A]/10'}`}>
                                                             <div className={`h-full rounded-full transition-all duration-500 ease-out bg-[#1A1A1A]`} style={{ width: `${ev.progress}%` }} />
                                                         </div>
-                                                        {ev.type === 'hw' && (
-                                                            <button className="w-full mt-3 bg-[#ff7849] hover:bg-[#ff8b63] text-white py-1.5 rounded-xl text-[11px] font-extrabold flex items-center justify-center gap-1.5 transition-colors">
-                                                                <PaperPlaneRight className="w-3.5 h-3.5" weight="fill" /> Nộp bài ngay
-                                                            </button>
-                                                        )}
                                                     </div>
                                                 )}
+                                                <button
+                                                    onClick={(e) => { e.stopPropagation(); navigate(ev.actionUrl); }}
+                                                    className="w-full mt-3 bg-[#ff7849] hover:bg-[#ff8b63] text-white py-1.5 rounded-xl text-[11px] font-extrabold flex items-center justify-center gap-1.5 transition-colors active:scale-95"
+                                                >
+                                                    <PaperPlaneRight className="w-3.5 h-3.5" weight="fill" /> Làm bài ngay
+                                                </button>
                                             </div>
                                         </div>
                                     ))
