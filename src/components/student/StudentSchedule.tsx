@@ -95,13 +95,87 @@ function formatCountdown(targetDate: Date, now: Date): { text: string; isUrgent:
     const diffHours = Math.floor(diffMs / 3600000);
 
     if (diffMinutes < 60) {
-        return { text: `Còn ${diffMinutes} phút`, isUrgent: true };
+        return { text: `Mở sau ${diffMinutes} phút`, isUrgent: true };
     }
     if (diffHours < 24) {
-        return { text: `Còn ${diffHours} giờ`, isUrgent: true };
+        return { text: `Mở sau ${diffHours} giờ`, isUrgent: true };
     }
-    // >= 24h: not urgent, show normal date
     return { text: '', isUrgent: false };
+}
+
+function formatDurationShort(diffMs: number): string {
+    const safeMs = Math.max(0, diffMs);
+    const totalSeconds = Math.floor(safeMs / 1000);
+    const minutes = Math.floor(totalSeconds / 60);
+    const seconds = totalSeconds % 60;
+    return `${minutes}:${String(seconds).padStart(2, '0')}`;
+}
+
+function buildUpcomingTaskUiState(task: UpcomingTask, now: Date): {
+    countdownText: string;
+    isUrgent: boolean;
+    buttonDisabled: boolean;
+    buttonLabel: string;
+} {
+    if (task.type !== 'TEST') {
+        const deadline = task.deadline ? new Date(task.deadline) : null;
+        if (!deadline) {
+            return {
+                countdownText: '',
+                isUrgent: false,
+                buttonDisabled: false,
+                buttonLabel: 'Làm bài ngay',
+            };
+        }
+
+        const countdown = formatCountdown(deadline, now);
+        return {
+            countdownText: countdown.text,
+            isUrgent: countdown.isUrgent,
+            buttonDisabled: false,
+            buttonLabel: 'Làm bài ngay',
+        };
+    }
+
+    const startTime = task.startTime ? new Date(task.startTime) : null;
+    const endTime = task.deadline ? new Date(task.deadline) : null;
+
+    if (startTime && now.getTime() < startTime.getTime()) {
+        const countdown = formatCountdown(startTime, now);
+        return {
+            countdownText: countdown.text,
+            isUrgent: countdown.isUrgent,
+            buttonDisabled: true,
+            buttonLabel: 'Chưa mở',
+        };
+    }
+
+    if (endTime && now.getTime() >= endTime.getTime()) {
+        return {
+            countdownText: 'Đã kết thúc',
+            isUrgent: true,
+            buttonDisabled: true,
+            buttonLabel: 'Đã đóng',
+        };
+    }
+
+    if (endTime) {
+        const remainingMs = endTime.getTime() - now.getTime();
+        const isNearEnd = remainingMs > 0 && remainingMs < 15 * 60 * 1000;
+        return {
+            countdownText: isNearEnd ? `Sắp kết thúc < ${formatDurationShort(remainingMs)}` : 'Đang mở',
+            isUrgent: isNearEnd,
+            buttonDisabled: false,
+            buttonLabel: 'Đã mở',
+        };
+    }
+
+    return {
+        countdownText: 'Đang mở',
+        isUrgent: false,
+        buttonDisabled: false,
+        buttonLabel: 'Đã mở',
+    };
 }
 
 const EVENT_STATUS_STYLES: Record<EventStatus, { bg: string; border: string; dot: string; text: string }> = {
@@ -582,11 +656,17 @@ export function StudentSchedule() {
 
     const upcomingEvents = useMemo(() => {
         return upcomingTasks.map(task => {
-            const rawDate = task.type === 'TEST' ? task.startTime : task.deadline;
-            const fullDate = rawDate ? new Date(rawDate) : new Date();
+            const startDate = task.startTime ? new Date(task.startTime) : null;
+            const deadlineDate = task.deadline ? new Date(task.deadline) : null;
+            const uiState = buildUpcomingTaskUiState(task, now);
+            const fullDate = task.type === 'TEST'
+                ? (startDate ?? deadlineDate ?? new Date())
+                : (deadlineDate ?? new Date());
             const tabType = task.type === 'TEST' ? 'test' : 'hw';
             const bg = UPCOMING_BG[task.type] || '#B8B5FF';
-            const countdown = formatCountdown(fullDate, now);
+            const targetUrl = task.type === 'TEST'
+                ? '/student/exercises?tab=available&category=exam'
+                : '/student/exercises?tab=available&category=homework';
 
             return {
                 id: task.id,
@@ -601,10 +681,12 @@ export function StudentSchedule() {
                     : isSameDay(new Date(now.getTime() + 86400000), fullDate)
                         ? 'Ngày mai'
                         : `${DAYS[(fullDate.getDay() + 6) % 7]}, ${pad(fullDate.getDate())}/${pad(fullDate.getMonth() + 1)}`,
-                isUrgent: countdown.isUrgent,
-                countdownText: countdown.text,
+                isUrgent: uiState.isUrgent,
+                countdownText: uiState.countdownText,
+                buttonDisabled: uiState.buttonDisabled,
+                buttonLabel: uiState.buttonLabel,
                 progress: task.progress ?? undefined,
-                actionUrl: task.actionUrl,
+                actionUrl: targetUrl,
             };
         }).filter(u => upcomingTab === 'all' || u.type === upcomingTab);
     }, [upcomingTasks, now, upcomingTab]);
@@ -684,46 +766,6 @@ export function StudentSchedule() {
 
     const allEvents = useMemo(() => scheduleEvents, [scheduleEvents]);
 
-    useEffect(() => {
-        const params = new URLSearchParams(location.search);
-        const dateParam = params.get('date');
-        if (!dateParam) {
-            return;
-        }
-
-        const targetDate = new Date(`${dateParam}T00:00:00`);
-        if (Number.isNaN(targetDate.getTime())) {
-            return;
-        }
-
-        setCurrentDate(targetDate);
-        setViewMode('day');
-    }, [location.search]);
-
-    useEffect(() => {
-        const params = new URLSearchParams(location.search);
-        const focusTimetableId = params.get('focusTimetableId');
-        if (!focusTimetableId) {
-            return;
-        }
-
-        if (focusedNotificationRef.current === focusTimetableId) {
-            return;
-        }
-
-        const parsedId = Number(focusTimetableId);
-        if (Number.isNaN(parsedId)) {
-            return;
-        }
-
-        const focusedEvent = scheduleEvents.find(e => e.timetableID === parsedId);
-        if (!focusedEvent) {
-            return;
-        }
-
-        focusedNotificationRef.current = focusTimetableId;
-        setSelectedEvent(focusedEvent);
-    }, [location.search, scheduleEvents]);
 
     const displayEvents = viewMode === 'day'
         ? allEvents.filter(e => e.dateKey === dayCols[0].dateKey)
@@ -1191,10 +1233,15 @@ export function StudentSchedule() {
                                                     </div>
                                                 )}
                                                 <button
-                                                    onClick={(e) => { e.stopPropagation(); navigate(ev.actionUrl); }}
-                                                    className="w-full mt-3 bg-[#ff7849] hover:bg-[#ff8b63] text-white py-1.5 rounded-xl text-[11px] font-extrabold flex items-center justify-center gap-1.5 transition-colors active:scale-95"
+                                                    onClick={(e) => {
+                                                        e.stopPropagation();
+                                                        if (ev.buttonDisabled) return;
+                                                        navigate(ev.actionUrl);
+                                                    }}
+                                                    disabled={ev.buttonDisabled}
+                                                    className={`w-full mt-3 py-1.5 rounded-xl text-[11px] font-extrabold flex items-center justify-center gap-1.5 transition-colors ${ev.buttonDisabled ? 'bg-[#1A1A1A]/20 text-[#1A1A1A]/50 cursor-not-allowed' : 'bg-[#ff7849] hover:bg-[#ff8b63] text-white active:scale-95'}`}
                                                 >
-                                                    <PaperPlaneRight className="w-3.5 h-3.5" weight="fill" /> Làm bài ngay
+                                                    <PaperPlaneRight className="w-3.5 h-3.5" weight="fill" /> {ev.buttonLabel}
                                                 </button>
                                             </div>
                                         </div>
