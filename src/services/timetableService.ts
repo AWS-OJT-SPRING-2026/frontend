@@ -118,6 +118,16 @@ export interface StudentWeeklyStats {
   totalExams: number;
 }
 
+export interface StudentNote {
+  date: string;
+  content: string;
+}
+
+export interface StudentNoteRequest {
+  date: string;
+  content: string;
+}
+
 function getAxiosErrorMessage(error: unknown): string {
   if (error instanceof AxiosError) {
     return (
@@ -238,6 +248,27 @@ export const timetableService = {
         },
       });
 
+      return response.data.result;
+    } catch (error) {
+      throw new Error(getAxiosErrorMessage(error));
+    }
+  },
+
+  async getStudentNote(date: string): Promise<StudentNote> {
+    try {
+      const response = await axiosClient.get<ApiResponse<StudentNote>>('/student/notes', {
+        params: { date },
+      });
+
+      return response.data.result;
+    } catch (error) {
+      throw new Error(getAxiosErrorMessage(error));
+    }
+  },
+
+  async saveStudentNote(request: StudentNoteRequest): Promise<StudentNote> {
+    try {
+      const response = await axiosClient.post<ApiResponse<StudentNote>>('/student/notes', request);
       return response.data.result;
     } catch (error) {
       throw new Error(getAxiosErrorMessage(error));

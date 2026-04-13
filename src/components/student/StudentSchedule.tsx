@@ -1,5 +1,5 @@
 import { useMemo, useState, useEffect, useRef } from 'react';
-import { useLocation, useNavigate } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import {
     CalendarBlank, Clock, BookOpen, ChalkboardTeacher, CaretLeft, CaretRight,
     Video, Rows, SquaresFour, WarningCircle, MapPin, X, Target, CalendarDots,
@@ -24,6 +24,7 @@ const HOURS = Array.from({ length: HOURS_END - HOURS_START }, (_, i) => i + HOUR
 
 type ViewMode = 'week' | 'day' | 'month';
 type EventStatus = 'past' | 'upcoming' | 'ongoing';
+type NoteSaveStatus = 'idle' | 'saving' | 'saved' | 'error';
 
 interface NotificationItem {
     title: string;
@@ -213,6 +214,10 @@ function getEventStatusInfo(startHour: number, startMin: number, endHour: number
 
 function toDateKey(date: Date): string {
     return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`;
+}
+
+function toMonthKey(date: Date): string {
+    return `${date.getFullYear()}-${pad(date.getMonth() + 1)}`;
 }
 
 function toInitials(fullName: string): string {
@@ -447,7 +452,6 @@ export function StudentSchedule() {
     const { theme } = useSettings();
     const isDark = theme === 'dark';
     const navigate = useNavigate();
-    const location = useLocation();
     const today = new Date();
     const [now, setNow] = useState(new Date());
     const [currentDate, setCurrentDate] = useState(today);
@@ -473,10 +477,13 @@ export function StudentSchedule() {
     const [isNotificationsOpen, setIsNotificationsOpen] = useState(false);
     const [selectedNotification, setSelectedNotification] = useState<NotificationItem | null>(null);
     const notificationsRef = useRef<HTMLDivElement | null>(null);
-    const focusedNotificationRef = useRef<string | null>(null);
 
     // ── Weekly Progress state ──────────────────────────────────────────────
     const [weeklyProgress, setWeeklyProgress] = useState<WeeklyProgressData | null>(null);
+    const [quickNote, setQuickNote] = useState('');
+    const [noteSaveStatus, setNoteSaveStatus] = useState<NoteSaveStatus>('idle');
+    const [noteLoaded, setNoteLoaded] = useState(false);
+    const latestSavedNoteRef = useRef('');
 
     // ── Upcoming tasks from API ───────────────────────────────────────────
     const [upcomingTasks, setUpcomingTasks] = useState<UpcomingTask[]>([]);
@@ -507,15 +514,6 @@ export function StudentSchedule() {
         document.addEventListener('mousedown', handleClickOutside);
         return () => document.removeEventListener('mousedown', handleClickOutside);
     }, [isNotificationsOpen]);
-
-    // ── Fetch weekly progress ─────────────────────────────────────────────
-    useEffect(() => {
-        let cancelled = false;
-        weeklyProgressService.getMyWeeklyProgress()
-            .then(data => { if (!cancelled) setWeeklyProgress(data); })
-            .catch(() => {});
-        return () => { cancelled = true; };
-    }, []);
 
     // ── Fetch upcoming tasks (re-fetch every 3 minutes) ────────────────────
     useEffect(() => {
@@ -556,6 +554,17 @@ export function StudentSchedule() {
     const unreadNotificationsCount = realUnreadCount;
 
     const monday = useMemo(() => getMonday(currentDate), [currentDate]);
+    const selectedDateKey = useMemo(() => toDateKey(currentDate), [currentDate]);
+    const progressMode = viewMode === 'month' ? 'MONTH' : 'WEEK';
+    const progressLabel = progressMode === 'MONTH' ? 'Tiến độ tháng' : 'Tiến độ tuần';
+
+    const progressParams = useMemo(() => {
+        if (progressMode === 'MONTH') {
+            return { type: 'MONTH' as const, month: toMonthKey(currentDate) };
+        }
+
+        return { type: 'WEEK' as const, startDate: toDateKey(monday) };
+    }, [progressMode, currentDate, monday]);
 
     const weekRange = useMemo(() => {
         const start = new Date(monday);
@@ -646,6 +655,84 @@ export function StudentSchedule() {
             isMounted = false;
         };
     }, [weekRange.start.getTime(), weekRange.end.getTime()]);
+
+    useEffect(() => {
+        let cancelled = false;
+        setWeeklyProgress(null);
+
+        const fetchProgress = async () => {
+            try {
+                const data = await weeklyProgressService.getStudentProgress(progressParams.type, {
+                    startDate: progressParams.type === 'WEEK' ? progressParams.startDate : undefined,
+                    month: progressParams.type === 'MONTH' ? progressParams.month : undefined,
+                });
+
+                if (!cancelled) {
+                    setWeeklyProgress(data);
+                }
+            } catch {
+                if (!cancelled) {
+                    setWeeklyProgress(null);
+                }
+            }
+        };
+
+        void fetchProgress();
+
+        return () => {
+            cancelled = true;
+        };
+    }, [progressParams]);
+
+    useEffect(() => {
+        let cancelled = false;
+        setNoteLoaded(false);
+        setNoteSaveStatus('idle');
+
+        const fetchNote = async () => {
+            try {
+                const data = await timetableService.getStudentNote(selectedDateKey);
+                if (cancelled) return;
+
+                const content = data.content ?? '';
+                setQuickNote(content);
+                latestSavedNoteRef.current = content;
+                setNoteLoaded(true);
+            } catch {
+                if (cancelled) return;
+                setQuickNote('');
+                latestSavedNoteRef.current = '';
+                setNoteLoaded(true);
+            }
+        };
+
+        void fetchNote();
+
+        return () => {
+            cancelled = true;
+        };
+    }, [selectedDateKey]);
+
+    useEffect(() => {
+        if (!noteLoaded) return;
+        if (quickNote === latestSavedNoteRef.current) return;
+
+        setNoteSaveStatus('saving');
+        const timer = setTimeout(async () => {
+            try {
+                await timetableService.saveStudentNote({
+                    date: selectedDateKey,
+                    content: quickNote,
+                });
+                latestSavedNoteRef.current = quickNote;
+                setNoteSaveStatus('saved');
+            } catch {
+                setNoteSaveStatus('error');
+            }
+        }, 1200);
+
+        return () => clearTimeout(timer);
+    }, [quickNote, noteLoaded, selectedDateKey]);
 
     // Keep "now" fresh
     useEffect(() => {
@@ -890,10 +977,10 @@ export function StudentSchedule() {
                     </div>
                 ))}
                 
-                {/* Weekly Progress – live API data */}
+                {/* Weekly/Monthly Progress – live API data */}
                 <div className={`rounded-3xl p-5 flex flex-col justify-between hover:-translate-y-0.5 transition-all shadow-sm ${isDark ? 'border border-[#1A1A1A]/20 bg-[#232328]' : 'border-2 border-[#1A1A1A] bg-white'}`}>
                     <div className="flex items-center justify-between mb-2">
-                        <span className={`text-xs font-extrabold uppercase tracking-widest ${isDark ? 'text-[#1A1A1A]/50' : 'text-gray-400'}`}>Tiến độ tuần</span>
+                        <span className={`text-xs font-extrabold uppercase tracking-widest ${isDark ? 'text-[#1A1A1A]/50' : 'text-gray-400'}`}>{progressLabel}</span>
                         <span className={`text-sm font-extrabold ${weeklyProgress && weeklyProgress.progressPercent >= 80 ? 'text-emerald-500' : weeklyProgress && weeklyProgress.progressPercent >= 50 ? 'text-amber-500' : 'text-[#FF6B4A]'}`}>
                             {weeklyProgress?.progressPercent ?? 0}%
                         </span>
@@ -1253,12 +1340,16 @@ export function StudentSchedule() {
                                 <h3 className={`font-extrabold text-sm mb-2 flex items-center gap-1.5 ${isDark ? 'text-[#1A1A1A]' : 'text-[#1A1A1A]'}`}>
                                     <FileText className="w-4 h-4 text-[#FF6B4A]" weight="fill" /> Ghi chú nhanh
                                 </h3>
-                                <textarea 
+                                {noteSaveStatus === 'saved' && (
+                                    <p className="text-[10px] font-extrabold text-emerald-600 mb-1">Đã lưu ✓</p>
+                                )}
+                                <textarea
                                     className={`w-full rounded-2xl p-3 text-xs font-bold resize-none focus:outline-none transition-colors ${isDark ? 'bg-[#F7F7F2] border-2 border-[#1A1A1A]/10 text-[#1A1A1A] placeholder:text-gray-400 focus:border-[#FF6B4A]' : 'bg-[#F7F7F2] border-2 border-[#1A1A1A]/10 text-[#1A1A1A] placeholder:text-gray-400 focus:border-[#FF6B4A]'}`}
                                     rows={3}
-                                    placeholder="Nhập ghi chú nhanh cho tuần học..."
-                                    defaultValue="Nhớ mang compa cho giờ Toán thứ Tư."
-                                ></textarea>
+                                    placeholder="Nhập ghi chú nhanh..."
+                                    value={quickNote}
+                                    onChange={(event) => setQuickNote(event.target.value)}
+                                />
                             </div>
                         </div>
                     )}
