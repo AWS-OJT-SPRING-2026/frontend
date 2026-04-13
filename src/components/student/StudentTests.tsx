@@ -14,6 +14,7 @@ import { authService, UserData } from '../../services/authService';
 import { useQuizDraft } from '../../hooks/useQuizDraft';
 import { quizSessionGuard } from '../../lib/quizSessionGuard';
 import { feedbackService, FeedbackItem } from '../../services/feedbackService';
+import { parseVnDate } from '../../lib/timeUtils';
 
 type TestStatus = 'pending' | 'in_progress' | 'completed' | 'missing';
 type TestCategory = 'homework' | 'exam';
@@ -40,13 +41,7 @@ interface Test {
     _assignmentId?: number;
 }
 
-function parseVnDate(value: string | null | undefined): Date {
-    if (!value) return new Date(NaN);
-    if (value.length === 19) {
-        return new Date(value + '+07:00');
-    }
-    return new Date(value);
-}
+// parseVnDate imported from ../../lib/timeUtils
 
 function formatDateTime(value?: string | null) {
     if (!value) return '---';
@@ -685,7 +680,7 @@ function TeacherFeedbackSection({ assignmentId, isDark }: { assignmentId: number
                             {fb.teacherName}
                         </span>
                         <span className="text-[10px] font-bold text-emerald-600/60">
-                            {new Date(fb.createdAt).toLocaleDateString('vi-VN', {
+                            {parseVnDate(fb.createdAt).toLocaleDateString('vi-VN', {
                                 day: '2-digit', month: '2-digit', year: 'numeric',
                                 hour: '2-digit', minute: '2-digit'
                             })}
@@ -1234,7 +1229,7 @@ function RealTestTakingView({ detail, attempt, answerSelections, onSelectAnswer,
 // Map API assignment to Test interface
 function apiAssignmentToTest(a: AssignmentResponse, isSubmitted: boolean, submission?: SubmissionResponse): Test {
     const dueDateSource = a.assignmentType === 'TEST' ? a.endTime : a.deadline;
-    const dueDate = dueDateSource ? new Date(dueDateSource) : null;
+    const dueDate = dueDateSource ? parseVnDate(dueDateSource) : null;
     const dueDateStr = dueDate
         ? `${String(dueDate.getDate()).padStart(2, '0')}/${String(dueDate.getMonth() + 1).padStart(2, '0')}/${dueDate.getFullYear()}`
         : '';

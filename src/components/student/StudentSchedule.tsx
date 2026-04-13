@@ -12,6 +12,7 @@ import { weeklyProgressService, WeeklyProgressData } from '../../services/weekly
 import { NotificationDropdown } from './NotificationDropdown';
 import { notificationService } from '../../services/notificationService';
 import { upcomingTaskService, UpcomingTask } from '../../services/upcomingTaskService';
+import { parseVnDate } from '../../lib/timeUtils';
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL;
 
@@ -119,7 +120,7 @@ function buildUpcomingTaskUiState(task: UpcomingTask, now: Date): {
     buttonLabel: string;
 } {
     if (task.type !== 'TEST') {
-        const deadline = task.deadline ? new Date(task.deadline) : null;
+        const deadline = task.deadline ? parseVnDate(task.deadline) : null;
         if (!deadline) {
             return {
                 countdownText: '',
@@ -138,8 +139,8 @@ function buildUpcomingTaskUiState(task: UpcomingTask, now: Date): {
         };
     }
 
-    const startTime = task.startTime ? new Date(task.startTime) : null;
-    const endTime = task.deadline ? new Date(task.deadline) : null;
+    const startTime = task.startTime ? parseVnDate(task.startTime) : null;
+    const endTime = task.deadline ? parseVnDate(task.deadline) : null;
 
     if (startTime && now.getTime() < startTime.getTime()) {
         const countdown = formatCountdown(startTime, now);
@@ -263,8 +264,8 @@ function getScheduleColor(index: number): string {
 }
 
 function mapStudentScheduleToEntry(item: StudentScheduleItem, index: number): ScheduleEntry {
-    const start = new Date(item.startTime);
-    const end = new Date(item.endTime);
+    const start = parseVnDate(item.startTime);
+    const end = parseVnDate(item.endTime);
 
     return {
         timetableID: item.timetableID,
@@ -743,8 +744,8 @@ export function StudentSchedule() {
 
     const upcomingEvents = useMemo(() => {
         return upcomingTasks.map(task => {
-            const startDate = task.startTime ? new Date(task.startTime) : null;
-            const deadlineDate = task.deadline ? new Date(task.deadline) : null;
+            const startDate = task.startTime ? parseVnDate(task.startTime) : null;
+            const deadlineDate = task.deadline ? parseVnDate(task.deadline) : null;
             const uiState = buildUpcomingTaskUiState(task, now);
             const fullDate = task.type === 'TEST'
                 ? (startDate ?? deadlineDate ?? new Date())

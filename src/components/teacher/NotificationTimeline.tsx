@@ -6,6 +6,7 @@ import {
 import { useSettings } from '../../context/SettingsContext';
 import { authService } from '../../services/authService';
 import { classroomService, type ClassNotification } from '../../services/classroomService';
+import { parseVnDate } from '../../lib/timeUtils';
 
 /* ─── Types ─────────────────────────────────────────────────────────────── */
 type NotifCategory = 'ALL' | 'GRADE' | 'ATTENDANCE' | 'SYSTEM';
@@ -49,7 +50,7 @@ function NotifIcon({ type, color }: { type: Notification['icon']; color: string 
 
 /* ─── Component ─────────────────────────────────────────────────────────── */
 function toRelativeTime(iso: string): string {
-    const createdAt = new Date(iso).getTime();
+    const createdAt = parseVnDate(iso).getTime();
     const diffMs = Date.now() - createdAt;
     const mins = Math.floor(diffMs / 60000);
     if (mins < 60) return `${Math.max(mins, 1)} phút trước`;

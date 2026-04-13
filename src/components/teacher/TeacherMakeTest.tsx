@@ -13,6 +13,7 @@ import { classroomService } from '../../services/classroomService';
 import { feedbackService } from '../../services/feedbackService';
 import { ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip, LabelList, Cell } from 'recharts';
 import { MathRenderer } from '../ui/MathRenderer';
+import { parseVnDate } from '../../lib/timeUtils';
 
 type View = 'dashboard' | 'create' | 'detail' | 'report';
 
@@ -32,13 +33,7 @@ function StatusBadge({ status }: { status: string }) {
     );
 }
 
-function parseVnDate(value: string | null | undefined): Date {
-    if (!value) return new Date(NaN);
-    if (value.length === 19) {
-        return new Date(value + '+07:00');
-    }
-    return new Date(value);
-}
+// parseVnDate imported from ../../lib/timeUtils
 
 function formatDeadline(dt: string | null) {
     if (!dt) return '';
@@ -1244,7 +1239,7 @@ function ReportView({ id, isDark }: { id: number; isDark: boolean }) {
     const dueAtIso = assignmentDetail?.assignmentType === 'TEST'
         ? (assignmentDetail?.endTime ?? assignmentDetail?.deadline)
         : (assignmentDetail?.deadline ?? assignmentDetail?.endTime);
-    const dueAtMs = dueAtIso ? new Date(dueAtIso).getTime() : NaN;
+    const dueAtMs = dueAtIso ? parseVnDate(dueAtIso).getTime() : NaN;
     const isPastDue = !Number.isNaN(dueAtMs) && Date.now() > dueAtMs;
 
     const resolveStudentStatus = (student: AssignmentReportResponse['studentResults'][number]): TeacherReportSubmissionStatus => {

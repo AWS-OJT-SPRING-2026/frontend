@@ -42,6 +42,7 @@ import {
 } from '../../services/classroomService';
 import { ExportReportModal } from './ExportReportModal';
 import { NotificationTimeline } from './NotificationTimeline';
+import { parseVnDate } from '../../lib/timeUtils';
 
 const CLASS_COLORS = ['#FCE38A', '#B8B5FF', '#FFB5B5', '#95E1D3'];
 const STUDENT_COLORS = ['#FCE38A', '#B8B5FF', '#FFB5B5', '#95E1D3'];
@@ -82,7 +83,7 @@ function formatStudentId(id: number | string): string {
 
 function formatTimeAgo(isoTime: string | null): string {
   if (!isoTime) return 'Offline';
-  const diff = Date.now() - new Date(isoTime).getTime();
+  const diff = Date.now() - parseVnDate(isoTime).getTime();
   const mins = Math.floor(diff / 60000);
   if (mins <= 1) return 'Online';
   if (mins < 60) return `${mins} phút trước`;
@@ -125,7 +126,7 @@ function formatGenderVi(gender?: string): string {
 
 function formatDateVi(date?: string): string {
   if (!date) return '-';
-  const d = new Date(date);
+  const d = parseVnDate(date);
   if (Number.isNaN(d.getTime())) return date;
   return d.toLocaleDateString('vi-VN');
 }

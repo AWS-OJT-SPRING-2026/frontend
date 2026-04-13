@@ -13,6 +13,7 @@ import {
     type TimetableItem,
     type TimetableStats,
 } from '../../services/timetableService';
+import { parseVnDate } from '../../lib/timeUtils';
 
 // ─── Types ────────────────────────────────────────────────────────────
 interface ScheduleEvent {
@@ -192,7 +193,7 @@ function getMonthDays(year: number, month: number): (Date | null)[][] {
 }
 
 const fmtDateVN = (iso: string) => {
-    const d = new Date(iso);
+    const d = parseVnDate(iso);
     return d.toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit', year: 'numeric' });
 };
 
@@ -222,8 +223,8 @@ const mapStatus = (status: string): ScheduleEvent['status'] => {
 };
 
 const mapTimetableItem = (item: TimetableItem): ScheduleEvent => {
-    const start = new Date(item.startTime);
-    const end = new Date(item.endTime);
+    const start = parseVnDate(item.startTime);
+    const end = parseVnDate(item.endTime);
     const startHour = start.getHours() + start.getMinutes() / 60;
     const endHour = end.getHours() + end.getMinutes() / 60;
     return {
@@ -599,8 +600,8 @@ export function AdminSchedule() {
     }, [dragState, events, refreshStats, weekDates]);
 
     const openSingleEdit = useCallback((event: ScheduleEvent) => {
-        const start = new Date(event.startTime);
-        const end = new Date(event.endTime);
+        const start = parseVnDate(event.startTime);
+        const end = parseVnDate(event.endTime);
         const toHm = (d: Date) => `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
 
         setSingleEditData({

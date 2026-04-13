@@ -8,6 +8,7 @@ import { Input } from '../ui/input';
 import { AttendanceModal } from '../shared/AttendanceModal';
 import { timetableService, type TimetableItem, type TeacherScheduleStats } from '../../services/timetableService';
 import { useSettings } from '../../context/SettingsContext';
+import { parseVnDate } from '../../lib/timeUtils';
 
 /* ── Status-based color system ── */
 type EventStatus = 'past' | 'upcoming' | 'ongoing';
@@ -27,8 +28,8 @@ function getStatusStyles(isDark: boolean): Record<EventStatus, { bg: string; bor
 }
 
 function getEventStatus(ev: ScheduleEvent, now: Date): EventStatus {
-    const start = new Date(ev.startTime);
-    const end = new Date(ev.endTime);
+    const start = parseVnDate(ev.startTime);
+    const end = parseVnDate(ev.endTime);
     if (now > end) return 'past';
     if (now < start) return 'upcoming';
     return 'ongoing';
@@ -100,8 +101,8 @@ function isSameDay(d1: Date, d2: Date): boolean {
 
 /** Convert TimetableItem from API → ScheduleEvent */
 function mapToScheduleEvent(item: TimetableItem): ScheduleEvent {
-    const start = new Date(item.startTime);
-    const end = new Date(item.endTime);
+    const start = parseVnDate(item.startTime);
+    const end = parseVnDate(item.endTime);
     const dayOfWeek = (start.getDay() + 6) % 7; // 0=Mon
 
     return {

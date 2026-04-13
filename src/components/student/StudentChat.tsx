@@ -7,6 +7,7 @@ import rehypeKatex from 'rehype-katex';
 import 'katex/dist/katex.min.css';
 import { getChatSessions, streamChatMessage, upsertChatSession, type ChatSessionDto } from '../../services/chatService';
 import { useSettings } from '../../context/SettingsContext';
+import { parseVnDate } from '../../lib/timeUtils';
 import { RoadmapWidget, DocumentWidget, QuizWidget } from './ChatWidgets';
 
 interface Message {
@@ -39,9 +40,9 @@ function fromDto(dto: ChatSessionDto): ChatSession {
         messages: (dto.messages ?? []).map((message) => ({
             role: message.role,
             content: message.content,
-            timestamp: new Date(message.timestamp),
+            timestamp: parseVnDate(message.timestamp),
         })),
-        updatedAt: dto.updatedAt ? new Date(dto.updatedAt).getTime() : Date.now(),
+        updatedAt: dto.updatedAt ? parseVnDate(dto.updatedAt).getTime() : Date.now(),
     };
 }
 
