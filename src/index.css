@@ -480,3 +480,66 @@ input[type="datetime-local"] {
   animation: warningPulse 1.5s ease-in-out infinite;
 }
 
+/* ── Markdown Table Styles ── */
+.markdown-content table {
+  width: 100%;
+  border-collapse: separate;
+  border-spacing: 0;
+  margin-bottom: 0.5rem;
+  border: 2px solid #e5e7eb;
+  border-radius: 0.75rem;
+  overflow: hidden;
+}
+
+.markdown-content th,
+.markdown-content td {
+  padding: 0.75rem 1rem;
+  border-bottom: 2px solid #e5e7eb;
+  border-right: 2px solid #e5e7eb;
+  text-align: left;
+}
+
+.markdown-content th:last-child,
+.markdown-content td:last-child {
+  border-right: none;
+}
+
+.markdown-content tr:last-child td {
+  border-bottom: none;
+}
+
+.markdown-content thead {
+  background-color: #f9fafb;
+}
+
+.markdown-content th {
+  font-weight: 800;
+  color: #1a1a1a;
+  font-size: 0.875rem;
+  text-transform: uppercase;
+  letter-spacing: 0.025em;
+}
+
+.markdown-content td {
+  font-weight: 600;
+  color: #4b5563;
+  font-size: 0.875rem;
+}
+
+/* Dark mode for Markdown Tables */
+html.dark .markdown-content table {
+  border-color: #333;
+}
+html.dark .markdown-content th,
+html.dark .markdown-content td {
+  border-color: #333;
+}
+html.dark .markdown-content thead {
+  background-color: #1a1b1e;
+}
+html.dark .markdown-content th {
+  color: #e5e5e5;
+}
+html.dark .markdown-content td {
+  color: #d1d5db;
+}

@@ -14,6 +14,7 @@ export interface MyProfileResponse {
   status?: string;
   avatarUrl?: string;
   fullName: string;
+  specialization?: string;
   dateOfBirth?: string;
   gender?: string;
   address?: string;
@@ -36,6 +37,15 @@ export interface UpdateMyStudentProfileRequest {
   parentPhone?: string;
   parentEmail?: string;
   parentRelationship?: string;
+}
+
+export interface UpdateMyTeacherProfileRequest {
+  fullName: string;
+  email: string;
+  phone?: string;
+  gender?: string;
+  specialization?: string;
+  dateOfBirth?: string;
 }
 
 export interface ChangePasswordInitRequest {

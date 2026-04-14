@@ -22,6 +22,7 @@ import { TeacherClassList } from './components/teacher/TeacherClassList';
 import { TeacherMakeTest } from './components/teacher/TeacherMakeTest';
 import { TeacherDocuments } from './components/teacher/TeacherDocuments';
 import { TeacherSchedule } from './components/teacher/TeacherSchedule';
+import { TeacherQuestionBankLayout } from './components/teacher/question-banks/TeacherQuestionBankLayout';
 import { StudentHomepage } from './components/student/StudentHomepage';
 import { StudentRoadmap } from './components/student/StudentRoadmap';
 import { StudentReview } from './components/student/StudentReview';
@@ -240,6 +241,7 @@ function AppRoutes() {
         <Route path="classes/:classId" element={<TeacherClassList />} />
         <Route path="tests" element={<TeacherMakeTest />} />
         <Route path="documents" element={<TeacherDocuments />} />
+        <Route path="question-banks/*" element={<TeacherQuestionBankLayout />} />
         <Route path="schedule" element={<TeacherSchedule />} />
         <Route path="account" element={<AccountSettings />} />
         <Route path="*" element={<div className="font-bold text-2xl p-8">{t.common.pageUnderConstruction}</div>} />

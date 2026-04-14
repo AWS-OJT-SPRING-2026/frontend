@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import {
     UserCircle, Users, Camera, Check, ArrowLeft, ShieldCheck,
     DeviceMobile, EnvelopeSimple, PencilSimple, Eye, EyeSlash,
-    Lock, CalendarBlank, GenderIntersex, MapPinLine
+    Lock, CalendarBlank, GenderIntersex, MapPinLine, Briefcase
 } from '@phosphor-icons/react';
 import { useAuth } from '../context/AuthContext';
 import { useNavigate } from 'react-router-dom';
@@ -10,7 +10,7 @@ import { cn } from '../lib/utils';
 import { ApiError } from '../services/api';
 import { authService } from '../services/authService';
 import { profileService } from '../services/profileService';
-import type { MyProfileResponse, UpdateMyStudentProfileRequest } from '../types/profile';
+import type { MyProfileResponse, UpdateMyStudentProfileRequest, UpdateMyTeacherProfileRequest } from '../types/profile';
 import {
     formatDisplayId,
     toApiGender,
@@ -58,6 +58,7 @@ function mapProfileToFormData(profile: MyProfileResponse) {
         parentEmail: profile.parentEmail || '',
         parentRelation: toVietnameseRelation(profile.parentRelationship),
         status: profile.status || 'ACTIVE',
+        specialization: profile.specialization || '',
     };
 }
 
@@ -93,6 +94,24 @@ function buildStudentUpdatePayload(formData: {
         parentPhone: formData.parentPhone.trim() || undefined,
         parentEmail: formData.parentEmail.trim() || undefined,
         parentRelationship: toApiRelation(formData.parentRelation),
+    };
+}
+
+function buildTeacherUpdatePayload(formData: {
+    name: string;
+    email: string;
+    phone: string;
+    dateOfBirth: string;
+    gender: string;
+    specialization: string;
+}): UpdateMyTeacherProfileRequest {
+    return {
+        fullName: formData.name.trim(),
+        email: formData.email.trim(),
+        phone: formData.phone.trim() || undefined,
+        gender: toApiGender(formData.gender),
+        dateOfBirth: formData.dateOfBirth || undefined,
+        specialization: formData.specialization.trim() || undefined,
     };
 }
 
@@ -186,6 +205,7 @@ export function AccountSettings() {
         parentEmail: 'phuhuynh@example.com',
         parentRelation: 'Bố',
         status: 'ACTIVE',
+        specialization: '',
     });
 
     const parentRelationOptions = ['Bố', 'Mẹ', 'Ông/Bà', 'Anh/Chị', 'Người giám hộ', 'Khác'];
@@ -348,8 +368,8 @@ export function AccountSettings() {
             return;
         }
 
-        if (user.role !== 'student') {
-            setErrorMessage('Hiện tại chỉ hỗ trợ cập nhật hồ sơ học sinh.');
+        if (user.role !== 'student' && user.role !== 'teacher') {
+            setErrorMessage('Hệ thống chỉ hỗ trợ cập nhật hồ sơ cho Học sinh và Giáo viên.');
             return;
         }
 
@@ -357,8 +377,14 @@ export function AccountSettings() {
         setErrorMessage('');
 
         try {
-            const payload = buildStudentUpdatePayload(formData);
-            const updated = await profileService.updateMyStudentProfile(payload, avatarFile, token);
+            let updated: MyProfileResponse;
+            if (user.role === 'student') {
+                const payload = buildStudentUpdatePayload(formData);
+                updated = await profileService.updateMyStudentProfile(payload, avatarFile, token);
+            } else {
+                const payload = buildTeacherUpdatePayload(formData);
+                updated = await profileService.updateMyTeacherProfile(payload, avatarFile, token);
+            }
 
             setFormData(mapProfileToFormData(updated));
             setAvatarUrl(updated.avatarUrl || avatarUrl);
@@ -839,19 +865,34 @@ export function AccountSettings() {
                     {renderField('Địa chỉ', 'address', formData.address, MapPinLine)}
                 </div>
 
-                {/* Parent Info */}
-                <div className="pt-6 mt-4 border-t-2 border-dashed border-[#1A1A1A]/10">
-                    <div className="flex items-center gap-2 mb-6 text-[#1A1A1A]">
-                        <Users size={20} weight="fill" className="text-[#FF6B4A]" />
-                        <h4 className="text-sm font-extrabold uppercase tracking-widest">Thông tin phụ huynh</h4>
+                {/* Parent Info for students */}
+                {user?.role === 'student' && (
+                    <div className="pt-6 mt-4 border-t-2 border-dashed border-[#1A1A1A]/10">
+                        <div className="flex items-center gap-2 mb-6 text-[#1A1A1A]">
+                            <Users size={20} weight="fill" className="text-[#FF6B4A]" />
+                            <h4 className="text-sm font-extrabold uppercase tracking-widest">Thông tin phụ huynh</h4>
+                        </div>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                            {renderField('Họ tên phụ huynh', 'parentName', formData.parentName, UserCircle)}
+                            {renderField('Mối quan hệ', 'parentRelation', formData.parentRelation, Users, 'select', parentRelationOptions)}
+                            {renderField('SĐT phụ huynh', 'parentPhone', formData.parentPhone, DeviceMobile)}
+                            {renderField('Email phụ huynh', 'parentEmail', formData.parentEmail, EnvelopeSimple)}
+                        </div>
                     </div>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                        {renderField('Họ tên phụ huynh', 'parentName', formData.parentName, UserCircle)}
-                        {renderField('Mối quan hệ', 'parentRelation', formData.parentRelation, Users, 'select', parentRelationOptions)}
-                        {renderField('SĐT phụ huynh', 'parentPhone', formData.parentPhone, DeviceMobile)}
-                        {renderField('Email phụ huynh', 'parentEmail', formData.parentEmail, EnvelopeSimple)}
+                )}
+
+                {/* Sub info for teachers */}
+                {user?.role === 'teacher' && (
+                    <div className="pt-6 mt-4 border-t-2 border-dashed border-[#1A1A1A]/10">
+                        <div className="flex items-center gap-2 mb-6 text-[#1A1A1A]">
+                            <Briefcase size={20} weight="fill" className="text-[#FF6B4A]" />
+                            <h4 className="text-sm font-extrabold uppercase tracking-widest">Thông tin chuyên môn</h4>
+                        </div>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                            {renderField('Chuyên môn / Bộ môn', 'specialization', formData.specialization, Briefcase)}
+                        </div>
                     </div>
-                </div>
+                )}
             </div>
 
             {/* Security Section */}

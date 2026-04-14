@@ -19,19 +19,6 @@ Amplify.configure({
     Cognito: {
       userPoolId: COGNITO_USER_POOL_ID,
       userPoolClientId: COGNITO_USER_POOL_CLIENT_ID,
-      ...(COGNITO_DOMAIN
-        ? {
-            loginWith: {
-              oauth: {
-                domain: COGNITO_DOMAIN,
-                scopes: ['openid', 'email', 'profile'],
-                redirectSignIn: ['http://localhost:5173/auth/callback', 'https://slothub.id.vn/auth/callback'],
-                redirectSignOut: ['http://localhost:5173', 'https://slothub.id.vn'],
-                responseType: 'code',
-              },
-            },
-          }
-        : {}),
     },
   },
 });

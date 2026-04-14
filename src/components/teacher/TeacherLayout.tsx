@@ -3,7 +3,7 @@ import { Outlet, NavLink, useNavigate, useLocation, Link } from 'react-router-do
 import { useAuth } from '../../context/AuthContext';
 import { useSettings } from '../../context/SettingsContext';
 import {
-    ChartBar, Users, CalendarBlank, Files, ClipboardText, SignOut,
+    ChartBar, Users, CalendarBlank, Files, ClipboardText, SignOut, Folders
 } from '@phosphor-icons/react';
 import { cn } from '../../lib/utils';
 import { useActivityPing } from '../../lib/useActivityPing';
@@ -28,6 +28,7 @@ export function TeacherLayout() {
         { to: "classes", label: t.teacher.myStudents, icon: Users },
         { to: "schedule", label: t.teacher.teachingSchedule, icon: CalendarBlank },
         { to: "documents", label: t.teacher.documents, icon: Files },
+        { to: "question-banks", label: "Ngân hàng câu hỏi", icon: Folders },
         { to: "tests", label: t.teacher.tests, icon: ClipboardText },
     ];
 
