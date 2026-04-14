@@ -3,7 +3,7 @@ import { Outlet, NavLink, useNavigate, useLocation, Link } from 'react-router-do
 import { useAuth } from '../../context/AuthContext';
 import { useSettings } from '../../context/SettingsContext';
 import {
-    SquaresFour, Users, Books, CalendarBlank, Question, ChartBar, SignOut,
+    SquaresFour, Users, Books, CalendarBlank, ChartBar, SignOut,
 } from '@phosphor-icons/react';
 import { cn } from '../../lib/utils';
 import { SettingsPanel } from '../SettingsPanel';
@@ -28,7 +28,6 @@ export function AdminLayout() {
         { to: "users", label: t.admin.users, icon: Users },
         { to: "classes", label: t.admin.classes, icon: Books },
         { to: "schedule", label: t.admin.schedule, icon: CalendarBlank },
-        { to: "questions", label: t.admin.questionBank, icon: Question },
         { to: "statistics", label: t.admin.statistics, icon: ChartBar },
     ];
 

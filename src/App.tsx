@@ -16,7 +16,6 @@ import { AdminAnalytics } from './components/admin/AdminAnalytics';
 import { UserManage } from './components/admin/UserManage';
 import { ClassManage } from './components/admin/ClassManage';
 import { AdminSchedule } from './components/admin/AdminSchedule';
-import { QuestionBank } from './components/admin/QuestionBank';
 import { TeacherDashboard } from './components/teacher/TeacherDashboard';
 import { TeacherClassList } from './components/teacher/TeacherClassList';
 import { TeacherMakeTest } from './components/teacher/TeacherMakeTest';
@@ -229,7 +228,6 @@ function AppRoutes() {
         <Route path="users" element={<UserManage />} />
         <Route path="classes" element={<ClassManage />} />
         <Route path="schedule" element={<AdminSchedule />} />
-        <Route path="questions" element={<QuestionBank />} />
         <Route path="*" element={<div className="font-bold text-2xl p-8">{t.common.pageUnderConstruction}</div>} />
       </Route>
 
