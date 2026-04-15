@@ -232,11 +232,12 @@ export const assignmentService = {
   getSubmissionDetailForTeacher: (submissionId: number, token: string) =>
     api.get<ApiWrapper<SubmissionResponse>>(`/assignments/submissions/${submissionId}`, token).then(r => r.result),
 
-  getRandomQuestions: (params: { bankId?: number; difficultyLevel?: number; limit?: number }, token: string) => {
+  getRandomQuestions: (params: { bankId?: number; difficultyLevel?: number; limit?: number; classroomId?: number }, token: string) => {
     const query = new URLSearchParams();
     if (params.bankId != null) query.set('bankId', String(params.bankId));
     if (params.difficultyLevel != null) query.set('difficultyLevel', String(params.difficultyLevel));
     if (params.limit != null) query.set('limit', String(params.limit));
+    if (params.classroomId != null) query.set('classroomId', String(params.classroomId));
     const qs = query.toString();
     return api.get<ApiWrapper<QuestionPreviewResponse[]>>(`/assignments/questions/random${qs ? `?${qs}` : ''}`, token)
       .then(r => r.result);

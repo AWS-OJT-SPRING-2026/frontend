@@ -384,10 +384,11 @@ function CreateTest({ isDark, onSaved }: { isDark: boolean; onSaved: () => void 
             let allQuestions: QuestionPreviewResponse[] = [];
 
             if (selectAllBanks || selectedBankIds.length === 0) {
-                // All banks (existing behaviour – server filters by teacher ownership)
+                // All banks (filtered by teacher ownership and classroom subject)
                 allQuestions = await assignmentService.getRandomQuestions({
                     difficultyLevel: diff,
-                    limit: requestedLimit * 3, // fetch more for dedup headroom
+                    limit: requestedLimit, // Respected limit on server
+                    classroomId: classroomId ? Number(classroomId) : undefined,
                 }, token);
             } else {
                 // Fetch from each selected bank then combine
@@ -395,7 +396,8 @@ function CreateTest({ isDark, onSaved }: { isDark: boolean; onSaved: () => void 
                     const data = await assignmentService.getRandomQuestions({
                         bankId: id,
                         difficultyLevel: diff,
-                        limit: requestedLimit * 2,
+                        limit: requestedLimit,
+                        classroomId: classroomId ? Number(classroomId) : undefined,
                     }, token);
                     allQuestions = [...allQuestions, ...data];
                 }
@@ -406,11 +408,12 @@ function CreateTest({ isDark, onSaved }: { isDark: boolean; onSaved: () => void 
                     seen.add(q.id);
                     return true;
                 });
-                // Shuffle and trim to requested limit
+                // Shuffle
                 for (let i = allQuestions.length - 1; i > 0; i--) {
                     const j = Math.floor(Math.random() * (i + 1));
                     [allQuestions[i], allQuestions[j]] = [allQuestions[j], allQuestions[i]];
                 }
+                // Trim to requested limit
                 allQuestions = allQuestions.slice(0, requestedLimit);
             }
 
@@ -461,6 +464,7 @@ function CreateTest({ isDark, onSaved }: { isDark: boolean; onSaved: () => void 
                 bankId: !selectAllBanks && selectedBankIds.length === 1 ? selectedBankIds[0] : undefined,
                 difficultyLevel: difficultyLevel && difficultyLevel !== 'all' ? Number(difficultyLevel) : undefined,
                 limit: 5,
+                classroomId: classroomId ? Number(classroomId) : undefined,
             }, token);
             // Pick a question not already in the list
             const currentIds = new Set(questions.filter((q): q is QuestionPreviewResponse => q !== null).map(q => q.id));
