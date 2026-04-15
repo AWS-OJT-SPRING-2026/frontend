@@ -1,3 +1,4 @@
+import { useEffect, useState } from 'react';
 import {
     AlertTriangle,
     BookOpen,
@@ -7,11 +8,11 @@ import {
     Users,
 } from 'lucide-react';
 import {
-    CartesianGrid,
     Cell,
     Legend,
     Line,
     LineChart,
+    CartesianGrid,
     Pie,
     PieChart,
     ResponsiveContainer,
@@ -19,44 +20,144 @@ import {
     XAxis,
     YAxis,
 } from 'recharts';
+import { api } from '../../services/api';
+import { authService } from '../../services/authService';
+
+/* ── API types ──────────────────────────────────────────────────────────── */
+interface ApiResponse<T> { code: number; message: string; result: T; }
+
+interface StudentItem { studentID: number; fullName: string; }
+interface TeacherItem { teacherID: number; fullName: string; }
+
+interface ClassroomStats {
+    totalClasses: number;
+    activeClasses: number;
+    unassignedClasses: number;
+    averageClassSize: number;
+}
+
+interface ClassroomItem {
+    classID: number;
+    className: string;
+    currentStudents: number;
+    status: string;
+}
+
+interface PageResponse<T> { data: T[]; totalPages: number; }
+
+interface TimetableItem {
+    timetableID: number;
+    className: string;
+    subjectName: string;
+    teacherName: string | null;
+    startTime: string;
+    endTime: string;
+    status: string;
+}
+
+/* ── helpers ────────────────────────────────────────────────────────────── */
+function toLocalDateTime(d: Date): string {
+    const pad = (n: number) => String(n).padStart(2, '0');
+    return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`;
+}
+
+function formatTime(iso: string): string {
+    const d = new Date(iso);
+    return `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
+}
+
+/** Extract grade number from class name, e.g. "Lớp 10A1" → 10 */
+function extractGrade(className: string): number | null {
+    const m = className.match(/\b(10|11|12)\b/);
+    return m ? Number(m[1]) : null;
+}
+
+/* ── state shapes ───────────────────────────────────────────────────────── */
+interface GradeSlice { name: string; value: number; color: string; }
+
+const GRADE_COLORS: Record<number, string> = {
+    10: '#A78BFA',
+    11: '#5EEAD4',
+    12: '#FCD34D',
+};
 
 export function AdminStatistics() {
     const cardClass = 'rounded-3xl border-2 border-[#1A1A1A] bg-white shadow-sm p-5 md:p-6';
 
+    /* ── data state ─────────────────────────────────────────────────────── */
+    const [studentCount, setStudentCount] = useState<number | null>(null);
+    const [teacherCount, setTeacherCount] = useState<number | null>(null);
+    const [classStats, setClassStats] = useState<ClassroomStats | null>(null);
+    const [gradeDistribution, setGradeDistribution] = useState<GradeSlice[]>([]);
+    const [todaySchedule, setTodaySchedule] = useState<TimetableItem[]>([]);
+    const [loading, setLoading] = useState(true);
+
+    /* ── static placeholder for charts not yet backed by an endpoint ────── */
     const growthData = [
-        { month: 'Tháng 1', students: 120 },
-        { month: 'Tháng 2', students: 145 },
-        { month: 'Tháng 3', students: 162 },
-        { month: 'Tháng 4', students: 180 },
-        { month: 'Tháng 5', students: 210 },
-        { month: 'Tháng 6', students: 238 },
+        { month: 'Tháng 1', students: 0 },
+        { month: 'Tháng 2', students: 0 },
+        { month: 'Tháng 3', students: 0 },
+        { month: 'Tháng 4', students: 0 },
+        { month: 'Tháng 5', students: 0 },
+        { month: 'Tháng 6', students: studentCount ?? 0 },
     ];
 
-    const gradeDistribution = [
-        { name: 'Khối 10', value: 460, color: '#A78BFA' },
-        { name: 'Khối 11', value: 420, color: '#5EEAD4' },
-        { name: 'Khối 12', value: 370, color: '#FCD34D' },
-    ];
+    useEffect(() => {
+        const token = authService.getToken();
+        if (!token) return;
 
-    const todaySchedule = [
-        { time: '08:00 - 09:30', className: 'Lớp 10A1', room: 'Phòng A201', teacher: 'Thầy Nguyễn Văn A' },
-        { time: '09:45 - 11:15', className: 'Lớp 11B2', room: 'Phòng B105', teacher: 'Cô Trần Thị B' },
-        { time: '13:30 - 15:00', className: 'Lớp 12C1', room: 'Phòng C303', teacher: 'Thầy Lê Minh C' },
-        { time: '15:15 - 16:45', className: 'Lớp 10A2', room: 'Phòng A103', teacher: 'Cô Phạm Thu D' },
-    ];
+        const todayStart = new Date();
+        todayStart.setHours(0, 0, 0, 0);
+        const todayEnd = new Date();
+        todayEnd.setHours(23, 59, 59, 999);
 
-    const urgentItems = [
-        'Lớp 10A1 chưa có giáo viên chủ nhiệm',
-        'Lớp 11B1 sĩ số thấp hơn mức tối thiểu',
-        '03 học sinh lớp 12C2 quá hạn học phí',
-    ];
+        Promise.all([
+            api.get<ApiResponse<StudentItem[]>>('/students', token),
+            api.get<ApiResponse<TeacherItem[]>>('/teachers', token),
+            api.get<ApiResponse<ClassroomStats>>('/classrooms/stats', token),
+            api.get<ApiResponse<PageResponse<ClassroomItem>>>('/classrooms?page=1&size=200', token),
+            api.get<ApiResponse<TimetableItem[]>>(
+                `/timetables?start=${encodeURIComponent(toLocalDateTime(todayStart))}&end=${encodeURIComponent(toLocalDateTime(todayEnd))}`,
+                token,
+            ),
+        ])
+            .then(([students, teachers, stats, classrooms, timetables]) => {
+                setStudentCount(students.result?.length ?? 0);
+                setTeacherCount(teachers.result?.length ?? 0);
+                setClassStats(stats.result);
 
-    const recentActivities = [
-        { time: '10 phút trước', content: 'Học sinh Nguyễn Văn A vừa nộp học phí học kỳ 2' },
-        { time: '1 giờ trước', content: 'Giáo viên Trần Thị B vừa cập nhật điểm kiểm tra 15 phút' },
-        { time: '2 giờ trước', content: 'Lớp 11B2 được thêm mới vào thời khóa biểu chiều thứ 6' },
-        { time: 'Hôm qua', content: 'Admin đã phê duyệt hồ sơ cộng tác của giáo viên mới' },
-    ];
+                // Build grade distribution from classroom list
+                const gradeMap: Record<number, number> = { 10: 0, 11: 0, 12: 0 };
+                for (const cls of classrooms.result?.data ?? []) {
+                    const grade = extractGrade(cls.className);
+                    if (grade && grade in gradeMap) {
+                        gradeMap[grade] += cls.currentStudents;
+                    }
+                }
+                const slices: GradeSlice[] = Object.entries(gradeMap)
+                    .filter(([, v]) => v > 0)
+                    .map(([g, v]) => ({
+                        name: `Khối ${g}`,
+                        value: v,
+                        color: GRADE_COLORS[Number(g)],
+                    }));
+                setGradeDistribution(slices);
+
+                // Sort today's sessions by start time
+                const sorted = [...(timetables.result ?? [])].sort(
+                    (a, b) => new Date(a.startTime).getTime() - new Date(b.startTime).getTime(),
+                );
+                setTodaySchedule(sorted);
+            })
+            .catch(console.error)
+            .finally(() => setLoading(false));
+    }, []);
+
+    /* ── stat cards ─────────────────────────────────────────────────────── */
+    const stat = (val: number | null) =>
+        loading ? '…' : val !== null ? val.toLocaleString('vi-VN') : '–';
+
+    const urgentCount = classStats?.unassignedClasses ?? 0;
 
     return (
         <div className="min-h-screen bg-[#F7F7F2] p-6 md:p-8 space-y-6 lg:space-y-8" style={{ fontFamily: "'Nunito', sans-serif" }}>
@@ -65,14 +166,15 @@ export function AdminStatistics() {
                 <h1 className="text-3xl font-extrabold text-[#1A1A1A]">Tổng quan hệ thống</h1>
             </header>
 
+            {/* KPI cards */}
             <section className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
                 <article className="rounded-3xl border-2 border-[#1A1A1A] shadow-sm bg-[#EDE8FF] p-5">
                     <div className="flex items-center justify-between">
                         <p className="text-sm font-bold text-[#1A1A1A]/70">Tổng số Học sinh</p>
                         <Users className="h-5 w-5 text-[#6D4AFF]" />
                     </div>
-                    <p className="mt-3 text-3xl font-extrabold text-[#1A1A1A]">1,250</p>
-                    <p className="mt-2 text-sm font-bold text-green-600">+5% so với tháng trước</p>
+                    <p className="mt-3 text-3xl font-extrabold text-[#1A1A1A]">{stat(studentCount)}</p>
+                    <p className="mt-2 text-sm font-bold text-gray-500">học sinh đang học</p>
                 </article>
 
                 <article className="rounded-3xl border-2 border-[#1A1A1A] shadow-sm bg-[#DDF7F1] p-5">
@@ -80,7 +182,8 @@ export function AdminStatistics() {
                         <p className="text-sm font-bold text-[#1A1A1A]/70">Giáo viên cộng tác</p>
                         <GraduationCap className="h-5 w-5 text-[#0F766E]" />
                     </div>
-                    <p className="mt-3 text-3xl font-extrabold text-[#1A1A1A]">45</p>
+                    <p className="mt-3 text-3xl font-extrabold text-[#1A1A1A]">{stat(teacherCount)}</p>
+                    <p className="mt-2 text-sm font-bold text-gray-500">giáo viên trong hệ thống</p>
                 </article>
 
                 <article className="rounded-3xl border-2 border-[#1A1A1A] shadow-sm bg-[#FFF3C9] p-5">
@@ -88,23 +191,35 @@ export function AdminStatistics() {
                         <p className="text-sm font-bold text-[#1A1A1A]/70">Lớp đang hoạt động</p>
                         <BookOpen className="h-5 w-5 text-[#B45309]" />
                     </div>
-                    <p className="mt-3 text-3xl font-extrabold text-[#1A1A1A]">12</p>
+                    <p className="mt-3 text-3xl font-extrabold text-[#1A1A1A]">
+                        {loading ? '…' : classStats ? classStats.activeClasses.toLocaleString('vi-VN') : '–'}
+                    </p>
+                    <p className="mt-2 text-sm font-bold text-gray-500">
+                        {loading ? '' : classStats ? `/${classStats.totalClasses} lớp tổng cộng` : ''}
+                    </p>
                 </article>
 
                 <article className="rounded-3xl border-2 border-[#1A1A1A] shadow-sm bg-[#FFE5E5] p-5">
                     <div className="flex items-center justify-between">
-                        <p className="text-sm font-bold text-[#1A1A1A]/70">Cần chú ý</p>
+                        <p className="text-sm font-bold text-[#1A1A1A]/70">Lớp chưa có giáo viên</p>
                         <AlertTriangle className="h-5 w-5 text-red-600" />
                     </div>
-                    <p className="mt-3 text-3xl font-extrabold text-[#1A1A1A]">3</p>
+                    <p className="mt-3 text-3xl font-extrabold text-[#1A1A1A]">
+                        {loading ? '…' : urgentCount.toLocaleString('vi-VN')}
+                    </p>
+                    <p className="mt-2 text-sm font-bold text-red-500">
+                        {urgentCount > 0 ? 'cần phân công giáo viên' : 'không có lớp nào cần xử lý'}
+                    </p>
                 </article>
             </section>
 
+            {/* Charts */}
             <section className="grid grid-cols-1 lg:grid-cols-7 gap-6">
                 <article className={`lg:col-span-4 ${cardClass}`}>
-                    <h2 className="text-base md:text-lg font-extrabold text-[#1A1A1A] mb-4">
-                        Xu hướng tăng trưởng học sinh mới (6 tháng gần nhất)
+                    <h2 className="text-base md:text-lg font-extrabold text-[#1A1A1A] mb-1">
+                        Học sinh theo thời gian
                     </h2>
+                    <p className="text-xs text-gray-400 mb-4">Dữ liệu tổng hợp — biểu đồ xu hướng sẽ được cập nhật khi có API lịch sử</p>
                     <div className="h-72">
                         <ResponsiveContainer width="100%" height="100%">
                             <LineChart data={growthData}>
@@ -112,7 +227,7 @@ export function AdminStatistics() {
                                 <XAxis dataKey="month" stroke="#6B7280" />
                                 <YAxis stroke="#6B7280" />
                                 <Tooltip />
-                                <Line type="monotone" dataKey="students" name="Học sinh mới" stroke="#6366F1" strokeWidth={3} dot={{ r: 4 }} />
+                                <Line type="monotone" dataKey="students" name="Học sinh" stroke="#6366F1" strokeWidth={3} dot={{ r: 4 }} />
                             </LineChart>
                         </ResponsiveContainer>
                     </div>
@@ -120,86 +235,111 @@ export function AdminStatistics() {
 
                 <article className={`lg:col-span-3 ${cardClass}`}>
                     <h2 className="text-base md:text-lg font-extrabold text-[#1A1A1A] mb-4">Tỷ lệ học sinh theo khối lớp</h2>
-                    <div className="h-72">
-                        <ResponsiveContainer width="100%" height="100%">
-                            <PieChart>
-                                <Pie
-                                    data={gradeDistribution}
-                                    dataKey="value"
-                                    nameKey="name"
-                                    cx="50%"
-                                    cy="50%"
-                                    outerRadius={90}
-                                    innerRadius={55}
-                                    label
-                                >
-                                    {gradeDistribution.map((entry) => (
-                                        <Cell key={entry.name} fill={entry.color} />
-                                    ))}
-                                </Pie>
-                                <Tooltip />
-                                <Legend />
-                            </PieChart>
-                        </ResponsiveContainer>
-                    </div>
+                    {loading ? (
+                        <div className="h-72 flex items-center justify-center text-gray-400 text-sm">Đang tải…</div>
+                    ) : gradeDistribution.length === 0 ? (
+                        <div className="h-72 flex items-center justify-center text-gray-400 text-sm">Chưa có dữ liệu</div>
+                    ) : (
+                        <div className="h-72">
+                            <ResponsiveContainer width="100%" height="100%">
+                                <PieChart>
+                                    <Pie
+                                        data={gradeDistribution}
+                                        dataKey="value"
+                                        nameKey="name"
+                                        cx="50%"
+                                        cy="50%"
+                                        outerRadius={90}
+                                        innerRadius={55}
+                                        label={({ name, value }) => `${name}: ${value}`}
+                                    >
+                                        {gradeDistribution.map((entry) => (
+                                            <Cell key={entry.name} fill={entry.color} />
+                                        ))}
+                                    </Pie>
+                                    <Tooltip formatter={(value: number) => [`${value} học sinh`, '']} />
+                                    <Legend />
+                                </PieChart>
+                            </ResponsiveContainer>
+                        </div>
+                    )}
                 </article>
             </section>
 
-            <section className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {/* Today schedule + stats */}
+            <section className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <article className={cardClass}>
                     <div className="flex items-center gap-2 mb-4">
                         <School className="h-5 w-5 text-indigo-600" />
                         <h2 className="text-base md:text-lg font-extrabold text-[#1A1A1A]">Lịch giảng dạy hôm nay</h2>
+                        {!loading && (
+                            <span className="ml-auto text-xs font-bold text-gray-400">
+                                {todaySchedule.length} buổi học
+                            </span>
+                        )}
                     </div>
-                    <div className="space-y-3">
-                        {todaySchedule.map((item) => (
-                            <div key={`${item.time}-${item.className}`} className="rounded-xl border border-gray-200 p-3">
-                                <p className="text-sm font-semibold text-gray-900">{item.time}</p>
-                                <p className="text-sm text-gray-700">{item.className} - {item.room}</p>
-                                <p className="text-sm text-gray-500">{item.teacher}</p>
-                            </div>
-                        ))}
-                    </div>
-                </article>
-
-                <article className={cardClass}>
-                    <div className="flex items-center gap-2 mb-4">
-                        <AlertTriangle className="h-5 w-5 text-red-600" />
-                        <h2 className="text-base md:text-lg font-extrabold text-[#1A1A1A]">Cần xử lý ngay</h2>
-                    </div>
-                    <div className="space-y-3">
-                        {urgentItems.map((item) => (
-                            <div key={item} className="rounded-xl border border-gray-200 p-3 flex items-start justify-between gap-3">
-                                <p className="text-sm text-gray-700 leading-6">{item}</p>
-                                <button
-                                    type="button"
-                                    className="shrink-0 rounded-lg bg-red-50 text-red-600 border border-red-200 px-3 py-1.5 text-xs font-medium hover:bg-red-100 transition-colors"
-                                >
-                                    Xử lý
-                                </button>
-                            </div>
-                        ))}
-                    </div>
+                    {loading ? (
+                        <p className="text-sm text-gray-400">Đang tải…</p>
+                    ) : todaySchedule.length === 0 ? (
+                        <p className="text-sm text-gray-400">Không có buổi học nào hôm nay.</p>
+                    ) : (
+                        <div className="space-y-3 max-h-72 overflow-y-auto pr-1">
+                            {todaySchedule.map((item) => (
+                                <div key={item.timetableID} className="rounded-xl border border-gray-200 p-3">
+                                    <div className="flex items-center justify-between gap-2">
+                                        <p className="text-sm font-semibold text-gray-900">
+                                            {formatTime(item.startTime)} – {formatTime(item.endTime)}
+                                        </p>
+                                        <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
+                                            item.status === 'ONGOING'
+                                                ? 'bg-green-100 text-green-700'
+                                                : item.status === 'COMPLETED'
+                                                ? 'bg-gray-100 text-gray-500'
+                                                : 'bg-blue-100 text-blue-600'
+                                        }`}>
+                                            {item.status === 'ONGOING' ? 'Đang diễn ra' : item.status === 'COMPLETED' ? 'Đã kết thúc' : 'Sắp diễn ra'}
+                                        </span>
+                                    </div>
+                                    <p className="text-sm text-gray-700 mt-1">{item.className} · {item.subjectName}</p>
+                                    {item.teacherName && (
+                                        <p className="text-xs text-gray-500 mt-0.5">{item.teacherName}</p>
+                                    )}
+                                </div>
+                            ))}
+                        </div>
+                    )}
                 </article>
 
                 <article className={cardClass}>
                     <div className="flex items-center gap-2 mb-4">
                         <Clock3 className="h-5 w-5 text-violet-600" />
-                        <h2 className="text-base md:text-lg font-extrabold text-[#1A1A1A]">Hoạt động gần đây</h2>
+                        <h2 className="text-base md:text-lg font-extrabold text-[#1A1A1A]">Thống kê nhanh</h2>
                     </div>
                     <div className="space-y-4">
-                        {recentActivities.map((item, index) => (
-                            <div key={`${item.time}-${index}`} className="flex gap-3">
-                                <div className="mt-1 flex flex-col items-center">
-                                    <span className="h-2.5 w-2.5 rounded-full bg-violet-500" />
-                                    {index < recentActivities.length - 1 && <span className="mt-1 h-10 w-px bg-gray-200" />}
-                                </div>
-                                <div>
-                                    <p className="text-xs font-medium text-gray-500">{item.time}</p>
-                                    <p className="text-sm text-gray-700">{item.content}</p>
-                                </div>
-                            </div>
-                        ))}
+                        <div className="flex items-center justify-between rounded-xl border border-gray-200 p-4">
+                            <span className="text-sm text-gray-700">Sĩ số trung bình / lớp</span>
+                            <span className="text-lg font-extrabold text-[#1A1A1A]">
+                                {loading ? '…' : classStats ? classStats.averageClassSize : '–'}
+                            </span>
+                        </div>
+                        <div className="flex items-center justify-between rounded-xl border border-gray-200 p-4">
+                            <span className="text-sm text-gray-700">Tổng số lớp học</span>
+                            <span className="text-lg font-extrabold text-[#1A1A1A]">
+                                {loading ? '…' : classStats ? classStats.totalClasses : '–'}
+                            </span>
+                        </div>
+                        <div className="flex items-center justify-between rounded-xl border border-gray-200 p-4">
+                            <span className="text-sm text-gray-700">Buổi học hôm nay</span>
+                            <span className="text-lg font-extrabold text-[#1A1A1A]">
+                                {loading ? '…' : todaySchedule.length}
+                            </span>
+                        </div>
+                        <div className="flex items-center justify-between rounded-xl border border-gray-200 p-4">
+                            <span className="text-sm text-gray-700">Lớp chưa có giáo viên</span>
+                            <span className={`text-lg font-extrabold ${urgentCount > 0 ? 'text-red-600' : 'text-green-600'}`}>
+                                {loading ? '…' : urgentCount}
+                            </span>
+                        </div>
                     </div>
                 </article>
             </section>
