@@ -350,58 +350,61 @@ function CurriculumDetail() {
                     <p className={cn('text-sm font-bold mt-1', sub)}>Tài liệu này chưa được xử lý hoặc không có chương học.</p>
                 </div>
             ) : (
-                <div className="space-y-3">
+                <div className="space-y-4">
                     {chapters.map(chapter => (
-                        <div key={chapter.id} className={cn('rounded-2xl border-2 overflow-hidden transition-all', card)}>
+                        <div key={chapter.id} className={cn('rounded-[32px] border-2 shadow-sm overflow-hidden transition-all', card)}>
                             <button
-                                className="w-full flex items-center justify-between px-6 py-4 text-left gap-3"
+                                className="w-full flex items-center justify-between px-8 py-5 text-left gap-4"
                                 onClick={() => toggleChapter(chapter.id)}
                             >
-                                <div className="flex items-center gap-3 min-w-0">
-                                    <span className="w-8 h-8 rounded-xl bg-[#FF6B4A] text-white text-xs font-extrabold flex items-center justify-center shrink-0">
+                                <div className="flex items-center gap-4 min-w-0">
+                                    <span className="w-10 h-10 rounded-2xl bg-[#FF6B4A] text-white text-sm font-extrabold flex items-center justify-center shrink-0 shadow-lg shadow-[#FF6B4A]/20">
                                         {chapter.number}
                                     </span>
-                                    <span className={cn('font-extrabold text-base leading-snug truncate', txt)}>
+                                    <span className={cn('font-extrabold text-lg leading-snug truncate uppercase tracking-tight', txt)}>
                                         {chapter.title || `Chương ${chapter.number}`}
                                     </span>
                                 </div>
-                                <div className="flex items-center gap-3 shrink-0">
-                                    <span className={cn('text-xs font-bold', sub)}>{chapter.lessons.length} bài</span>
-                                    <span className={cn('text-lg transition-transform duration-200', expandedChapters.has(chapter.id) ? 'rotate-180' : '')}>▾</span>
+                                <div className="flex items-center gap-4 shrink-0">
+                                    <span className={cn('text-xs font-extrabold bg-gray-100 px-3 py-1.5 rounded-full', isDark ? 'bg-white/10 text-gray-300' : 'text-gray-500')}>{chapter.lessons.length} bài học</span>
+                                    <span className={cn('text-xl transition-transform duration-300', expandedChapters.has(chapter.id) ? 'rotate-180' : '')}>▾</span>
                                 </div>
                             </button>
 
                             {expandedChapters.has(chapter.id) && chapter.lessons.length > 0 && (
-                                <div className={cn('border-t', isDark ? 'border-white/10' : 'border-[#1A1A1A]/10')}>
-                                    {chapter.lessons.map((lesson, idx) => (
-                                        <div key={lesson.id}>
+                                <div className={cn('border-t p-4 md:p-6 space-y-4', isDark ? 'border-white/10 bg-black/10' : 'border-[#1A1A1A]/5 bg-gray-50/30')}>
+                                    {chapter.lessons.map((lesson) => (
+                                        <div key={lesson.id} className={cn('rounded-[24px] border-2 overflow-hidden transition-all group/lesson shadow-sm', isDark ? 'bg-[#20242b] border-white/5' : 'bg-white border-gray-100 hover:border-emerald-200')}>
                                             <button
                                                 onClick={() => toggleLesson(lesson.id)}
                                                 className={cn(
-                                                    'w-full flex items-center gap-3 px-6 py-3 text-sm text-left transition-colors',
-                                                    idx < chapter.lessons.length - 1 && !expandedLessons.has(lesson.id)
-                                                        ? (isDark ? 'border-b border-white/5' : 'border-b border-gray-50')
-                                                        : '',
-                                                    isDark ? 'hover:bg-white/5' : 'hover:bg-gray-50',
+                                                    'w-full flex items-center gap-4 px-6 py-4 text-sm text-left transition-colors',
+                                                    isDark ? 'hover:bg-white/5' : 'hover:bg-emerald-50/30',
                                                 )}
                                             >
-                                                <span className={cn('w-5 h-5 rounded-md text-[11px] font-extrabold flex items-center justify-center shrink-0', isDark ? 'bg-white/10 text-gray-300' : 'bg-[#1A1A1A]/8 text-[#1A1A1A]/60')}>
+                                                <span className={cn('w-8 h-8 rounded-xl text-xs font-extrabold flex items-center justify-center shrink-0 transition-colors', 
+                                                    expandedLessons.has(lesson.id) 
+                                                        ? 'bg-emerald-500 text-white shadow-md shadow-emerald-500/20' 
+                                                        : (isDark ? 'bg-white/10 text-gray-300' : 'bg-gray-100 text-gray-500 group-hover/lesson:bg-emerald-100 group-hover/lesson:text-emerald-600'))}>
                                                     {lesson.number}
                                                 </span>
-                                                <span className={cn('font-semibold flex-1', txt)}>{lesson.title || `Bài ${lesson.number}`}</span>
-                                                <CaretRight
-                                                    size={14}
-                                                    weight="bold"
-                                                    className={cn(
-                                                        'shrink-0 transition-transform duration-200',
-                                                        expandedLessons.has(lesson.id) ? 'rotate-90' : '',
-                                                        isDark ? 'text-gray-500' : 'text-gray-400',
-                                                    )}
-                                                />
+                                                <span className={cn('font-bold text-base flex-1', txt)}>{lesson.title || `Bài ${lesson.number}`}</span>
+                                                <div className="flex items-center gap-3">
+                                                    <span className={cn('text-[10px] font-extrabold uppercase tracking-widest px-2 py-0.5 rounded border', 
+                                                        isDark ? 'border-white/10 text-gray-500' : 'border-gray-200 text-gray-400')}>BÀI HỌC</span>
+                                                    <CaretRight
+                                                        size={16}
+                                                        weight="bold"
+                                                        className={cn(
+                                                            'shrink-0 transition-all duration-300',
+                                                            expandedLessons.has(lesson.id) ? 'rotate-90 text-emerald-500' : isDark ? 'text-gray-500' : 'text-gray-400',
+                                                        )}
+                                                    />
+                                                </div>
                                             </button>
+                                            
                                             {expandedLessons.has(lesson.id) && (
-                                                <div className={cn('px-6 pb-4 pt-2', isDark ? 'bg-white/[0.02]' : 'bg-gray-50/60',
-                                                    idx < chapter.lessons.length - 1 ? (isDark ? 'border-b border-white/5' : 'border-b border-gray-100') : '')}>
+                                                <div className={cn('px-6 pb-6 pt-2 border-t', isDark ? 'bg-white/[0.01]' : 'bg-gray-50/50', isDark ? 'border-white/5' : 'border-gray-100/50')}>
                                                     {loadingLesson.has(lesson.id) ? (
                                                         <div className="flex items-center gap-2 py-2">
                                                             <div className="w-4 h-4 border-2 border-[#FF6B4A]/30 border-t-[#FF6B4A] rounded-full animate-spin" />
@@ -412,7 +415,6 @@ function CurriculumDetail() {
                                                     ) : !lessonContent[lesson.id] || lessonContent[lesson.id].length === 0 ? (
                                                         <p className={cn('text-xs font-bold py-2', sub)}>Bài học này chưa có nội dung.</p>
                                                     ) : (() => {
-                                                        // Group items by section_number
                                                         const sections: { sectionNumber: number; sectionTitle: string; items: LessonContentItem[] }[] = [];
                                                         for (const item of lessonContent[lesson.id]) {
                                                             const last = sections[sections.length - 1];
@@ -475,7 +477,7 @@ function CurriculumDetail() {
 
 export function TeacherCurriculumLayout() {
     return (
-        <div className="max-w-7xl mx-auto p-4 sm:p-6 md:p-8">
+        <div className="w-full p-2 md:p-4 lg:p-6 mb-8">
             <Routes>
                 <Route path="/" element={<CurriculumList />} />
                 <Route path="/:docId" element={<CurriculumDetail />} />

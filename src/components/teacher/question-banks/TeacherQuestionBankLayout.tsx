@@ -158,7 +158,7 @@ function QuestionBankList() {
 
 export function TeacherQuestionBankLayout() {
     return (
-        <div className="max-w-7xl mx-auto p-4 sm:p-6 md:p-8">
+        <div className="w-full p-2 md:p-4 lg:p-6 mb-8">
             <Routes>
                 <Route path="/" element={<QuestionBankList />} />
                 <Route path="/:bankId" element={<TeacherQuestionBankDetail />} />
