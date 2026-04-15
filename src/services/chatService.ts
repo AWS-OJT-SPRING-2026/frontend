@@ -126,3 +126,10 @@ export async function upsertChatSession(payload: ChatSessionPayload): Promise<Ch
   return response.result;
 }
 
+export async function deleteChatSession(sessionId: string): Promise<void> {
+  const token = authService.getToken();
+  if (!token) throw new Error('Missing auth token');
+  await api.authDelete<ApiResponse<void>>(`/chat/sessions/${sessionId}`);
+}
+
+

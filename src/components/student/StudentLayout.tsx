@@ -3,7 +3,7 @@ import { Outlet, NavLink, useNavigate, useLocation, Link } from 'react-router-do
 import { useAuth } from '../../context/AuthContext';
 import { useSettings } from '../../context/SettingsContext';
 import {
-    SquaresFour, CalendarBlank, ClipboardText, Books, MapTrifold, BookOpen, ChatCircle, SignOut,
+    SquaresFour, CalendarBlank, ClipboardText, Books, MapTrifold, BookOpen, ChatCircle, SignOut, Notebook,
 } from '@phosphor-icons/react';
 import { cn } from '../../lib/utils';
 import { useActivityPing } from '../../lib/useActivityPing';
@@ -37,10 +37,8 @@ export function StudentLayout() {
         { to: ".", label: t.student.overview, icon: SquaresFour, end: true },
         { to: "schedule", label: t.student.studySchedule, icon: CalendarBlank },
         { to: "exercises", label: t.student.exercises, icon: ClipboardText },
-        { to: "documents", label: t.student.documents, icon: Books },
         { to: "roadmap", label: t.student.aiRoadmap, icon: MapTrifold },
-        { to: "review", label: t.student.review, icon: BookOpen },
-        { to: "chat", label: t.student.aiChat, icon: ChatCircle },
+        { to: "study", label: t.student.studySpace, icon: Notebook },
     ];
 
     const labelClass = isExpanded

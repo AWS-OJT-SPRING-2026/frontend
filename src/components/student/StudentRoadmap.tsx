@@ -330,7 +330,7 @@ export function StudentRoadmap() {
                         </p>
                     </div>
                 </div>
-                <button className="bg-[#ff7849] hover:bg-[#ff8b63] text-white font-extrabold px-8 h-11 rounded-2xl shrink-0 transition-colors">
+                <button onClick={() => navigate('/student/study')} className="bg-[#ff7849] hover:bg-[#ff8b63] text-white font-extrabold px-8 h-11 rounded-2xl shrink-0 transition-colors">
                     Học ngay →
                 </button>
             </div>

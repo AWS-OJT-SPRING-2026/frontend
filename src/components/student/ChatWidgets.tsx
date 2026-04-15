@@ -60,7 +60,7 @@ export const QuizWidget = ({ subjectName, numQuestions, topics }: { subjectName?
         if (subjectName) query.set('subject', subjectName);
         if (numQuestions) query.set('questions', numQuestions);
         if (topics) query.set('topics', topics);
-        navigate(`/student/review?${query.toString()}`);
+        navigate(`/student/study?${query.toString()}`);
     };
 
     return (
@@ -117,7 +117,7 @@ export const DocumentWidget = ({ bookId, sectionId }: { bookId?: string, section
         const query = new URLSearchParams();
         if (bookId) query.set('book', bookId);
         if (sectionId) query.set('lesson', sectionId);
-        navigate(`/student/documents?${query.toString()}`);
+        navigate(`/student/study?${query.toString()}`);
     };
 
     return (
