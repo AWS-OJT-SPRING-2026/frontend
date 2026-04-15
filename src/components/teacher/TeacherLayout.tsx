@@ -3,7 +3,7 @@ import { Outlet, NavLink, useNavigate, useLocation, Link } from 'react-router-do
 import { useAuth } from '../../context/AuthContext';
 import { useSettings } from '../../context/SettingsContext';
 import {
-    ChartBar, Users, CalendarBlank, Files, ClipboardText, SignOut, Folders
+    ChartBar, Users, CalendarBlank, Files, ClipboardText, SignOut, Folders, BookOpen
 } from '@phosphor-icons/react';
 import { cn } from '../../lib/utils';
 import { useActivityPing } from '../../lib/useActivityPing';
@@ -24,10 +24,11 @@ export function TeacherLayout() {
     const isExpanded = sidebarMode === 'visible';
 
     const navItems = [
-        { to: ".", label: t.teacher.classStats, icon: ChartBar, end: true },
+        { to: ".", label: "Tổng quan", icon: ChartBar, end: true },
         { to: "classes", label: t.teacher.myStudents, icon: Users },
         { to: "schedule", label: t.teacher.teachingSchedule, icon: CalendarBlank },
         { to: "documents", label: t.teacher.documents, icon: Files },
+        { to: "curriculum", label: "Giáo trình", icon: BookOpen },
         { to: "question-banks", label: "Ngân hàng câu hỏi", icon: Folders },
         { to: "tests", label: t.teacher.tests, icon: ClipboardText },
     ];

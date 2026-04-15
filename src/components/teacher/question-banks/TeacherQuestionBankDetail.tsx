@@ -1,11 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { 
+import {
     ArrowLeft, Plus, MagnifyingGlass, Funnel, Trash, PencilSimple, Question, Circle, CheckCircle, Brain
 } from '@phosphor-icons/react';
-import { 
-    teacherQuestionService, 
-    type QuestionPreviewResponse, 
+import {
+    teacherQuestionService,
+    type QuestionPreviewResponse,
     type QuestionPayload,
     type AnswerPayload
 } from '../../../services/teacherQuestionService';
@@ -16,6 +16,7 @@ import remarkGfm from 'remark-gfm';
 import remarkMath from 'remark-math';
 import rehypeKatex from 'rehype-katex';
 import 'katex/dist/katex.min.css';
+import { MathRenderer } from '../../ui/MathRenderer';
 
 const DIFFICULTY_MAP: Record<number, { label: string, color: string, bg: string }> = {
     1: { label: 'Dễ', color: 'text-emerald-700', bg: 'bg-emerald-100' },
@@ -241,7 +242,7 @@ export default function TeacherQuestionBankDetail() {
                                         </span>
                                         {q.isAi && (
                                             <span className="flex items-center gap-1 text-[10px] font-extrabold uppercase bg-indigo-100 text-indigo-600 px-2 py-1 rounded-full">
-                                                <Brain size={12} weight="fill" /> AI Tự động
+                                                <Brain size={12} weight="fill" /> Câu hỏi AI
                                             </span>
                                         )}
                                     </div>
@@ -266,12 +267,12 @@ export default function TeacherQuestionBankDetail() {
                                             )}>
                                                 {ans.label}
                                             </div>
-                                            <p className={cn(
+                                            <div className={cn(
                                                 "font-bold text-sm w-full break-words",
                                                 ans.isCorrect ? "text-emerald-700" : "text-gray-600"
                                             )}>
-                                                {ans.content}
-                                            </p>
+                                                <MathRenderer content={ans.content} />
+                                            </div>
                                         </div>
                                     ))}
                                 </div>

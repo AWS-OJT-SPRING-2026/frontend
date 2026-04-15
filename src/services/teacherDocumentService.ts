@@ -4,6 +4,26 @@ import { aiFetch } from './aiFetch';
 
 import { FAST_API_BASE_URL } from './env';
 
+export interface BookLesson {
+  id: number;
+  number: number;
+  title: string;
+}
+
+export interface BookChapter {
+  id: number;
+  number: number;
+  title: string;
+  lessons: BookLesson[];
+}
+
+export interface LessonContentItem {
+  section_number: number;
+  section_title: string;
+  subsection_title: string | null;
+  content: string | null;
+}
+
 export type DocType = 'theory' | 'question';
 
 export interface TeacherDocumentItem {
@@ -171,6 +191,29 @@ export const teacherDocumentService = {
     if (!response.ok) {
       throw new Error(await parseError(response));
     }
+  },
+
+  async getBookChapters(bookId: number, token: string): Promise<BookChapter[]> {
+    const response = await aiFetch(`${FAST_API_BASE_URL}/books/theory/${bookId}/chapters`, {
+      headers: buildAuthHeader(token),
+    });
+    return handleJson<BookChapter[]>(response);
+  },
+
+  async getLessonContent(lessonId: number, token: string): Promise<LessonContentItem[]> {
+    const response = await aiFetch(`${FAST_API_BASE_URL}/books/theory/lessons/${lessonId}/content`, {
+      headers: buildAuthHeader(token),
+    });
+    return handleJson<LessonContentItem[]>(response);
+  },
+
+  async generateAIQuestionsForBanks(bankIds: number[], numQuestions: number, token: string): Promise<{ generated_count: number; bank_ids: number[] }> {
+    const response = await aiFetch(`${FAST_API_BASE_URL}/books/question-banks/generate-ai`, {
+      method: 'POST',
+      headers: { ...buildAuthHeader(token), 'Content-Type': 'application/json' },
+      body: JSON.stringify({ bank_ids: bankIds, num_questions: numQuestions }),
+    });
+    return handleJson<{ generated_count: number; bank_ids: number[] }>(response);
   },
 
   getTokenOrThrow(): string {

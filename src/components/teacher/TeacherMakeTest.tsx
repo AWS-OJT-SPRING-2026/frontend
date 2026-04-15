@@ -1,9 +1,11 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
+import { useLocation } from 'react-router-dom';
 import {
     CalendarBlank, Lightning, Eye, Trash, PaperPlaneTilt,
     Plus, SquaresFour, ChartBar, Clock, TextB, TextItalic,
     BookOpen, Warning, ArrowsClockwise, Users, ShieldWarning, ChatsCircle, CheckCircle, XCircle, FilePdf
 } from '@phosphor-icons/react';
+import { Bot as Robot } from 'lucide-react';
 import { Input } from '../ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
 import { useSettings } from '../../context/SettingsContext';
@@ -11,6 +13,7 @@ import { assignmentService, AssignmentResponse, AssignmentDetailResponse, Assign
 import { authService } from '../../services/authService';
 import { classroomService } from '../../services/classroomService';
 import { feedbackService } from '../../services/feedbackService';
+import { teacherDocumentService } from '../../services/teacherDocumentService';
 import { ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip, LabelList, Cell } from 'recharts';
 import { MathRenderer } from '../ui/MathRenderer';
 import { parseVnDate } from '../../lib/timeUtils';
@@ -337,17 +340,19 @@ function CreateTest({ isDark, onSaved }: { isDark: boolean; onSaved: () => void 
     const [classroomId, setClassroomId] = useState('');
     const [title, setTitle] = useState('');
     const [assignmentType, setAssignmentType] = useState<'TEST' | 'ASSIGNMENT'>('TEST');
-    const [format, setFormat] = useState<'MULTIPLE_CHOICE' | 'ESSAY'>('MULTIPLE_CHOICE');
     const [startTime, setStartTime] = useState('');
     const [endTime, setEndTime] = useState('');
     const [deadline, setDeadline] = useState('');
     const [durationMinutes, setDurationMinutes] = useState('30');
     const [displayAnswerMode, setDisplayAnswerMode] = useState<DisplayAnswerMode>('IMMEDIATE');
-    const [bankId, setBankId] = useState('');
+    // Multi-bank selection
+    const [selectAllBanks, setSelectAllBanks] = useState(true);
+    const [selectedBankIds, setSelectedBankIds] = useState<number[]>([]);
     const [difficultyLevel, setDifficultyLevel] = useState('');
     const [limit, setLimit] = useState('10');
     const [questions, setQuestions] = useState<(QuestionPreviewResponse | null)[]>([]);
     const [loadingQ, setLoadingQ] = useState(false);
+    const [generatingAI, setGeneratingAI] = useState(false);
     const [refreshingIdx, setRefreshingIdx] = useState<number | null>(null);
     const [saving, setSaving] = useState(false);
     const [classrooms, setClassrooms] = useState<{ classID: number; className: string; subjectName: string }[]>([]);
@@ -361,18 +366,85 @@ function CreateTest({ isDark, onSaved }: { isDark: boolean; onSaved: () => void 
         assignmentService.getMyBanks(token).then(data => setBanks(data)).catch(() => {});
     }, []);
 
+    const toggleBank = (id: number) => {
+        setSelectedBankIds(prev =>
+            prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]
+        );
+        setSelectAllBanks(false);
+    };
+
     const fetchRandomQuestions = async () => {
         const token = authService.getToken();
         if (!token) return;
         setLoadingQ(true);
         setError('');
         try {
-            const data = await assignmentService.getRandomQuestions({
-                bankId: bankId && bankId !== 'all' ? Number(bankId) : undefined,
-                difficultyLevel: difficultyLevel && difficultyLevel !== 'all' ? Number(difficultyLevel) : undefined,
-                limit: Number(limit) || 10,
-            }, token);
-            setQuestions(data);
+            const requestedLimit = Number(limit) || 10;
+            const diff = difficultyLevel && difficultyLevel !== 'all' ? Number(difficultyLevel) : undefined;
+            let allQuestions: QuestionPreviewResponse[] = [];
+
+            if (selectAllBanks || selectedBankIds.length === 0) {
+                // All banks (existing behaviour – server filters by teacher ownership)
+                allQuestions = await assignmentService.getRandomQuestions({
+                    difficultyLevel: diff,
+                    limit: requestedLimit * 3, // fetch more for dedup headroom
+                }, token);
+            } else {
+                // Fetch from each selected bank then combine
+                for (const id of selectedBankIds) {
+                    const data = await assignmentService.getRandomQuestions({
+                        bankId: id,
+                        difficultyLevel: diff,
+                        limit: requestedLimit * 2,
+                    }, token);
+                    allQuestions = [...allQuestions, ...data];
+                }
+                // Deduplicate by question id
+                const seen = new Set<number>();
+                allQuestions = allQuestions.filter(q => {
+                    if (seen.has(q.id)) return false;
+                    seen.add(q.id);
+                    return true;
+                });
+                // Shuffle and trim to requested limit
+                for (let i = allQuestions.length - 1; i > 0; i--) {
+                    const j = Math.floor(Math.random() * (i + 1));
+                    [allQuestions[i], allQuestions[j]] = [allQuestions[j], allQuestions[i]];
+                }
+                allQuestions = allQuestions.slice(0, requestedLimit);
+            }
+
+            setQuestions(allQuestions);
+
+            // If still not enough, generate AI questions for selected banks
+            const need = requestedLimit - allQuestions.filter(q => q !== null).length;
+            if (need > 0 && !selectAllBanks && selectedBankIds.length > 0) {
+                setGeneratingAI(true);
+                try {
+                    await teacherDocumentService.generateAIQuestionsForBanks(selectedBankIds, need, token);
+                    // Re-fetch to include newly generated AI questions
+                    const refreshed: QuestionPreviewResponse[] = [];
+                    const existingIds = new Set(allQuestions.map(q => q.id));
+                    for (const id of selectedBankIds) {
+                        const data = await assignmentService.getRandomQuestions({
+                            bankId: id,
+                            difficultyLevel: diff,
+                            limit: need * 2,
+                        }, token);
+                        for (const q of data) {
+                            if (!existingIds.has(q.id)) {
+                                existingIds.add(q.id);
+                                refreshed.push(q);
+                            }
+                        }
+                    }
+                    setQuestions(prev => [...prev, ...refreshed.slice(0, need)]);
+                } catch (aiErr: any) {
+                    setError(`Đã lấy ${allQuestions.length} câu (không đủ ${requestedLimit}). Lỗi sinh AI: ${aiErr.message ?? 'không xác định'}`);
+                } finally {
+                    setGeneratingAI(false);
+                }
+            }
         } catch (e: any) {
             setError(e.message ?? 'Lỗi lấy câu hỏi');
         } finally {
@@ -386,7 +458,7 @@ function CreateTest({ isDark, onSaved }: { isDark: boolean; onSaved: () => void 
         setRefreshingIdx(idx);
         try {
             const data = await assignmentService.getRandomQuestions({
-                bankId: bankId && bankId !== 'all' ? Number(bankId) : undefined,
+                bankId: !selectAllBanks && selectedBankIds.length === 1 ? selectedBankIds[0] : undefined,
                 difficultyLevel: difficultyLevel && difficultyLevel !== 'all' ? Number(difficultyLevel) : undefined,
                 limit: 5,
             }, token);
@@ -435,7 +507,7 @@ function CreateTest({ isDark, onSaved }: { isDark: boolean; onSaved: () => void 
                 classroomId: Number(classroomId),
                 title,
                 assignmentType,
-                format,
+                format: 'MULTIPLE_CHOICE',
                 startTime: assignmentType === 'TEST' ? toLocalDateTime(startTime) : null,
                 endTime: assignmentType === 'TEST' ? toLocalDateTime(endTime) : null,
                 deadline: assignmentType === 'ASSIGNMENT' ? toLocalDateTime(deadline) : null,
@@ -472,7 +544,7 @@ function CreateTest({ isDark, onSaved }: { isDark: boolean; onSaved: () => void 
                     <div className={`w-8 h-8 rounded-full border-2 font-extrabold flex items-center justify-center text-sm ${isDark ? 'bg-[#9a8b5a] border-white/20 text-[#11151d]' : 'bg-[#FCE38A] border-[#1A1A1A] text-[#1A1A1A]'}`}>1</div>
                     <h2 className={`text-xl font-extrabold ${txt}`}>Thông tin cơ bản</h2>
                 </div>
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
                     <div>
                         <p className={label}>Chọn lớp</p>
                         <Select value={classroomId} onValueChange={setClassroomId}>
@@ -492,17 +564,6 @@ function CreateTest({ isDark, onSaved }: { isDark: boolean; onSaved: () => void 
                             {[['TEST', 'Bài kiểm tra'], ['ASSIGNMENT', 'Bài tập']].map(([v, l]) => (
                                 <button key={v} onClick={() => setAssignmentType(v as 'TEST' | 'ASSIGNMENT')}
                                     className={`flex-1 text-xs font-extrabold rounded-xl transition-all ${assignmentType === v ? 'bg-[#FF6B4A] text-white shadow-sm' : isDark ? 'text-gray-400 hover:text-gray-100' : 'text-[#1A1A1A]/50 hover:text-[#1A1A1A]'}`}>
-                                    {l}
-                                </button>
-                            ))}
-                        </div>
-                    </div>
-                    <div>
-                        <p className={label}>Hình thức</p>
-                        <div className={`flex border-2 p-1 rounded-2xl h-11 gap-1 ${isDark ? 'bg-white/5 border-white/10' : 'bg-[#1A1A1A]/5 border-[#1A1A1A]/10'}`}>
-                            {[['MULTIPLE_CHOICE', 'Trắc nghiệm'], ['ESSAY', 'Tự luận']].map(([v, l]) => (
-                                <button key={v} onClick={() => setFormat(v as 'MULTIPLE_CHOICE' | 'ESSAY')}
-                                    className={`flex-1 text-xs font-extrabold rounded-xl transition-all ${format === v ? 'bg-[#FF6B4A] text-white shadow-sm' : isDark ? 'text-gray-400 hover:text-gray-100' : 'text-[#1A1A1A]/50 hover:text-[#1A1A1A]'}`}>
                                     {l}
                                 </button>
                             ))}
@@ -575,19 +636,54 @@ function CreateTest({ isDark, onSaved }: { isDark: boolean; onSaved: () => void 
                     <div className={`w-8 h-8 rounded-full border-2 font-extrabold flex items-center justify-center text-sm ${isDark ? 'bg-[#7873b8] border-white/20 text-[#11151d]' : 'bg-[#B8B5FF] border-[#1A1A1A] text-[#1A1A1A]'}`}>2</div>
                     <h2 className={`text-xl font-extrabold ${txt}`}>Phương thức lấy câu hỏi</h2>
                 </div>
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
-                    <div>
-                        <p className={label}>Ngân hàng câu hỏi</p>
-                        <Select value={bankId} onValueChange={setBankId}>
-                            <SelectTrigger className={inp}><SelectValue placeholder="Tất cả ngân hàng" /></SelectTrigger>
-                            <SelectContent>
-                                <SelectItem value="all">Tất cả ngân hàng</SelectItem>
-                                {banks.map(b => (
-                                    <SelectItem key={b.id} value={String(b.id)}>{b.bankName}</SelectItem>
-                                ))}
-                            </SelectContent>
-                        </Select>
+                {/* Multi-bank selector */}
+                <div>
+                    <p className={label}>Ngân hàng câu hỏi <span className="normal-case text-[10px] font-semibold ml-1">(tick chọn file, bỏ trống = tất cả)</span></p>
+                    <div className={`rounded-2xl border-2 p-3 max-h-44 overflow-y-auto space-y-1 ${isDark ? 'bg-[#20242b] border-white/15' : 'bg-[#F7F7F2] border-[#1A1A1A]/20'}`}>
+                        {/* "All banks" option */}
+                        <label className={`flex items-center gap-2 px-3 py-2 rounded-xl cursor-pointer transition-colors ${selectAllBanks ? (isDark ? 'bg-[#FF6B4A]/20' : 'bg-[#FF6B4A]/10') : (isDark ? 'hover:bg-white/5' : 'hover:bg-[#1A1A1A]/5')}`}>
+                            <input
+                                type="checkbox"
+                                checked={selectAllBanks}
+                                onChange={e => {
+                                    setSelectAllBanks(e.target.checked);
+                                    if (e.target.checked) setSelectedBankIds([]);
+                                }}
+                                className="accent-[#FF6B4A] w-4 h-4 rounded"
+                            />
+                            <span className={`text-sm font-extrabold ${selectAllBanks ? 'text-[#FF6B4A]' : (isDark ? 'text-gray-200' : 'text-[#1A1A1A]')}`}>
+                                Tất cả ngân hàng
+                            </span>
+                        </label>
+                        {banks.length === 0 && (
+                            <p className={`text-xs font-semibold px-3 py-1 ${isDark ? 'text-gray-500' : 'text-gray-400'}`}>Chưa có ngân hàng câu hỏi nào</p>
+                        )}
+                        {banks.map(b => (
+                            <label
+                                key={b.id}
+                                className={`flex items-center gap-2 px-3 py-2 rounded-xl cursor-pointer transition-colors ${selectedBankIds.includes(b.id) ? (isDark ? 'bg-[#FF6B4A]/20' : 'bg-[#FF6B4A]/10') : (isDark ? 'hover:bg-white/5' : 'hover:bg-[#1A1A1A]/5')}`}
+                            >
+                                <input
+                                    type="checkbox"
+                                    checked={selectedBankIds.includes(b.id)}
+                                    onChange={() => toggleBank(b.id)}
+                                    className="accent-[#FF6B4A] w-4 h-4 rounded"
+                                />
+                                <span className={`text-sm font-bold truncate ${selectedBankIds.includes(b.id) ? 'text-[#FF6B4A]' : (isDark ? 'text-gray-200' : 'text-[#1A1A1A]')}`}>
+                                    {b.bankName}
+                                </span>
+                                {b.subjectName && <span className={`text-xs font-semibold ml-auto shrink-0 ${isDark ? 'text-gray-500' : 'text-gray-400'}`}>{b.subjectName}</span>}
+                            </label>
+                        ))}
                     </div>
+                    {!selectAllBanks && selectedBankIds.length > 0 && (
+                        <p className={`mt-1.5 text-[11px] font-semibold ${isDark ? 'text-gray-400' : 'text-[#1A1A1A]/50'}`}>
+                            Đã chọn {selectedBankIds.length} file. Nếu không đủ câu, AI sẽ tự sinh thêm và lưu vào ngân hàng.
+                        </p>
+                    )}
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
                     <div>
                         <p className={label}>Độ khó</p>
                         <Select value={difficultyLevel} onValueChange={setDifficultyLevel}>
@@ -606,11 +702,19 @@ function CreateTest({ isDark, onSaved }: { isDark: boolean; onSaved: () => void 
                             className={inp} />
                     </div>
                 </div>
+
+                {generatingAI && (
+                    <div className={`flex items-center gap-2 text-sm font-bold ${isDark ? 'text-[#FF6B4A]' : 'text-[#FF6B4A]'}`}>
+                        <Robot className="w-4 h-4 animate-pulse" />
+                        Đang sinh câu hỏi AI bổ sung...
+                    </div>
+                )}
+
                 <div className="flex justify-center pt-2">
-                    <button onClick={fetchRandomQuestions} disabled={loadingQ}
+                    <button onClick={fetchRandomQuestions} disabled={loadingQ || generatingAI}
                         className="flex items-center gap-2 bg-[#FF6B4A] hover:bg-[#ff5535] text-white font-extrabold h-12 px-8 rounded-2xl shadow-md transition-colors text-base disabled:opacity-60">
                         <Lightning className="w-5 h-5" weight="fill" />
-                        {loadingQ ? 'Đang tạo...' : 'Tạo đề tự động'}
+                        {generatingAI ? 'AI đang sinh câu hỏi...' : loadingQ ? 'Đang tạo...' : 'Tạo đề tự động'}
                     </button>
                 </div>
             </div>
@@ -1827,8 +1931,20 @@ function ReportView({ id, isDark }: { id: number; isDark: boolean }) {
 export function TeacherMakeTest() {
     const { theme } = useSettings();
     const isDark = theme === 'dark';
+    const location = useLocation();
     const [view, setView] = useState<View>('dashboard');
     const [selectedId, setSelectedId] = useState<number | null>(null);
+
+    // Auto-open detail view when navigated from dashboard with a specific assignment ID
+    useEffect(() => {
+        const openDetailId = (location.state as { openDetailId?: number } | null)?.openDetailId;
+        if (openDetailId) {
+            setSelectedId(openDetailId);
+            setView('detail');
+            // Clear state so going back doesn't re-trigger
+            window.history.replaceState({}, '', location.pathname);
+        }
+    }, []);
 
     const goDetail = (a: AssignmentResponse) => { setSelectedId(a.assignmentID); setView('detail'); };
     const goReport = (id: number) => { setSelectedId(id); setView('report'); };
