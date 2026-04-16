@@ -262,7 +262,6 @@ export function StudentStudySpace() {
 
     const handleDeleteSession = async (id: string, e: React.MouseEvent) => {
         e.stopPropagation();
-        if (!confirm('Xóa cuộc hội thoại này?')) return;
         setSessions(prev => prev.filter(s => s.id !== id));
         if (sessionId === id) createNewSession();
         try { await deleteChatSession(id); } catch { }

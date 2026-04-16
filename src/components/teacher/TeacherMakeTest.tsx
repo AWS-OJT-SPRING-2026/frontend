@@ -61,12 +61,15 @@ function formatRelativeTime(dt: string | null) {
 
 type TeacherReportSubmissionStatus = 'ON_TIME' | 'LATE' | 'IN_PROGRESS' | 'NOT_STARTED' | 'MISSING';
 
-function getSubmissionTimingTag(status?: TeacherReportSubmissionStatus | null) {
+function getSubmissionTimingTag(status?: TeacherReportSubmissionStatus | null, type?: string) {
     if (status === 'ON_TIME') return { label: 'Nộp đúng hạn', cls: 'bg-green-50 text-green-700 border-green-200' };
     if (status === 'LATE') return { label: 'Nộp muộn', cls: 'bg-yellow-50 text-yellow-700 border-yellow-200' };
     if (status === 'IN_PROGRESS') return { label: 'Đang làm', cls: 'bg-blue-50 text-blue-700 border-blue-200' };
-    if (status === 'NOT_STARTED') return { label: 'Chưa làm bài', cls: 'bg-slate-100 text-slate-700 border-slate-300' };
-    return { label: 'Không nộp', cls: 'bg-red-50 text-red-700 border-red-200' };
+    
+    const notDoneLabel = type === 'ASSIGNMENT' ? 'Chưa nộp bài' : 'Chưa làm bài';
+    if (status === 'NOT_STARTED') return { label: notDoneLabel, cls: 'bg-slate-100 text-slate-700 border-slate-300' };
+    if (status === 'MISSING') return { label: notDoneLabel, cls: 'bg-red-50 text-red-700 border-red-200' };
+    return { label: notDoneLabel, cls: 'bg-red-50 text-red-700 border-red-200' };
 }
 
 function getAccuracyColorClass(rate: number) {
@@ -1351,8 +1354,17 @@ function ReportView({ id, isDark }: { id: number; isDark: boolean }) {
     const isPastDue = !Number.isNaN(dueAtMs) && Date.now() > dueAtMs;
 
     const resolveStudentStatus = (student: AssignmentReportResponse['studentResults'][number]): TeacherReportSubmissionStatus => {
+        if (student.submissionStatus === 'MISSING' || student.submissionTimingStatus === 'MISSING') {
+            return 'MISSING';
+        }
+
         const hasSubmitTime = Boolean(student.submitTime);
         const isMarkedSubmitted = student.submissionStatus === 'SUBMITTED';
+        const neverStarted = (!student.timeTaken || student.timeTaken === 0) && (!student.score || student.score === 0);
+
+        if (neverStarted && isPastDue) {
+            return 'MISSING';
+        }
 
         // Guard against backend rows that still carry ON_TIME/LATE while submitTime is missing.
         if (hasSubmitTime && student.submissionTimingStatus === 'ON_TIME') return 'ON_TIME';
@@ -1578,7 +1590,7 @@ function ReportView({ id, isDark }: { id: number; isDark: boolean }) {
 
                         <div>
                             <div className="flex justify-between items-center mb-1.5">
-                                <span className={`text-sm font-semibold ${txt}`}>Chưa nộp</span>
+                                <span className={`text-sm font-semibold ${txt}`}>{assignmentDetail?.assignmentType === 'ASSIGNMENT' ? 'Chưa nộp' : 'Chưa làm'}</span>
                                 <span className="text-sm font-extrabold text-red-500">{missingCount}</span>
                             </div>
                             <div className={`w-full rounded-full h-2.5 ${isDark ? 'bg-white/10' : 'bg-gray-100'}`}>
@@ -1609,7 +1621,7 @@ function ReportView({ id, isDark }: { id: number; isDark: boolean }) {
                         {([
                             { key: 'all', label: 'Tất cả', count: report.studentResults.length },
                             { key: 'submitted', label: 'Đã nộp', count: onTimeCount + lateCount },
-                            { key: 'missing', label: 'Chưa nộp', count: missingCount },
+                            { key: 'missing', label: assignmentDetail?.assignmentType === 'ASSIGNMENT' ? 'Chưa nộp' : 'Chưa làm', count: missingCount },
                         ] as const).map(tab => (
                             <button
                                 key={tab.key}
@@ -1664,8 +1676,8 @@ function ReportView({ id, isDark }: { id: number; isDark: boolean }) {
                                             {!isSubmitted ? 'N/A' : (s.timeTaken ? `${Math.floor(s.timeTaken / 60)}:${String(s.timeTaken % 60).padStart(2, '0')}` : '—')}
                                         </td>
                                         <td className="py-2.5 pr-4 text-center">
-                                            <span className={`inline-flex items-center text-[11px] font-extrabold px-2.5 py-1 rounded-xl border ${getSubmissionTimingTag(displayStatus).cls}`}>
-                                                {getSubmissionTimingTag(displayStatus).label}
+                                            <span className={`inline-flex items-center text-[11px] font-extrabold px-2.5 py-1 rounded-xl border ${getSubmissionTimingTag(displayStatus, assignmentDetail?.assignmentType).cls}`}>
+                                                {getSubmissionTimingTag(displayStatus, assignmentDetail?.assignmentType).label}
                                             </span>
                                         </td>
                                         <td className={`py-2.5 px-4 text-center font-semibold ${sub}`}>

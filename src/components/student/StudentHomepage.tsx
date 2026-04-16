@@ -13,9 +13,9 @@ import { notificationService } from '../../services/notificationService';
 import { studentDashboardService, type StudentDashboardResponse } from '../../services/studentDashboardService';
 import { api } from '../../services/api';
 import { authService } from '../../services/authService';
+import { profileService } from '../../services/profileService';
 import { FAST_API_BASE_URL as FAST_API_URL } from '../../services/env';
 
-const DEADLINE_TABS = ['Tất cả', 'Toán học', 'Tiếng Anh', 'Ngữ Văn'];
 const POMODORO_WORK = 25 * 60;
 
 // ─── Component ───────────────────────────────────────────────────────────────
@@ -65,7 +65,27 @@ export function StudentHomepage() {
     const [homepageRoadmaps, setHomepageRoadmaps] = useState<any[]>([]);
     const [selectedHomepageRoadmapId, setSelectedHomepageRoadmapId] = useState<number | null>(null);
 
+    const [currentUserId, setCurrentUserId] = useState<number | null>(null);
+
     // ── Effects ──────────────────────────────────────────────────────────────
+
+    // Initial effect to fetch current user ID
+    useEffect(() => {
+        let mounted = true;
+        const resolveUser = async () => {
+            try {
+                const token = authService.getToken();
+                if (!token) return;
+                const p = await profileService.getMyProfile(token);
+                const c = Number(p.userID ?? p.studentID ?? p.teacherID);
+                if (Number.isFinite(c) && c > 0 && mounted) {
+                    setCurrentUserId(c);
+                }
+            } catch { }
+        };
+        resolveUser();
+        return () => { mounted = false; };
+    }, []);
 
     useEffect(() => {
         const handler = (e: MouseEvent) => {
@@ -78,7 +98,8 @@ export function StudentHomepage() {
 
     // Fetch AI roadmaps for homepage card
     useEffect(() => {
-        fetch(`${FAST_API_URL}/roadmap/all/1`)
+        if (!currentUserId) return;
+        fetch(`${FAST_API_URL}/roadmap/all/${currentUserId}`)
             .then(res => res.ok ? res.json() : [])
             .then(data => {
                 if (Array.isArray(data) && data.length > 0) {
@@ -87,7 +108,7 @@ export function StudentHomepage() {
                 }
             })
             .catch(() => {});
-    }, []);
+    }, [currentUserId]);
 
     useEffect(() => {
         const token = authService.getToken();
@@ -120,10 +141,11 @@ export function StudentHomepage() {
 
     // Fetch dashboard on mount — both sources merged atomically
     useEffect(() => {
+        if (!currentUserId) return;
         const FAST_API = import.meta.env.VITE_FAST_API_BASE_URL || 'http://localhost:8000/api/v1';
 
         const dashboardP = studentDashboardService.getMyDashboard().catch(() => null);
-        const roadmapP = fetch(`${FAST_API}/roadmap/current/1`)
+        const roadmapP = fetch(`${FAST_API}/roadmap/current/${currentUserId}`)
             .then(r => r.ok ? r.json() : null)
             .catch(() => null);
 
@@ -153,7 +175,7 @@ export function StudentHomepage() {
 
             setDashboardData(merged);
         });
-    }, []);
+    }, [currentUserId]);
 
     useEffect(() => {
         if (!pomRunning) return;
@@ -229,6 +251,8 @@ export function StudentHomepage() {
     };
 
     const safeDeadlines = dashboardData?.deadlines || [];
+    const dynamicDeadlineTabs = ['Tất cả', ...Array.from(new Set(safeDeadlines.map(d => d.subject)))];
+
     const filteredDeadlines = deadlineTab === 'Tất cả'
         ? safeDeadlines
         : safeDeadlines.filter(d => d.subject === deadlineTab);
@@ -638,12 +662,12 @@ export function StudentHomepage() {
                     </div>
 
                     {/* Subject tabs */}
-                    <div className="flex gap-2 mb-5">
-                        {DEADLINE_TABS.map(tab => (
+                    <div className="flex gap-2 mb-5 overflow-x-auto hide-scrollbar pb-2">
+                        {dynamicDeadlineTabs.map(tab => (
                             <button
                                 key={tab}
                                 onClick={() => setDeadlineTab(tab)}
-                                className={`px-4 py-1.5 rounded-full text-xs font-extrabold transition-all ${deadlineTab === tab
+                                className={`px-4 py-1.5 rounded-full text-xs font-extrabold whitespace-nowrap transition-all ${deadlineTab === tab
                                     ? (isDark ? 'bg-white text-[#1A1A1A]' : 'bg-[#1A1A1A] text-white')
                                     : (isDark ? 'bg-white/5 text-gray-500 hover:bg-white/10 border border-white/10' : 'bg-white text-gray-500 hover:bg-gray-100 border border-gray-200')
                                 }`}

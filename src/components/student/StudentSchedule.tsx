@@ -491,6 +491,7 @@ export function StudentSchedule() {
     const [scheduleEvents, setScheduleEvents] = useState<ScheduleEntry[]>([]);
     const [scheduleError, setScheduleError] = useState<string | null>(null);
     const [brokenAvatarIds, setBrokenAvatarIds] = useState<Set<number>>(new Set());
+    const [moreDialog, setMoreDialog] = useState<{ open: boolean; title: string; items: ScheduleEntry[] }>({ open: false, title: '', items: [] });
 
     const [showClassmates, setShowClassmates] = useState<ScheduleEntry | null>(null);
     const [isNotificationsOpen, setIsNotificationsOpen] = useState(false);
@@ -1097,8 +1098,8 @@ export function StudentSchedule() {
                                             <div className={`text-xs font-extrabold mb-2 ${day.isToday ? 'text-white bg-[#ff7849] w-6 h-6 rounded-full flex items-center justify-center' : day.isCurrentMonth ? (isDark ? 'text-[#f3f4f6]' : 'text-[#1A1A1A]') : 'text-gray-400'}`}>
                                                 {day.date}
                                             </div>
-                                            <div className="space-y-1.5 flex-1 max-h-[105px] overflow-y-auto pr-0.5 custom-scrollbar">
-                                                {dayEvents.map(ev => {
+                                            <div className="space-y-1.5 flex-1 pr-0.5">
+                                                {dayEvents.slice(0, 3).map(ev => {
                                                     const { status } = getEventStatusInfo(ev.startHour, ev.startMin, ev.endHour, ev.endMin, ev.dateKey, now);
                                                     const baseStyle = EVENT_STATUS_STYLES[status];
                                                     const style = isDark
@@ -1108,24 +1109,36 @@ export function StudentSchedule() {
                                                                 ? { bg: 'rgba(99,102,241,0.18)', border: 'rgba(129,140,248,0.45)', dot: baseStyle.dot, text: 'text-[#c7d2fe]' }
                                                                 : { bg: 'rgba(255,120,73,0.14)', border: 'rgba(255,120,73,0.38)', dot: baseStyle.dot, text: 'text-[#ffb094]' }
                                                         : baseStyle;
+                                                    const isHovered = hoveredEventId === ev.id;
                                                     return (
                                                         <div 
                                                             key={ev.id}
                                                             onClick={() => handleEventSelect(ev)}
                                                             onMouseEnter={(e) => { setHoveredEventId(ev.id); showTooltip(ev, e); }}
                                                             onMouseLeave={() => { setHoveredEventId(null); hideTooltip(); }}
-                                                            className={`px-2 py-1.5 rounded-lg truncate text-[11px] font-extrabold cursor-pointer transition-transform hover:scale-[1.02] border flex flex-col ${isInactiveStatus(ev.classStatus) ? 'grayscale opacity-50' : ''} ${status === 'ongoing' ? 'animate-border-blink shadow-sm' : status === 'past' ? 'opacity-70' : 'opacity-100'}`}
+                                                            className={`relative px-1.5 py-1 rounded-lg cursor-pointer border-2 overflow-hidden flex flex-col ${isInactiveStatus(ev.classStatus) ? 'grayscale opacity-50' : ''}`}
                                                             style={{
                                                                 backgroundColor: style.bg,
                                                                 borderColor: isInactiveStatus(ev.classStatus) ? '#d1d5db' : style.border,
                                                                 borderStyle: isInactiveStatus(ev.classStatus) ? 'dashed' : 'solid',
-                                                                borderWidth: isInactiveStatus(ev.classStatus) ? '1px' : undefined,
+                                                                boxShadow: isHovered
+                                                                    ? `0 8px 25px rgba(0,0,0,0.18), 0 0 0 2px ${style.border}40`
+                                                                    : 'none',
+                                                                transform: isHovered ? 'translateY(-2px) scale(1.02)' : 'translateY(0) scale(1)',
+                                                                transition: 'box-shadow 0.22s cubic-bezier(.4,0,.2,1), border-color 0.15s ease, transform 0.22s cubic-bezier(.4,0,.2,1)',
                                                             }}
                                                         >
                                                             <div className="flex justify-between items-center mb-0.5">
-                                                                <span className="truncate">{pad(ev.startHour)}:{pad(ev.startMin)}</span>
-                                                                {ev.attendanceStatus === 'present' && <CheckCircle className="text-emerald-600 shrink-0 w-3 h-3" weight="fill" />}
-                                                                {ev.attendanceStatus === 'absent' && <XCircle className="text-red-600 shrink-0 w-3 h-3" weight="fill" />}
+                                                                <span className={`text-[10px] font-extrabold ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>{pad(ev.startHour)}:{pad(ev.startMin)}</span>
+                                                                <div className="flex items-center gap-1">
+                                                                    {ev.attendanceStatus === 'present' && <CheckCircle className="text-emerald-600 shrink-0 w-3 h-3" weight="fill" />}
+                                                                    {ev.attendanceStatus === 'absent' && <XCircle className="text-red-600 shrink-0 w-3 h-3" weight="fill" />}
+                                                                    {ev.meet && (
+                                                                        <span className={`inline-flex items-center justify-center rounded-sm border p-0.5 ${isDark ? 'bg-emerald-500/20 border-emerald-500/30' : 'bg-[#DCFCE7] border-[#86EFAC]'}`} title="Có link Meet">
+                                                                            <Video className={`w-2.5 h-2.5 ${isDark ? 'text-emerald-400' : 'text-[#15803D]'}`} weight="fill" />
+                                                                        </span>
+                                                                    )}
+                                                                </div>
                                                             </div>
                                                             <span className={`truncate text-[11px] font-extrabold ${isInactiveStatus(ev.classStatus) ? 'line-through decoration-gray-500/70' : ''} ${isDark ? 'text-[#1A1A1A]' : 'text-[#1A1A1A]'}`}>{ev.subject}</span>
                                                             <span className="truncate mt-0.5 text-[10px] font-bold flex items-center gap-1 text-[#1A1A1A]/70">
@@ -1135,6 +1148,19 @@ export function StudentSchedule() {
                                                         </div>
                                                     );
                                                 })}
+                                                {dayEvents.length > 3 && (
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => {
+                                                            const parts = dayEvents[0].dateKey.split('-');
+                                                            const moreTitle = `Ngày ${parts[2]}/${parts[1]}/${parts[0]}`;
+                                                            setMoreDialog({ open: true, title: moreTitle, items: dayEvents.slice(3) });
+                                                        }}
+                                                        className="text-[10px] font-extrabold text-[#FF6B4A] px-1 hover:underline"
+                                                    >
+                                                        +{dayEvents.length - 3} hơn
+                                                    </button>
+                                                )}
                                             </div>
                                         </div>
                                     );
@@ -1447,6 +1473,30 @@ export function StudentSchedule() {
                 onBlockedAction={handleInactiveBlockedAction}
             />
             {tooltipData && <EventTooltip event={tooltipData.event} x={tooltipData.x} y={tooltipData.y} now={now} />}
+
+            <Dialog open={moreDialog.open} onOpenChange={(open) => setMoreDialog((p) => ({ ...p, open }))}>
+                <DialogContent className="rounded-3xl max-w-md border-2 border-[#1A1A1A]">
+                    <DialogHeader>
+                        <DialogTitle className="text-lg font-extrabold text-[#1A1A1A]">{moreDialog.title}</DialogTitle>
+                        <DialogDescription className="font-bold">Danh sách lịch học ẩn</DialogDescription>
+                    </DialogHeader>
+                    <div className="max-h-[320px] overflow-y-auto space-y-2 pr-1 custom-scrollbar">
+                        {moreDialog.items.map((ev) => (
+                            <button
+                                key={ev.id}
+                                onClick={() => {
+                                    setMoreDialog((p) => ({ ...p, open: false }));
+                                    setSelectedEvent(ev);
+                                }}
+                                className="w-full text-left rounded-xl border-2 border-[#1A1A1A]/10 bg-[#F7F7F2] px-3 py-2 hover:border-[#FF6B4A]/35 transition-colors"
+                            >
+                                <div className="text-sm font-extrabold text-[#1A1A1A]">{ev.subject}</div>
+                                <div className="text-[11px] text-gray-500 font-semibold">Lớp {ev.className} · {pad(ev.startHour)}:{pad(ev.startMin)} - {pad(ev.endHour)}:{pad(ev.endMin)}</div>
+                            </button>
+                        ))}
+                    </div>
+                </DialogContent>
+            </Dialog>
 
             {/* Classmates Dialog */}
             <Dialog open={!!showClassmates} onOpenChange={(open) => !open && setShowClassmates(null)}>

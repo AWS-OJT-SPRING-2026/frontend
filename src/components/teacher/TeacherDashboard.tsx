@@ -11,6 +11,7 @@ import { teacherDocumentService, type TeacherDocumentItem } from '../../services
 import { timetableService, type TimetableItem } from '../../services/timetableService';
 import { notificationService, type NotificationItem } from '../../services/notificationService';
 import { assignmentService, type AssignmentResponse } from '../../services/assignmentService';
+import { classroomService, type TeacherClassroomOption } from '../../services/classroomService';
 import { authService } from '../../services/authService';
 import { cn } from '../../lib/utils';
 import { parseVnDate } from '../../lib/timeUtils';
@@ -59,16 +60,23 @@ export function TeacherDashboard() {
     const [loadingNotifs, setLoadingNotifs] = useState(true);
     const [loadingTests, setLoadingTests] = useState(true);
     const [scoreDistribution, setScoreDistribution] = useState<{ below5: number; above5: number; total: number } | null>(null);
+    const [teacherClasses, setTeacherClasses] = useState<TeacherClassroomOption[]>([]);
 
-    // Notification modal state (kept from previous dashboard)
     const [isNotifyModalOpen, setIsNotifyModalOpen] = useState(false);
     const [isSending, setIsSending] = useState(false);
     const [useAiSuggestion, setUseAiSuggestion] = useState(true);
+    const [isGeneratingAi, setIsGeneratingAi] = useState(false);
     const [notifyForm, setNotifyForm] = useState({
         title: '',
         content: '',
-        classTarget: 'Tất cả lớp',
+        classTarget: '',
     });
+
+    useEffect(() => {
+        if (teacherClasses.length > 0 && !notifyForm.classTarget) {
+            setNotifyForm(prev => ({ ...prev, classTarget: String(teacherClasses[0].classID) }));
+        }
+    }, [teacherClasses, notifyForm.classTarget]);
 
     // Load data
     useEffect(() => {
@@ -98,6 +106,13 @@ export function TeacherDashboard() {
             .then(setNotifications)
             .catch(() => {})
             .finally(() => setLoadingNotifs(false));
+
+        // Teacher's classes
+        if (token) {
+            classroomService.getMyClassroomOptions(token)
+                .then(setTeacherClasses)
+                .catch(() => {});
+        }
 
         // Tests
         if (token) {
@@ -135,23 +150,46 @@ export function TeacherDashboard() {
         }
     }, []);
 
-    const handleSendNotification = useCallback(() => {
-        if (!notifyForm.title.trim() || !notifyForm.content.trim() || isSending) return;
+    const handleSendNotification = useCallback(async () => {
+        if (!notifyForm.title.trim() || !notifyForm.content.trim() || !notifyForm.classTarget || isSending) return;
         setIsSending(true);
-        window.setTimeout(() => {
+        try {
+            await notificationService.sendClassNotification(Number(notifyForm.classTarget), {
+                title: notifyForm.title,
+                content: notifyForm.content
+            });
             setIsNotifyModalOpen(false);
+            setNotifyForm({ title: '', content: '', classTarget: teacherClasses.length > 0 ? String(teacherClasses[0].classID) : '' });
+            // Refresh to see if it shows in teacher's admin timeline
+            notificationService.getMyNotifications('SYSTEM').then(setNotifications).catch(() => {});
+        } catch (e) {
+            console.error('Failed to send class notification', e);
+        } finally {
             setIsSending(false);
-            setNotifyForm({ title: '', content: '', classTarget: 'Tất cả lớp' });
-        }, 800);
-    }, [notifyForm, isSending]);
+        }
+    }, [notifyForm, isSending, teacherClasses]);
+
+    const handleGenerateAi = async () => {
+        if (!notifyForm.title.trim() || isGeneratingAi) return;
+        setIsGeneratingAi(true);
+        try {
+            await new Promise(r => setTimeout(r, 1000));
+            setNotifyForm(prev => ({
+                ...prev,
+                content: `Dựa trên tiêu đề "${prev.title}":\n\nXin chào các em học sinh,\n\nĐây là thông báo liên quan đến nội dung: ${prev.title}. Các em vui lòng theo dõi trên hệ thống và hoàn thành các yêu cầu, bài tập tương ứng đúng thời hạn được giao.\n\nNếu có thắc mắc, vui lòng liên hệ giáo viên bộ môn.\n\nChúc các em một buổi học hiệu quả!`
+            }));
+        } finally {
+            setIsGeneratingAi(false);
+        }
+    };
 
     const txt = isDark ? 'text-gray-100' : 'text-[#1A1A1A]';
     const sub = isDark ? 'text-gray-400' : 'text-[#1A1A1A]/50';
     const card = isDark ? 'bg-[#171b20] border-white/10' : 'bg-white border-[#1A1A1A]/15';
     const sectionTitle = cn('text-lg font-extrabold mb-4 flex items-center gap-2', txt);
 
-    const theoryDocs = documents.filter(d => d.doc_type === 'theory' || d.doc_type === 'THEORY');
-    const questionDocs = documents.filter(d => d.doc_type === 'question' || d.doc_type === 'QUESTION');
+    const theoryDocs = documents.filter(d => d.doc_type === 'theory' || (d.doc_type as any) === 'THEORY');
+    const questionDocs = documents.filter(d => d.doc_type === 'question' || (d.doc_type as any) === 'QUESTION');
 
     const overlayRoot = typeof document !== 'undefined' ? document.body : null;
 
@@ -561,14 +599,37 @@ export function TeacherDashboard() {
                             </div>
 
                             <div className="px-6 py-5 space-y-4">
+                                <div>
+                                    <span className="text-sm font-bold text-[#1A1A1A]/80 mb-2 block">Mẫu thông báo nhanh</span>
+                                    <div className="flex gap-2">
+                                        <button
+                                            type="button"
+                                            onClick={() => setNotifyForm(p => ({ ...p, title: 'Thông báo: Mở khóa lớp học', content: 'Chào các em,\n\nLớp học của chúng ta đã chính thức được mở khóa và các tài liệu học tập đã sẵn sàng. Các em hãy truy cập vào hệ thống để bắt đầu xem nội dung và làm bài nhé.\n\nTrân trọng,' }))}
+                                            className="text-xs font-extrabold px-3 py-1.5 rounded-xl border border-[#1A1A1A]/20 transition-colors bg-white hover:bg-gray-50 text-[#1A1A1A]"
+                                        >
+                                            Mở lớp
+                                        </button>
+                                        <button
+                                            type="button"
+                                            onClick={() => setNotifyForm(p => ({ ...p, title: 'Thông báo: Khóa lớp học', content: 'Chào các em,\n\nHiện tại lớp học của chúng ta đã được khóa theo lịch trình. Mong các em đã hoàn thành đầy đủ bài tập và theo dõi sát sao tiến trình học thuật. Nếu có thắc mắc hãy liên hệ ngay với giáo viên.\n\nTrân trọng,' }))}
+                                            className="text-xs font-extrabold px-3 py-1.5 rounded-xl border border-[#1A1A1A]/20 transition-colors bg-white hover:bg-gray-50 text-[#1A1A1A]"
+                                        >
+                                            Khóa lớp
+                                        </button>
+                                    </div>
+                                </div>
                                 <label className="space-y-1.5 block">
                                     <span className="text-sm font-bold text-[#1A1A1A]/80">Lớp nhận thông báo</span>
-                                    <input
+                                    <select
                                         value={notifyForm.classTarget}
                                         onChange={e => setNotifyForm(p => ({ ...p, classTarget: e.target.value }))}
-                                        className="h-10 w-full rounded-xl border border-[#1A1A1A]/20 px-3 text-sm font-semibold text-[#1A1A1A] outline-none focus:border-[#FF6B4A]"
-                                        placeholder="Ví dụ: Tất cả lớp, 12A1, ..."
-                                    />
+                                        className="h-10 w-full rounded-xl border border-[#1A1A1A]/20 px-3 text-sm font-semibold text-[#1A1A1A] outline-none focus:border-[#FF6B4A] appearance-none"
+                                    >
+                                        <option value="" disabled>Chọn lớp học</option>
+                                        {teacherClasses.map(c => (
+                                            <option key={c.classID} value={c.classID}>{c.className} - {c.subjectName}</option>
+                                        ))}
+                                    </select>
                                 </label>
                                 <label className="space-y-1.5 block">
                                     <span className="text-sm font-bold text-[#1A1A1A]/80">Tiêu đề</span>
@@ -589,18 +650,32 @@ export function TeacherDashboard() {
                                         placeholder="Nhập nội dung gửi cho học sinh"
                                     />
                                 </label>
-                                <label className="flex items-center justify-between rounded-xl border border-[#1A1A1A]/10 px-3 py-2">
-                                    <span className="text-sm font-bold text-[#1A1A1A]/80 inline-flex items-center gap-2">
-                                        <Bot size={16} className="text-[#FF6B4A]" /> Gợi ý nội dung bằng AI
-                                    </span>
-                                    <button
-                                        type="button"
-                                        onClick={() => setUseAiSuggestion(p => !p)}
-                                        className={`w-10 h-6 rounded-full p-0.5 transition-colors ${useAiSuggestion ? 'bg-[#FF6B4A]' : 'bg-[#1A1A1A]/20'}`}
-                                    >
-                                        <span className={`block w-5 h-5 rounded-full bg-white transition-transform ${useAiSuggestion ? 'translate-x-4' : 'translate-x-0'}`} />
-                                    </button>
-                                </label>
+                                <div>
+                                    <label className="flex items-center justify-between rounded-xl border border-[#1A1A1A]/10 px-3 py-2">
+                                        <span className="text-sm font-bold text-[#1A1A1A]/80 inline-flex items-center gap-2">
+                                            <Bot size={16} className="text-[#FF6B4A]" /> Gợi ý nội dung bằng AI
+                                        </span>
+                                        <button
+                                            type="button"
+                                            onClick={() => setUseAiSuggestion(p => !p)}
+                                            className={`w-10 h-6 rounded-full p-0.5 transition-colors ${useAiSuggestion ? 'bg-[#FF6B4A]' : 'bg-[#1A1A1A]/20'}`}
+                                        >
+                                            <span className={`block w-5 h-5 rounded-full bg-white transition-transform ${useAiSuggestion ? 'translate-x-4' : 'translate-x-0'}`} />
+                                        </button>
+                                    </label>
+                                    {useAiSuggestion && (
+                                        <div className="mt-2 text-right">
+                                            <button 
+                                                type="button" 
+                                                disabled={isGeneratingAi || !notifyForm.title.trim()}
+                                                onClick={handleGenerateAi}
+                                                className="text-xs font-extrabold px-3 py-1.5 rounded-xl bg-[#FF6B4A]/10 text-[#FF6B4A] hover:bg-[#FF6B4A]/20 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                                            >
+                                                {isGeneratingAi ? 'Đang tạo...' : 'Tạo nội dung từ tiêu đề'}
+                                            </button>
+                                        </div>
+                                    )}
+                                </div>
                             </div>
 
                             <div className="px-6 py-4 border-t border-[#1A1A1A]/10 flex items-center justify-end gap-3">

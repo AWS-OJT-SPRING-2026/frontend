@@ -4,6 +4,8 @@ import { useSettings } from '../../context/SettingsContext';
 import { useSearchParams, useNavigate } from 'react-router-dom';
 
 import { FAST_API_BASE_URL as FAST_API_URL } from '../../services/env';
+import { authService } from '../../services/authService';
+import { profileService } from '../../services/profileService';
 
 const SKILLS = [
     { label: 'Tốc độ giải bài', val: 80, diff: '+12%', bg: '#95E1D3' },
@@ -71,6 +73,25 @@ export function StudentRoadmap() {
     const [viewingRoadmap, setViewingRoadmap] = useState<RoadmapData | null>(null);
     const [isDeleting, setIsDeleting] = useState<number | null>(null);
     const [studentGrade, setStudentGrade] = useState<number | null>(null);
+    const [currentUserId, setCurrentUserId] = useState<number | null>(null);
+
+    // Initial effect to fetch current user ID
+    useEffect(() => {
+        let mounted = true;
+        const resolveUser = async () => {
+            try {
+                const token = authService.getToken();
+                if (!token) return;
+                const p = await profileService.getMyProfile(token);
+                const c = Number(p.userID ?? p.studentID ?? p.teacherID);
+                if (Number.isFinite(c) && c > 0 && mounted) {
+                    setCurrentUserId(c);
+                }
+            } catch { }
+        };
+        resolveUser();
+        return () => { mounted = false; };
+    }, []);
 
     const selectedSubjectName = apiSubjects.find(s => s.subject_id.toString() === selectedSubjectId)?.subject_name || '';
 
@@ -81,14 +102,14 @@ export function StudentRoadmap() {
     // Chỉ hiển thị các môn chưa có roadmap trong dropdown tạo mới
     const availableSubjects = gradeSubjects.filter(s => !allRoadmaps.some(r => r.subject_id === s.subject_id));
 
-    const generateRoadmapFor = async (subId: number, wks: number) => {
+    const generateRoadmapFor = async (subId: number, wks: number, userId: number) => {
         setIsGenerating(true);
         try {
             const response = await fetch(`${FAST_API_URL}/roadmap/generate`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
-                    userid: 1,
+                    userid: userId,
                     subject_id: subId,
                     total_weeks: wks
                 })
@@ -98,7 +119,7 @@ export function StudentRoadmap() {
                 throw new Error(data.detail || 'Failed to generate roadmap');
             }
             
-            await fetchAllRoadmaps();
+            await fetchAllRoadmaps(userId);
             setSelectedSubjectId('');
             setStudyTime('');
             
@@ -112,9 +133,9 @@ export function StudentRoadmap() {
         }
     };
 
-    const fetchAllRoadmaps = async () => {
+    const fetchAllRoadmaps = async (userId: number) => {
         try {
-            const res = await fetch(`${FAST_API_URL}/roadmap/all/1`);
+            const res = await fetch(`${FAST_API_URL}/roadmap/all/${userId}`);
             if (res.ok) {
                 const data = await res.json();
                 if (Array.isArray(data)) setAllRoadmaps(data);
@@ -132,7 +153,7 @@ export function StudentRoadmap() {
         try {
             const res = await fetch(`${FAST_API_URL}/roadmap/${roadmap.roadmapid}`, { method: 'DELETE' });
             if (res.ok) {
-                await fetchAllRoadmaps();
+                if (currentUserId) await fetchAllRoadmaps(currentUserId);
                 if (viewingRoadmap?.roadmapid === roadmap.roadmapid) {
                     setViewingRoadmap(null);
                 }
@@ -148,12 +169,14 @@ export function StudentRoadmap() {
     };
 
     useEffect(() => {
+        if (!currentUserId) return;
+
         const autoSubject = searchParams.get('subject');
         const autoWeeks = searchParams.get('weeks');
         const autoRun = searchParams.get('auto');
 
         // Fetch student grade
-        fetch(`${FAST_API_URL}/subjects/student-grade/1`)
+        fetch(`${FAST_API_URL}/subjects/student-grade/${currentUserId}`)
             .then(res => res.ok ? res.json() : null)
             .then(data => { if (data?.grade_level) setStudentGrade(data.grade_level); })
             .catch(() => {});
@@ -176,7 +199,7 @@ export function StudentRoadmap() {
                         if (matched) {
                             setSelectedSubjectId(matched.subject_id.toString());
                             setStudyTime(autoWeeks);
-                            generateRoadmapFor(matched.subject_id, parseInt(autoWeeks));
+                            generateRoadmapFor(matched.subject_id, parseInt(autoWeeks), currentUserId);
                         } else {
                             setStudyTime(autoWeeks);
                         }
@@ -185,12 +208,12 @@ export function StudentRoadmap() {
             })
             .catch(err => console.error('Error fetching subjects:', err));
 
-        fetchAllRoadmaps();
-    }, [searchParams]);
+        fetchAllRoadmaps(currentUserId);
+    }, [searchParams, currentUserId]);
 
     const handleGenerateRoadmap = () => {
-        if (!selectedSubjectId || !studyTime) return;
-        generateRoadmapFor(parseInt(selectedSubjectId), parseInt(studyTime));
+        if (!selectedSubjectId || !studyTime || !currentUserId) return;
+        generateRoadmapFor(parseInt(selectedSubjectId), parseInt(studyTime), currentUserId);
     };
 
     // ── Styling helpers ──

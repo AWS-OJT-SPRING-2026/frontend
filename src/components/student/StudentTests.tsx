@@ -66,7 +66,7 @@ function formatOpenTime(value?: string | null) {
     return `${hh}:${mm} ${dd}/${mo}/${yyyy}`;
 }
 
-type ActiveTab = 'available' | 'completed';
+type ActiveTab = 'available' | 'missing' | 'completed';
 type FilterCategory = 'all' | 'homework' | 'exam';
 type ExerciseViewMode = 'detail' | 'taking' | 'detailedReview';
 
@@ -1283,6 +1283,7 @@ export function StudentTests() {
 
     // API data state
     const [apiActiveAssignments, setApiActiveAssignments] = useState<Test[]>([]);
+    const [apiMissingTests, setApiMissingTests] = useState<Test[]>([]);
     const [apiCompletedTests, setApiCompletedTests] = useState<Test[]>([]);
     const [isLoadingAssignments, setIsLoadingAssignments] = useState(true);
 
@@ -1362,6 +1363,7 @@ export function StudentTests() {
         setIsLoadingAssignments(true);
         if (!token) {
             setApiActiveAssignments([]);
+            setApiMissingTests([]);
             setApiCompletedTests([]);
             setIsLoadingAssignments(false);
             return;
@@ -1372,8 +1374,11 @@ export function StudentTests() {
                 assignmentService.getStudentActiveAssignments(token).catch(() => [] as AssignmentResponse[]),
                 assignmentService.getStudentSubmissions(token).catch(() => [] as SubmissionResponse[]),
             ]);
-            // Completed tab only includes truly submitted rows that have a valid assignment id.
+            // Lọc các submission hoàn thành thực sự
             const completedSubmissions = submitted.filter(isCompletedSubmission);
+            
+            // Lọc các submission có trạng thái MISSING
+            const missingSubmissions = submitted.filter(s => hasValidAssignmentId(s.assignmentId) && s.submissionStatus === 'MISSING');
 
             const submittedMap = new Map<number, SubmissionResponse>();
             completedSubmissions.forEach(s => {
@@ -1381,10 +1386,51 @@ export function StudentTests() {
                     submittedMap.set(s.assignmentId, s);
                 }
             });
+            
+            const missingSubMap = new Map<number, SubmissionResponse>();
+            missingSubmissions.forEach(s => {
+                missingSubMap.set(s.assignmentId, s);
+            });
 
+            const nowMs = Date.now();
+
+            // Active tests: chưa nộp, không MISSING, và chưa hết hạn
             const activeTests = active
-                .filter(a => !submittedMap.has(a.assignmentID))
+                .filter(a => !submittedMap.has(a.assignmentID) && !missingSubMap.has(a.assignmentID))
+                .filter(a => {
+                    const dueMs = a.assignmentType === 'TEST' ? (a.endTime ? parseVnDate(a.endTime).getTime() : 0) : (a.deadline ? parseVnDate(a.deadline).getTime() : 0);
+                    return dueMs === 0 || dueMs >= nowMs;
+                })
                 .map(a => apiAssignmentToTest(a, false));
+                
+            // Missing tests: bao gồm cả submission có status MISSING, và các bài active nhưng đã quá hạn
+            const implicitMissingTests = active
+                .filter(a => !submittedMap.has(a.assignmentID) && !missingSubMap.has(a.assignmentID))
+                .filter(a => {
+                    const dueMs = a.assignmentType === 'TEST' ? (a.endTime ? parseVnDate(a.endTime).getTime() : 0) : (a.deadline ? parseVnDate(a.deadline).getTime() : 0);
+                    return dueMs !== 0 && dueMs < nowMs;
+                })
+                .map(a => {
+                    const t = apiAssignmentToTest(a, false);
+                    t.status = 'missing';
+                    return t;
+                });
+                
+            const explicitMissingTests = missingSubmissions
+                .map(s => {
+                    const assignmentId = s.assignmentId;
+                    const a = active.find(x => x.assignmentID === assignmentId) ?? {
+                        assignmentID: assignmentId, title: s.assignmentTitle ?? 'Chưa làm',
+                        assignmentType: 'TEST', format: 'MULTIPLE_CHOICE', status: 'CLOSED',
+                        startTime: null, endTime: null, deadline: null,
+                        durationMinutes: 45,
+                        createdAt: '', updatedAt: '', classroomId: 0,
+                        className: '', subjectName: null,
+                        totalQuestions: s.answers.length, totalSubmissions: 0,
+                    } as AssignmentResponse;
+                    return apiAssignmentToTest(a, false, s); // Set submission to false initially
+                }).map(t => { t.status = 'missing'; return t; }); // Ensure status is missing
+
             const completedTests = completedSubmissions
                 .map(s => {
                     const assignmentId = s.assignmentId;
@@ -1402,9 +1448,11 @@ export function StudentTests() {
                 .filter(t => hasValidAssignmentId(t._assignmentId));
 
             setApiActiveAssignments(activeTests);
+            setApiMissingTests([...explicitMissingTests, ...implicitMissingTests]);
             setApiCompletedTests(completedTests);
         } catch {
             setApiActiveAssignments([]);
+            setApiMissingTests([]);
             setApiCompletedTests([]);
         } finally {
             const elapsed = Date.now() - startedAt;
@@ -1439,8 +1487,8 @@ export function StudentTests() {
         const categoryParam = params.get('category');
         const resultIdStr = params.get('resultId'); // Handle notification redirect
 
-        if (tabParam === 'available' || tabParam === 'completed') {
-            setActiveTab(tabParam);
+        if (tabParam === 'available' || tabParam === 'completed' || tabParam === 'missing') {
+            setActiveTab(tabParam as ActiveTab);
         }
         if (categoryParam === 'all' || categoryParam === 'homework' || categoryParam === 'exam') {
             setFilterCategory(categoryParam);
@@ -1484,12 +1532,13 @@ export function StudentTests() {
     }, [location.search, apiCompletedTests, selectedTest]);
 
     const availableTests = apiActiveAssignments;
+    const missingTests = apiMissingTests;
     const completedTests = apiCompletedTests;
 
 
     // Apply filters
     const filteredTests = useMemo(() => {
-        const sourceList = activeTab === 'available' ? availableTests : completedTests;
+        const sourceList = activeTab === 'available' ? availableTests : (activeTab === 'missing' ? missingTests : completedTests);
         return sourceList.filter(t => {
             const query = searchQuery.toLowerCase();
             const title = (t.title ?? '').toLowerCase();
@@ -1807,7 +1856,11 @@ export function StudentTests() {
 
             {/* Tabs */}
             <div className={`flex p-1.5 rounded-2xl w-fit gap-2 ${isDark ? 'bg-[#18181b] border-none' : 'bg-[#1A1A1A]/5 border-2 border-[#1A1A1A]/10'}`}>
-                {[['available', `Đang có (${availableTests.length})`], ['completed', `Đã xong (${completedTests.length})`]].map(([tab, label]) => (
+                {[
+                    ['available', `Đang có (${availableTests.length})`], 
+                    ['missing', `Chưa làm bài (${missingTests.length})`], 
+                    ['completed', `Đã xong (${completedTests.length})`]
+                ].map(([tab, label]) => (
                     <button
                         key={tab}
                         onClick={() => setActiveTab(tab as ActiveTab)}

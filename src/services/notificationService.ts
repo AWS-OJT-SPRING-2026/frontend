@@ -73,4 +73,8 @@ export const notificationService = {
   async deleteNotification(notificationId: number): Promise<void> {
     await api.authDelete<BackendResponse<void>>(`/notifications/${notificationId}`);
   },
+
+  async sendClassNotification(classId: number, req: { title: string; content: string; actionUrl?: string }): Promise<void> {
+    await api.authPost<BackendResponse<void>>(`/notifications/send-class/${classId}`, req);
+  },
 };

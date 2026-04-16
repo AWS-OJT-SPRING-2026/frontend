@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import {
     X, Bell, ClipboardText,
-    Student, GearSix, Info, Clock,
+    Student, GearSix, Info, Clock, ArrowLeft
 } from '@phosphor-icons/react';
 import { useSettings } from '../../context/SettingsContext';
 import { authService } from '../../services/authService';
@@ -87,6 +87,7 @@ export function NotificationTimeline({ classId, onClose }: Props) {
     const [activeTab, setActiveTab] = useState<NotifCategory>('ALL');
     const [notifications, setNotifications] = useState<Notification[]>([]);
     const [isLoading, setIsLoading] = useState(true);
+    const [selectedDetail, setSelectedDetail] = useState<Notification | null>(null);
 
     useEffect(() => {
         const token = authService.getToken();
@@ -243,6 +244,7 @@ export function NotificationTimeline({ classId, onClose }: Props) {
 
                                                 {/* Card */}
                                                 <div
+                                                    onClick={() => setSelectedDetail(n)}
                                                     className={`flex-1 p-3.5 rounded-2xl border-2 cursor-pointer hover:shadow-md hover:-translate-y-0.5 transition-all duration-200 ${
                                                         isDark
                                                             ? 'border-white/10 bg-white/5 hover:bg-white/8'
@@ -276,6 +278,34 @@ export function NotificationTimeline({ classId, onClose }: Props) {
                         Đóng
                     </button>
                 </div>
+
+                {/* ── Detail View ── */}
+                {selectedDetail && (
+                    <div className={`absolute inset-0 z-10 flex flex-col ${surface} animate-[slideUp_0.2s_ease-out]`}>
+                        <div className={`px-6 py-5 border-b-2 flex items-center gap-3 shrink-0 ${divider}`}
+                             style={{ backgroundColor: isDark ? '#20242b' : '#B8B5FF' }}>
+                            <button
+                                onClick={() => setSelectedDetail(null)}
+                                className={`w-8 h-8 rounded-xl flex items-center justify-center transition-colors shrink-0 ${isDark ? 'bg-white/10 hover:bg-white/20 text-gray-100' : 'bg-[#1A1A1A]/10 hover:bg-[#1A1A1A]/20'}`}
+                            >
+                                <ArrowLeft className="w-4 h-4" weight="bold" />
+                            </button>
+                            <h2 className={`font-extrabold text-lg leading-tight flex-1 truncate ${label}`}>Chi tiết thông báo</h2>
+                        </div>
+                        <div className="flex-1 p-6 overflow-y-auto space-y-5">
+                             <div className="flex items-start gap-4">
+                                <NotifIcon type={selectedDetail.icon} color={selectedDetail.color.replace('#', '#')} />
+                                <div>
+                                    <h3 className={`font-extrabold text-lg leading-snug ${label}`}>{selectedDetail.title}</h3>
+                                    <p className={`text-xs font-bold mt-1 ${muted}`}>{selectedDetail.time}</p>
+                                </div>
+                             </div>
+                             <div className={`p-4 rounded-2xl border-2 whitespace-pre-wrap text-sm font-semibold leading-relaxed ${isDark ? 'bg-white/5 border-white/10 text-gray-200' : 'bg-gray-50 border-gray-100 text-[#1A1A1A]'}`}>
+                                {selectedDetail.body}
+                             </div>
+                        </div>
+                    </div>
+                )}
             </div>
 
             <style>{`
