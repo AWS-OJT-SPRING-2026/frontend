@@ -1,11 +1,11 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
-import { Sparkle, PaperPlaneTilt, CircleNotch, CaretLeft, MagnifyingGlass, DotsThreeVertical, Microphone, FileArrowUp } from '@phosphor-icons/react';
+import { Sparkle, PaperPlaneTilt, CircleNotch, CaretLeft, MagnifyingGlass, DotsThreeVertical, Microphone, FileArrowUp, Trash } from '@phosphor-icons/react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import remarkMath from 'remark-math';
 import rehypeKatex from 'rehype-katex';
 import 'katex/dist/katex.min.css';
-import { getChatSessions, streamChatMessage, upsertChatSession, type ChatSessionDto } from '../../services/chatService';
+import { getChatSessions, streamChatMessage, upsertChatSession, type ChatSessionDto, deleteChatSession } from '../../services/chatService';
 import { useSettings } from '../../context/SettingsContext';
 import { parseVnDate } from '../../lib/timeUtils';
 import { RoadmapWidget, DocumentWidget, QuizWidget } from './ChatWidgets';
@@ -262,6 +262,20 @@ export function StudentChat() {
         }
     };
 
+    const handleDeleteSession = async (id: string, e: React.MouseEvent) => {
+        e.stopPropagation();
+        if (!confirm('Bạn có chắc chắn muốn xóa cuộc hội thoại này?')) return;
+        setSessions(prev => prev.filter(s => s.id !== id));
+        if (sessionId === id) {
+            createNewSession();
+        }
+        try {
+            await deleteChatSession(id);
+        } catch {
+            // handle err optionally
+        }
+    };
+
     const formatTime = (date: Date) => {
         return date.toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' });
     };
@@ -323,17 +337,22 @@ export function StudentChat() {
                                     <button
                                         key={session.id}
                                         onClick={() => switchSession(session.id)}
-                                        className={`w-full text-left px-3 py-2.5 rounded-xl border transition-colors flex items-center justify-between ${sessionId === session.id
+                                        className={`w-full text-left px-3 py-2.5 rounded-xl border transition-colors flex items-center justify-between group ${sessionId === session.id
                                                 ? isDark ? 'bg-[#2a2f44] border-[#525a80] font-extrabold text-gray-100' : 'bg-[#B8B5FF]/30 border-[#1A1A1A] font-extrabold text-[#1A1A1A]'
                                                 : isDark ? 'hover:bg-white/5 border-transparent font-bold text-gray-300' : 'hover:bg-[#1A1A1A]/5 border-transparent font-bold text-[#1A1A1A]/70'
                                             }`}
                                     >
-                                        <span className="truncate pr-2">{session.title}</span>
-                                        {sessionId === session.id ? (
-                                            <div className="w-5 h-5 shrink-0 rounded-full border-2 border-[#1A1A1A] border-t-[#FF6B4A]" />
-                                        ) : (
-                                            <div className="w-5 h-5 shrink-0 rounded-full border-2 border-[#1A1A1A]/20" />
-                                        )}
+                                        <span className="truncate pr-2 text-sm">{session.title}</span>
+                                        <div className="flex items-center gap-1.5 shrink-0">
+                                            <div onClick={(e) => handleDeleteSession(session.id, e)} className="opacity-0 group-hover:opacity-100 transition-opacity p-1 rounded-md hover:bg-black/10 dark:hover:bg-white/10 text-red-500 flex items-center justify-center cursor-pointer">
+                                                <Trash className="w-4 h-4" />
+                                            </div>
+                                            {sessionId === session.id ? (
+                                                <div className="w-5 h-5 rounded-full border-2 border-[#1A1A1A] border-t-[#FF6B4A]" />
+                                            ) : (
+                                                <div className="w-5 h-5 rounded-full border-2 border-[#1A1A1A]/20" />
+                                            )}
+                                        </div>
                                     </button>
                                 ))
                             )}

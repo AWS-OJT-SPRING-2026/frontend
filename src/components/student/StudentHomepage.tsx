@@ -4,45 +4,16 @@ import {
     MagnifyingGlass, Bell, ArrowRight, CheckCircle, Fire,
     Timer, NotePencil, Play, Pause, ArrowCounterClockwise,
     Warning, MapTrifold, BookOpen, CalendarBlank, Trash, Plus,
-    Eye, Gear, ArrowLeft, X, CoffeeBean, ChartBar,
+    Eye, Gear, ArrowLeft, X, CoffeeBean, ChartBar, CaretDown,
 } from '@phosphor-icons/react';
 import { useSettings } from '../../context/SettingsContext';
-import { API_BASE_URL } from '../../services/env';
 import { NotificationDropdown } from './NotificationDropdown';
 import { weeklyProgressService, WeeklyProgressData } from '../../services/weeklyProgressService';
 import { notificationService } from '../../services/notificationService';
-
-// ─── Static data ─────────────────────────────────────────────────────────────
-
-const streakDays = [
-    { label: 'T2', done: true },
-    { label: 'T3', done: true },
-    { label: 'T4', done: true },
-    { label: 'T5', done: true, today: true },
-    { label: 'T6', done: false },
-    { label: 'T7', done: false },
-    { label: 'CN', done: false },
-];
-
-const roadmapSteps = [
-    { week: 1, title: 'Hàm số & Đồ thị', done: true },
-    { week: 2, title: 'Mũ & Logarit', done: true },
-    { week: 3, title: 'Nguyên hàm & Tích phân', done: false, current: true },
-    { week: 4, title: 'Số phức', done: false },
-    { week: 5, title: 'Hình học không gian', done: false },
-    { week: 6, title: 'Xác suất thống kê', done: false },
-    { week: 7, title: 'Lượng giác', done: false },
-    { week: 8, title: 'Ôn tập tổng hợp', done: false },
-];
-
-const deadlineItems = [
-    { id: 1, subject: 'Toán học', color: '#FCE38A', title: 'Bài tập Tích phân nâng cao', due: '2 giờ nữa', urgent: true, action: 'exercises' },
-    { id: 2, subject: 'Tiếng Anh', color: '#B8B5FF', title: 'Nộp bài Writing Task 2', due: 'Ngày mai', urgent: false, action: 'exercises' },
-    { id: 3, subject: 'Ngữ Văn', color: '#95E1D3', title: 'Phân tích đoạn trích Truyện Kiều', due: '3 ngày nữa', urgent: false, action: 'exercises' },
-    { id: 4, subject: 'Toán học', color: '#FCE38A', title: 'Kiểm tra 15 phút – Số phức', due: 'Thứ 6', urgent: false, action: 'schedule' },
-    { id: 5, subject: 'Tiếng Anh', color: '#B8B5FF', title: 'Luyện đề IELTS Mock Test 3', due: 'Tuần sau', urgent: false, action: 'review' },
-    { id: 6, subject: 'Lịch Sử', color: '#FFB5B5', title: 'Kiểm tra nhanh Chương 2', due: 'Đã quá hạn', urgent: false, action: 'exercises', missing: true },
-];
+import { studentDashboardService, type StudentDashboardResponse } from '../../services/studentDashboardService';
+import { api } from '../../services/api';
+import { authService } from '../../services/authService';
+import { FAST_API_BASE_URL as FAST_API_URL } from '../../services/env';
 
 const DEADLINE_TABS = ['Tất cả', 'Toán học', 'Tiếng Anh', 'Ngữ Văn'];
 const POMODORO_WORK = 25 * 60;
@@ -61,6 +32,9 @@ export function StudentHomepage() {
 
     // Weekly progress
     const [weeklyProgress, setWeeklyProgress] = useState<WeeklyProgressData | null>(null);
+
+    // Dashboard Data
+    const [dashboardData, setDashboardData] = useState<StudentDashboardResponse | null>(null);
 
     // Quote
     const [quote, setQuote] = useState<{ q: string; a: string } | null>(null);
@@ -87,6 +61,10 @@ export function StudentHomepage() {
     // Roadmap expanded
     const [roadmapExpanded, setRoadmapExpanded] = useState(false);
 
+    // AI Roadmaps for homepage card
+    const [homepageRoadmaps, setHomepageRoadmaps] = useState<any[]>([]);
+    const [selectedHomepageRoadmapId, setSelectedHomepageRoadmapId] = useState<number | null>(null);
+
     // ── Effects ──────────────────────────────────────────────────────────────
 
     useEffect(() => {
@@ -98,10 +76,31 @@ export function StudentHomepage() {
         return () => document.removeEventListener('mousedown', handler);
     }, []);
 
+    // Fetch AI roadmaps for homepage card
     useEffect(() => {
-        fetch(`${API_BASE_URL}/quotes/today`)
-            .then(r => r.json())
-            .then(d => { if (Array.isArray(d) && d.length > 0) setQuote({ q: d[0].q, a: d[0].a }); })
+        fetch(`${FAST_API_URL}/roadmap/all/1`)
+            .then(res => res.ok ? res.json() : [])
+            .then(data => {
+                if (Array.isArray(data) && data.length > 0) {
+                    setHomepageRoadmaps(data);
+                    setSelectedHomepageRoadmapId(data[0].roadmapid);
+                }
+            })
+            .catch(() => {});
+    }, []);
+
+    useEffect(() => {
+        const token = authService.getToken();
+        api.get<any>('/quotes/today', token)
+            .then(d => {
+                // API may return [{q,a}] or [{quote,author}] or {quote,author}
+                const item = Array.isArray(d) ? d[0] : d;
+                if (item) {
+                    const q = item.q || item.quote || '';
+                    const a = item.a || item.author || '';
+                    if (q) setQuote({ q, a });
+                }
+            })
             .catch(() => {});
     }, []);
 
@@ -117,6 +116,43 @@ export function StudentHomepage() {
         weeklyProgressService.getMyWeeklyProgress()
             .then(data => setWeeklyProgress(data))
             .catch(() => {});
+    }, []);
+
+    // Fetch dashboard on mount — both sources merged atomically
+    useEffect(() => {
+        const FAST_API = import.meta.env.VITE_FAST_API_BASE_URL || 'http://localhost:8000/api/v1';
+
+        const dashboardP = studentDashboardService.getMyDashboard().catch(() => null);
+        const roadmapP = fetch(`${FAST_API}/roadmap/current/1`)
+            .then(r => r.ok ? r.json() : null)
+            .catch(() => null);
+
+        Promise.all([dashboardP, roadmapP]).then(([dashboard, roadmap]) => {
+            // Build roadmap steps from AI data
+            let roadmapSteps: any[] = [];
+            if (roadmap && roadmap.chapters && Array.isArray(roadmap.chapters)) {
+                roadmapSteps = roadmap.chapters.map((ch: any, i: number) => ({
+                    week: i + 1,
+                    title: ch.title,
+                    done: false,
+                    current: i === 0,
+                }));
+            }
+
+            // Merge: use BE dashboard as base, overlay roadmap steps from AI
+            const merged: StudentDashboardResponse = {
+                streakCount: dashboard?.streakCount ?? 0,
+                streakDays: dashboard?.streakDays ?? [],
+                pomodoroSessions: dashboard?.pomodoroSessions ?? 0,
+                totalFocusMinutes: dashboard?.totalFocusMinutes ?? 0,
+                roadmapSteps: roadmapSteps.length > 0 ? roadmapSteps : (dashboard?.roadmapSteps ?? []),
+                completedRoadmapSteps: dashboard?.completedRoadmapSteps ?? 0,
+                totalRoadmapSteps: roadmapSteps.length > 0 ? roadmapSteps.length : (dashboard?.totalRoadmapSteps ?? 0),
+                deadlines: dashboard?.deadlines ?? [],
+            };
+
+            setDashboardData(merged);
+        });
     }, []);
 
     useEffect(() => {
@@ -192,16 +228,25 @@ export function StudentHomepage() {
         localStorage.setItem('slozy_quickNotes', JSON.stringify(updated));
     };
 
+    const safeDeadlines = dashboardData?.deadlines || [];
     const filteredDeadlines = deadlineTab === 'Tất cả'
-        ? deadlineItems
-        : deadlineItems.filter(d => d.subject === deadlineTab);
+        ? safeDeadlines
+        : safeDeadlines.filter(d => d.subject === deadlineTab);
 
     const pomProgress = pomMode === 'work'
         ? ((pomFocusMins * 60 - pomTime) / (pomFocusMins * 60)) * 100
         : ((pomBreakMins * 60 - pomTime) / (pomBreakMins * 60)) * 100;
 
-    const stepsToShow = roadmapExpanded ? roadmapSteps : roadmapSteps.slice(0, 5);
-    const completedSteps = roadmapSteps.filter(s => s.done).length;
+    const safeRoadmapSteps = dashboardData?.roadmapSteps || [];
+    const stepsToShow = roadmapExpanded ? safeRoadmapSteps : safeRoadmapSteps.slice(0, 5);
+    const completedSteps = dashboardData?.completedRoadmapSteps || 0;
+    const streakCount = dashboardData?.streakCount || 0;
+    const safeStreakDays = dashboardData?.streakDays || [];
+
+    // Homepage roadmap card data
+    const activeHomepageRoadmap = homepageRoadmaps.find(r => r.roadmapid === selectedHomepageRoadmapId);
+    const roadmapChapters = activeHomepageRoadmap?.chapters || [];
+    const chaptersToShow = roadmapExpanded ? roadmapChapters : roadmapChapters.slice(0, 4);
 
     // ── Card style helpers ────────────────────────────────────────────────────
     const card = isDark
@@ -274,9 +319,9 @@ export function StudentHomepage() {
                     </div>
                     <div className="flex-1">
                         <p className={`text-xs font-extrabold uppercase tracking-widest mb-0.5 ${textMuted}`}>Streak học tập</p>
-                        <p className={`text-2xl font-extrabold ${text}`}>15 ngày 🔥</p>
+                        <p className={`text-2xl font-extrabold ${text}`}>{streakCount} ngày 🔥</p>
                         <div className="flex gap-1 mt-2">
-                            {streakDays.map(d => (
+                            {safeStreakDays.map(d => (
                                 <div key={d.label} className="flex flex-col items-center gap-1">
                                     <div className={`w-5 h-5 rounded-full flex items-center justify-center ${d.done ? 'bg-[#FF6B4A]' : d.today ? 'border-2 border-[#FF6B4A]' : (isDark ? 'bg-white/10' : 'bg-gray-100')}`}>
                                         {d.done && <CheckCircle className="w-3 h-3 text-white" weight="fill" />}
@@ -302,7 +347,7 @@ export function StudentHomepage() {
 
                 {/* AI chat shortcut */}
                 <button
-                    onClick={() => navigate('/student/chat')}
+                    onClick={() => navigate('/student/study')}
                     className={`rounded-3xl p-5 flex items-center gap-4 cursor-pointer text-left ${card}`}
                 >
                     <div className="w-12 h-12 rounded-2xl bg-[#95E1D3]/30 flex items-center justify-center shrink-0">
@@ -328,7 +373,26 @@ export function StudentHomepage() {
                             </div>
                             <div>
                                 <h2 className={`text-lg font-extrabold ${text}`}>Lộ trình đang học</h2>
-                                <p className={`text-xs font-semibold ${textMuted}`}>Toán học · Ôn thi THPT Quốc gia</p>
+                                {homepageRoadmaps.length > 1 ? (
+                                    <div className="relative mt-0.5">
+                                        <select
+                                            value={selectedHomepageRoadmapId?.toString() || ''}
+                                            onChange={(e) => setSelectedHomepageRoadmapId(Number(e.target.value))}
+                                            className={`text-xs font-bold pr-5 pl-0 py-0 border-none bg-transparent cursor-pointer focus:outline-none appearance-none ${textMuted}`}
+                                        >
+                                            {homepageRoadmaps.map(r => (
+                                                <option key={r.roadmapid} value={r.roadmapid.toString()}>
+                                                    {r.subject_name} · {r.total_time} tuần
+                                                </option>
+                                            ))}
+                                        </select>
+                                        <CaretDown className={`absolute right-0 top-1/2 -translate-y-1/2 w-3 h-3 pointer-events-none ${textMuted}`} />
+                                    </div>
+                                ) : (
+                                    <p className={`text-xs font-semibold ${textMuted}`}>
+                                        {activeHomepageRoadmap ? `${activeHomepageRoadmap.subject_name} · ${activeHomepageRoadmap.total_time} tuần` : 'Chưa có lộ trình'}
+                                    </p>
+                                )}
                             </div>
                         </div>
                         <button onClick={() => navigate('/student/roadmap')} className="text-sm font-bold text-[#FF6B4A] hover:text-[#ff5535] flex items-center gap-1">
@@ -336,64 +400,64 @@ export function StudentHomepage() {
                         </button>
                     </div>
 
-                    {/* Progress bar */}
-                    <div className="mb-5">
-                        <div className={`flex justify-between text-xs font-bold mb-2 ${textMuted}`}>
-                            <span>Tiến độ tổng thể</span>
-                            <span>{completedSteps}/{roadmapSteps.length} tuần hoàn thành</span>
+                    {homepageRoadmaps.length === 0 ? (
+                        <div className="text-center py-6">
+                            <p className={`text-sm font-semibold ${textMuted} mb-3`}>Bạn chưa có lộ trình ôn tập nào.</p>
+                            <button onClick={() => navigate('/student/roadmap')} className="bg-[#FF6B4A] hover:bg-[#ff5535] text-white text-sm font-extrabold px-5 py-2.5 rounded-2xl transition-all">
+                                Tạo Lộ trình AI →
+                            </button>
                         </div>
-                        <div className={`h-2 rounded-full overflow-hidden ${isDark ? 'bg-white/10' : 'bg-gray-100'}`}>
-                            <div className="h-full rounded-full bg-[#FF6B4A] transition-all" style={{ width: `${(completedSteps / roadmapSteps.length) * 100}%` }} />
-                        </div>
-                    </div>
-
-                    {/* Steps */}
-                    <div className={`flex flex-col divide-y ${divider}`}>
-                        {stepsToShow.map((step, i) => (
-                            <div
-                                key={i}
-                                onClick={() => navigate('/student/roadmap')}
-                                className={`flex items-center gap-4 py-3 px-2 -mx-2 rounded-xl cursor-pointer transition-colors ${hoverRow} ${step.current ? (isDark ? 'bg-[#FF6B4A]/10' : 'bg-[#FF6B4A]/5') : ''}`}
-                            >
-                                {/* Icon */}
-                                <div className={`w-8 h-8 rounded-full flex items-center justify-center shrink-0 ${step.done ? 'bg-[#10B981]' : step.current ? 'bg-[#FF6B4A]' : (isDark ? 'bg-white/10' : 'bg-gray-100')}`}>
-                                    {step.done
-                                        ? <CheckCircle className="w-4 h-4 text-white" weight="fill" />
-                                        : <span className={`text-xs font-extrabold ${step.current ? 'text-white' : textMuted}`}>{step.week}</span>
-                                    }
+                    ) : (
+                        <>
+                            {/* Progress bar */}
+                            <div className="mb-5">
+                                <div className={`flex justify-between text-xs font-bold mb-2 ${textMuted}`}>
+                                    <span>Tiến độ tổng thể</span>
+                                    <span>{roadmapChapters.length} chương · {roadmapChapters.reduce((s: number, c: any) => s + (c.lessons?.length || 0), 0)} bài học</span>
                                 </div>
-
-                                {/* Title */}
-                                <div className="flex-1">
-                                    <p className={`text-sm font-extrabold ${step.done ? textMuted : text} ${step.done ? 'line-through' : ''}`}>{step.title}</p>
-                                    <p className={`text-[11px] font-semibold ${textMuted}`}>Tuần {step.week}</p>
+                                <div className={`h-2 rounded-full overflow-hidden ${isDark ? 'bg-white/10' : 'bg-gray-100'}`}>
+                                    <div className="h-full rounded-full bg-[#FF6B4A] transition-all" style={{ width: '0%' }} />
                                 </div>
-
-                                {/* Badge */}
-                                {step.current && (
-                                    <span className="text-[10px] font-extrabold bg-[#FF6B4A] text-white px-2.5 py-1 rounded-full uppercase tracking-widest">Đang học</span>
-                                )}
-                                {step.done && (
-                                    <span className={`text-[10px] font-extrabold px-2.5 py-1 rounded-full uppercase tracking-widest ${isDark ? 'bg-[#10B981]/20 text-[#10B981]' : 'bg-[#10B981]/10 text-[#10B981]'}`}>Hoàn thành</span>
-                                )}
                             </div>
-                        ))}
-                    </div>
 
-                    <div className="flex items-center justify-between mt-4">
-                        <button
-                            onClick={() => setRoadmapExpanded(v => !v)}
-                            className={`text-xs font-extrabold ${textMuted} hover:text-[#FF6B4A] transition-colors`}
-                        >
-                            {roadmapExpanded ? '▲ Thu gọn' : `▼ Xem thêm ${roadmapSteps.length - 5} tuần`}
-                        </button>
-                        <button
-                            onClick={() => navigate('/student/roadmap')}
-                            className="bg-[#FF6B4A] hover:bg-[#ff5535] text-white text-sm font-extrabold px-5 py-2.5 rounded-2xl transition-all shadow-sm hover:shadow-md"
-                        >
-                            Bắt đầu tuần này →
-                        </button>
-                    </div>
+                            {/* Chapter steps */}
+                            <div className={`flex flex-col divide-y ${divider}`}>
+                                {chaptersToShow.map((chapter: any, i: number) => (
+                                    <div
+                                        key={chapter.chapterid || i}
+                                        onClick={() => navigate('/student/roadmap')}
+                                        className={`flex items-center gap-4 py-3 px-2 -mx-2 rounded-xl cursor-pointer transition-colors ${hoverRow} ${i === 0 ? (isDark ? 'bg-[#FF6B4A]/10' : 'bg-[#FF6B4A]/5') : ''}`}
+                                    >
+                                        <div className={`w-8 h-8 rounded-full flex items-center justify-center shrink-0 ${i === 0 ? 'bg-[#FF6B4A]' : (isDark ? 'bg-white/10' : 'bg-gray-100')}`}>
+                                            <span className={`text-xs font-extrabold ${i === 0 ? 'text-white' : textMuted}`}>{i + 1}</span>
+                                        </div>
+                                        <div className="flex-1">
+                                            <p className={`text-sm font-extrabold ${text}`}>{chapter.title}</p>
+                                            <p className={`text-[11px] font-semibold ${textMuted}`}>{chapter.lessons?.length || 0} bài học</p>
+                                        </div>
+                                        {i === 0 && (
+                                            <span className="text-[10px] font-extrabold bg-[#FF6B4A] text-white px-2.5 py-1 rounded-full uppercase tracking-widest">Bắt đầu</span>
+                                        )}
+                                    </div>
+                                ))}
+                            </div>
+
+                            <div className="flex items-center justify-between mt-4">
+                                <button
+                                    onClick={() => setRoadmapExpanded(v => !v)}
+                                    className={`text-xs font-extrabold ${textMuted} hover:text-[#FF6B4A] transition-colors`}
+                                >
+                                    {roadmapExpanded ? '▲ Thu gọn' : `▼ Xem thêm ${roadmapChapters.length - 4 > 0 ? roadmapChapters.length - 4 : ''} chương`}
+                                </button>
+                                <button
+                                    onClick={() => navigate('/student/study')}
+                                    className="bg-[#FF6B4A] hover:bg-[#ff5535] text-white text-sm font-extrabold px-5 py-2.5 rounded-2xl transition-all shadow-sm hover:shadow-md"
+                                >
+                                    Bắt đầu học →
+                                </button>
+                            </div>
+                        </>
+                    )}
                 </div>
 
                 {/* Pomodoro — col-span-1 */}
@@ -559,9 +623,9 @@ export function StudentHomepage() {
                             <div>
                                 <h2 className={`text-lg font-extrabold ${text}`}>Deadline & Thông báo</h2>
                                 <p className={`text-xs font-semibold ${textMuted}`}>
-                                    {deadlineItems.filter(d => d.urgent).length > 0 && (
+                                    {safeDeadlines.filter(d => d.urgent).length > 0 && (
                                         <span className="text-[#FF6B4A] font-extrabold">
-                                            {deadlineItems.filter(d => d.urgent).length} việc cần làm ngay ·{' '}
+                                            {safeDeadlines.filter(d => d.urgent).length} việc cần làm ngay ·{' '}
                                         </span>
                                     )}
                                     {unreadCount} thông báo chưa đọc

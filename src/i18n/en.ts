@@ -157,6 +157,7 @@ const en: Translations = {
     exercises: 'Exercises',
     documents: 'Documents',
     aiRoadmap: 'AI Roadmap',
+    studySpace: 'Study Space',
     review: 'Review',
     aiChat: 'AI Chat',
   },

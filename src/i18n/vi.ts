@@ -155,6 +155,7 @@ const vi = {
     exercises: 'Bài tập',
     documents: 'Tài liệu',
     aiRoadmap: 'Lộ trình AI',
+    studySpace: 'Không gian học',
     review: 'Ôn tập',
     aiChat: 'Hỏi đáp AI',
   },
