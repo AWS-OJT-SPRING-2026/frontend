@@ -129,7 +129,8 @@ export function StudentStudySpace() {
     // LEFT PANEL — Sources state
     // ═══════════════════════════════════════════════════
     const [subjects, setSubjects] = useState<StudentTheorySubjectOverview[]>([]);
-    const [selectedSubjectId, setSelectedSubjectId] = useState<number | null>(null);
+    const [allRoadmaps, setAllRoadmaps] = useState<any[]>([]); // To hold RoadmapResponse[]
+    const [selectedRoadmapId, setSelectedRoadmapId] = useState<number | null>(null);
     const [activeBook, setActiveBook] = useState<BookHierarchyResponse | null>(null);
     const [bookLoading, setBookLoading] = useState(false);
     const [openChapters, setOpenChapters] = useState<number[]>([]);
@@ -142,25 +143,43 @@ export function StudentStudySpace() {
             try {
                 const token = authService.getToken();
                 if (!token) return;
-                const data = await studentMaterialService.getTheorySubjectsOverview(token);
-                setSubjects(data);
+                const fetchedSubjects = await studentMaterialService.getTheorySubjectsOverview(token);
+                setSubjects(fetchedSubjects || []);
+                
+                // Fetch AI Roadmaps
+                const res = await fetch(`${FAST_API_URL}/roadmap/all/1`);
+                if (res.ok) {
+                    const data = await res.json();
+                    if (Array.isArray(data)) {
+                        setAllRoadmaps(data);
+                        // Auto select first roadmap if exists
+                        if (data.length > 0) {
+                            handleSelectRoadmap(data[0].roadmapid, data, fetchedSubjects || []);
+                        }
+                    }
+                }
             } catch { /* ignore */ }
             finally { setSourcesLoading(false); }
         };
         run();
     }, []);
 
-    const handleSelectSubject = async (subjectId: number) => {
-        const subject = subjects.find(s => s.subjectId === subjectId);
-        if (!subject?.bookId) return;
-        setSelectedSubjectId(subjectId);
+    const handleSelectRoadmap = async (rmId: number, roadmapsToUse = allRoadmaps, subjectsToUse = subjects) => {
+        setSelectedRoadmapId(rmId);
         setBookLoading(true); setActiveBook(null); setOpenChapters([]); setSelectedLesson(null);
         try {
             const token = authService.getToken();
             if (!token) return;
-            const hierarchy = await studentMaterialService.getBookFullHierarchy(subject.bookId, token);
-            setActiveBook(hierarchy);
-            if (hierarchy.chapters.length > 0) setOpenChapters([hierarchy.chapters[0].id]);
+            const roadmap = roadmapsToUse.find(r => r.roadmapid === rmId);
+            if (roadmap) {
+                // Find matching book via subject_id
+                const subject = subjectsToUse.find(s => s.subjectId === roadmap.subject_id);
+                if (subject) {
+                    const hierarchy = await studentMaterialService.getBookFullHierarchy(subject.bookId, token);
+                    setActiveBook(hierarchy);
+                    if (roadmap.chapters.length > 0) setOpenChapters([roadmap.chapters[0].chapterid]);
+                }
+            }
         } catch { /* ignore */ }
         finally { setBookLoading(false); }
     };
@@ -373,48 +392,68 @@ export function StudentStudySpace() {
                 </div>
 
                 <div className="flex-1 overflow-y-auto">
-                    {/* Subject selector */}
+                    {/* Roadmap selector — compact dropdown */}
                     <div className="p-3">
-                        <p className={`text-[10px] font-extrabold uppercase tracking-widest mb-2 ${textMuted}`}>Chọn môn học</p>
+                        <p className={`text-[10px] font-extrabold uppercase tracking-widest mb-2 ${textMuted}`}>Lộ trình AI</p>
                         {sourcesLoading ? (
                             <div className="flex items-center gap-2 py-2"><CircleNotch className="w-4 h-4 animate-spin text-[#FF6B4A]" /><span className={`text-xs font-bold ${textMuted}`}>Đang tải...</span></div>
-                        ) : subjects.length === 0 ? (
-                            <p className={`text-xs font-bold ${textMuted}`}>Chưa có tài liệu.</p>
+                        ) : allRoadmaps.length === 0 ? (
+                            <div className="flex flex-col items-center justify-center p-4 bg-[#FF6B4A]/5 border border-[#FF6B4A]/20 rounded-2xl mt-1 text-center">
+                                <span className="text-lg mb-1">🚀</span>
+                                <p className={`text-[10px] font-bold ${textMuted} mb-2`}>Chưa có lộ trình ôn tập.</p>
+                                <button onClick={() => navigate('/student/roadmap')} className="bg-[#FF6B4A] hover:bg-[#ff5535] text-white text-[10px] font-extrabold px-3 py-1.5 rounded-lg transition-colors">
+                                    Tạo Lộ trình
+                                </button>
+                            </div>
                         ) : (
-                            <div className="flex flex-col gap-1">
-                                {subjects.map(s => (
-                                    <button key={s.subjectId} onClick={() => handleSelectSubject(s.subjectId)}
-                                        className={`w-full text-left px-3 py-2 rounded-xl text-sm font-bold transition-all ${selectedSubjectId === s.subjectId ? 'bg-[#FF6B4A]/15 text-[#FF6B4A] font-extrabold' : `${text} ${hoverBg}`}`}>
-                                        {s.subjectName}
-                                        <span className={`block text-[10px] font-semibold ${textMuted}`}>{s.totalChapters} chương · {s.totalLessons} bài</span>
-                                    </button>
-                                ))}
+                            <div className="relative">
+                                <select
+                                    value={selectedRoadmapId?.toString() || ''}
+                                    onChange={(e) => handleSelectRoadmap(Number(e.target.value))}
+                                    className={`w-full h-9 rounded-xl px-3 pr-8 text-xs font-bold appearance-none cursor-pointer focus:outline-none transition-colors ${isDark ? 'bg-white/5 border border-white/15 text-gray-200 focus:border-[#FF6B4A]' : 'bg-[#F7F7F2] border-2 border-[#1A1A1A]/15 text-[#1A1A1A] focus:border-[#FF6B4A]'}`}
+                                >
+                                    {allRoadmaps.map(r => (
+                                        <option key={r.roadmapid} value={r.roadmapid.toString()}>
+                                            {r.subject_name} · {r.total_time} tuần
+                                        </option>
+                                    ))}
+                                </select>
+                                <CaretDown className={`absolute right-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 pointer-events-none ${textMuted}`} />
                             </div>
                         )}
                     </div>
 
                     {/* Chapter tree */}
                     {bookLoading && <div className="flex justify-center py-4"><CircleNotch className="w-5 h-5 animate-spin text-[#FF6B4A]" /></div>}
-                    {activeBook && (
+                    {activeBook && selectedRoadmapId && (
                         <div className="px-3 pb-3 space-y-1">
-                            <p className={`text-[10px] font-extrabold uppercase tracking-widest mb-2 ${textMuted}`}>{activeBook.bookName}</p>
-                            {activeBook.chapters.map(ch => {
-                                const isOpen = openChapters.includes(ch.id);
+                            <p className={`text-[10px] font-extrabold uppercase tracking-widest mb-2 ${textMuted}`}>Lộ trình môn {allRoadmaps.find(r => r.roadmapid === selectedRoadmapId)?.subject_name}</p>
+                            {allRoadmaps.find(r => r.roadmapid === selectedRoadmapId)?.chapters.map((ch: any) => {
+                                const isOpen = openChapters.includes(ch.chapterid);
                                 return (
-                                    <div key={ch.id}>
-                                        <button onClick={() => toggleChapter(ch.id)} className={`w-full flex items-center gap-2 px-2 py-1.5 rounded-lg text-left transition-colors ${hoverBg}`}>
+                                    <div key={ch.chapterid}>
+                                        <button onClick={() => toggleChapter(ch.chapterid)} className={`w-full flex items-center gap-2 px-2 py-1.5 rounded-lg text-left transition-colors ${hoverBg}`}>
                                             {isOpen ? <CaretDown className="w-3.5 h-3.5 shrink-0 text-[#FF6B4A]" /> : <CaretRight className={`w-3.5 h-3.5 shrink-0 ${textMuted}`} />}
-                                            <span className={`text-xs font-extrabold truncate ${text}`}>Ch.{ch.chapterNumber}: {ch.title}</span>
+                                            <span className={`text-xs font-extrabold truncate ${text}`}>{ch.title}</span>
                                         </button>
                                         {isOpen && (
-                                            <div className="ml-5 space-y-0.5 mt-0.5">
-                                                {ch.lessons.map(lesson => (
-                                                    <button key={lesson.id}
-                                                        onClick={() => { setSelectedLesson(lesson); setSelectedChapterNum(ch.chapterNumber); }}
-                                                        className={`w-full text-left px-2.5 py-1.5 rounded-lg text-[11px] font-bold transition-all ${selectedLesson?.id === lesson.id ? 'bg-[#FF6B4A]/15 text-[#FF6B4A]' : `${text} ${hoverBg}`}`}>
-                                                        Bài {lesson.lessonNumber}: {lesson.title}
-                                                    </button>
-                                                ))}
+                                            <div className="ml-5 space-y-0.5 mt-0.5 border-l-2 border-[#1A1A1A]/10 pl-2">
+                                                {ch.lessons.map((roadmapLesson: any) => {
+                                                    // Map RoadmapLesson to full Book Lesson info
+                                                    const realLesson = activeBook.chapters.flatMap(c => c.lessons).find(l => l.id === roadmapLesson.lessonid);
+                                                    if (!realLesson) return null;
+                                                    
+                                                    const activeChapter = activeBook.chapters.find(c => c.lessons.some(l => l.id === realLesson.id));
+                                                    
+                                                    return (
+                                                        <button key={roadmapLesson.lessonid}
+                                                            onClick={() => { setSelectedLesson(realLesson); setSelectedChapterNum(activeChapter?.chapterNumber.toString() || ''); }}
+                                                            className={`w-full text-left px-2.5 py-1.5 rounded-lg text-[11px] font-bold transition-all flex flex-col gap-0.5 ${selectedLesson?.id === roadmapLesson.lessonid ? 'bg-[#FF6B4A]/15 text-[#FF6B4A]' : `${text} ${hoverBg}`}`}>
+                                                            <span>{roadmapLesson.title}</span>
+                                                            <span className={`text-[9px] font-semibold flex items-center gap-1 ${selectedLesson?.id === roadmapLesson.lessonid ? 'text-[#FF6B4A]/70' : textMuted}`}>✨ Đề xuất: {roadmapLesson.time} phút</span>
+                                                        </button>
+                                                    );
+                                                })}
                                             </div>
                                         )}
                                     </div>
@@ -596,6 +635,11 @@ export function StudentStudySpace() {
                     {/* ── Tools mode ── */}
                     {studioMode === 'tools' && (
                         <div className="space-y-2">
+                            <button onClick={() => navigate('/student/review')} className={`w-full flex items-center gap-3 p-3.5 rounded-2xl transition-all border ${isDark ? 'border-white/10 bg-white/5 hover:bg-white/10' : 'border-gray-200 bg-white hover:bg-gray-50'}`}>
+                                <div className="w-10 h-10 rounded-xl bg-[#FCE38A]/30 flex items-center justify-center"><BookOpen className="w-5 h-5 text-[#D4A017]" weight="fill" /></div>
+                                <div className="text-left"><p className={`text-sm font-extrabold ${text}`}>Ôn tập</p><p className={`text-[10px] font-semibold ${textMuted}`}>Trang ôn tập tổng hợp</p></div>
+                                <ArrowRight className={`w-4 h-4 ml-auto ${textMuted}`} />
+                            </button>
                             <button onClick={() => setStudioMode('quiz')} className={`w-full flex items-center gap-3 p-3.5 rounded-2xl transition-all border ${isDark ? 'border-white/10 bg-white/5 hover:bg-white/10' : 'border-gray-200 bg-white hover:bg-gray-50'}`}>
                                 <div className="w-10 h-10 rounded-xl bg-[#B8B5FF]/20 flex items-center justify-center"><Exam className="w-5 h-5 text-[#7C6FFF]" weight="fill" /></div>
                                 <div className="text-left"><p className={`text-sm font-extrabold ${text}`}>Tạo Quiz ôn tập</p><p className={`text-[10px] font-semibold ${textMuted}`}>Trắc nghiệm AI cá nhân hóa</p></div>

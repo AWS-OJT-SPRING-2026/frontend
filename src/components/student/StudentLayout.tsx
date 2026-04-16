@@ -37,8 +37,10 @@ export function StudentLayout() {
         { to: ".", label: t.student.overview, icon: SquaresFour, end: true },
         { to: "schedule", label: t.student.studySchedule, icon: CalendarBlank },
         { to: "exercises", label: t.student.exercises, icon: ClipboardText },
+        { to: "documents", label: t.student.documents, icon: Books },
         { to: "roadmap", label: t.student.aiRoadmap, icon: MapTrifold },
         { to: "study", label: t.student.studySpace, icon: Notebook },
+        { to: "review", label: t.student.review, icon: BookOpen },
     ];
 
     const labelClass = isExpanded

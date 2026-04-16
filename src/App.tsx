@@ -24,8 +24,10 @@ import { TeacherDocuments } from './components/teacher/TeacherDocuments';
 import { TeacherSchedule } from './components/teacher/TeacherSchedule';
 import { StudentHomepage } from './components/student/StudentHomepage';
 import { StudentRoadmap } from './components/student/StudentRoadmap';
+import { StudentReview } from './components/student/StudentReview';
 import { StudentTests } from './components/student/StudentTests';
 import { StudentSchedule } from './components/student/StudentSchedule';
+import { StudentDocuments } from './components/student/StudentDocuments';
 import { StudentStudySpace } from './components/student/StudentStudySpace';
 import { AccountSettings } from './components/AccountSettings';
 
@@ -249,7 +251,9 @@ function AppRoutes() {
         <Route path="schedule" element={<StudentSchedule />} />
         <Route path="roadmap" element={<StudentRoadmap />} />
         <Route path="study" element={<StudentStudySpace />} />
+        <Route path="review" element={<StudentReview />} />
         <Route path="exercises" element={<StudentTests />} />
+        <Route path="documents" element={<StudentDocuments />} />
         <Route path="account" element={<AccountSettings />} />
         <Route path="*" element={<div className="font-bold text-2xl p-8">{t.common.pageUnderConstruction}</div>} />
       </Route>

@@ -4,7 +4,7 @@ import {
     MagnifyingGlass, Bell, ArrowRight, CheckCircle, Fire,
     Timer, NotePencil, Play, Pause, ArrowCounterClockwise,
     Warning, MapTrifold, BookOpen, CalendarBlank, Trash, Plus,
-    Eye, Gear, ArrowLeft, X, CoffeeBean, ChartBar,
+    Eye, Gear, ArrowLeft, X, CoffeeBean, ChartBar, CaretDown,
 } from '@phosphor-icons/react';
 import { useSettings } from '../../context/SettingsContext';
 import { NotificationDropdown } from './NotificationDropdown';
@@ -13,6 +13,7 @@ import { notificationService } from '../../services/notificationService';
 import { studentDashboardService, type StudentDashboardResponse } from '../../services/studentDashboardService';
 import { api } from '../../services/api';
 import { authService } from '../../services/authService';
+import { FAST_API_BASE_URL as FAST_API_URL } from '../../services/env';
 
 const DEADLINE_TABS = ['Tất cả', 'Toán học', 'Tiếng Anh', 'Ngữ Văn'];
 const POMODORO_WORK = 25 * 60;
@@ -60,6 +61,10 @@ export function StudentHomepage() {
     // Roadmap expanded
     const [roadmapExpanded, setRoadmapExpanded] = useState(false);
 
+    // AI Roadmaps for homepage card
+    const [homepageRoadmaps, setHomepageRoadmaps] = useState<any[]>([]);
+    const [selectedHomepageRoadmapId, setSelectedHomepageRoadmapId] = useState<number | null>(null);
+
     // ── Effects ──────────────────────────────────────────────────────────────
 
     useEffect(() => {
@@ -69,6 +74,19 @@ export function StudentHomepage() {
         };
         document.addEventListener('mousedown', handler);
         return () => document.removeEventListener('mousedown', handler);
+    }, []);
+
+    // Fetch AI roadmaps for homepage card
+    useEffect(() => {
+        fetch(`${FAST_API_URL}/roadmap/all/1`)
+            .then(res => res.ok ? res.json() : [])
+            .then(data => {
+                if (Array.isArray(data) && data.length > 0) {
+                    setHomepageRoadmaps(data);
+                    setSelectedHomepageRoadmapId(data[0].roadmapid);
+                }
+            })
+            .catch(() => {});
     }, []);
 
     useEffect(() => {
@@ -225,6 +243,11 @@ export function StudentHomepage() {
     const streakCount = dashboardData?.streakCount || 0;
     const safeStreakDays = dashboardData?.streakDays || [];
 
+    // Homepage roadmap card data
+    const activeHomepageRoadmap = homepageRoadmaps.find(r => r.roadmapid === selectedHomepageRoadmapId);
+    const roadmapChapters = activeHomepageRoadmap?.chapters || [];
+    const chaptersToShow = roadmapExpanded ? roadmapChapters : roadmapChapters.slice(0, 4);
+
     // ── Card style helpers ────────────────────────────────────────────────────
     const card = isDark
         ? 'bg-[#1A1A1A] border-2 border-[#EEEEEE] shadow-[4px_4px_0_0_#EEEEEE] hover:shadow-[0_0_15px_#FF6B4A] transition-all duration-300'
@@ -350,7 +373,26 @@ export function StudentHomepage() {
                             </div>
                             <div>
                                 <h2 className={`text-lg font-extrabold ${text}`}>Lộ trình đang học</h2>
-                                <p className={`text-xs font-semibold ${textMuted}`}>Toán học · Ôn thi THPT Quốc gia</p>
+                                {homepageRoadmaps.length > 1 ? (
+                                    <div className="relative mt-0.5">
+                                        <select
+                                            value={selectedHomepageRoadmapId?.toString() || ''}
+                                            onChange={(e) => setSelectedHomepageRoadmapId(Number(e.target.value))}
+                                            className={`text-xs font-bold pr-5 pl-0 py-0 border-none bg-transparent cursor-pointer focus:outline-none appearance-none ${textMuted}`}
+                                        >
+                                            {homepageRoadmaps.map(r => (
+                                                <option key={r.roadmapid} value={r.roadmapid.toString()}>
+                                                    {r.subject_name} · {r.total_time} tuần
+                                                </option>
+                                            ))}
+                                        </select>
+                                        <CaretDown className={`absolute right-0 top-1/2 -translate-y-1/2 w-3 h-3 pointer-events-none ${textMuted}`} />
+                                    </div>
+                                ) : (
+                                    <p className={`text-xs font-semibold ${textMuted}`}>
+                                        {activeHomepageRoadmap ? `${activeHomepageRoadmap.subject_name} · ${activeHomepageRoadmap.total_time} tuần` : 'Chưa có lộ trình'}
+                                    </p>
+                                )}
                             </div>
                         </div>
                         <button onClick={() => navigate('/student/roadmap')} className="text-sm font-bold text-[#FF6B4A] hover:text-[#ff5535] flex items-center gap-1">
@@ -358,64 +400,64 @@ export function StudentHomepage() {
                         </button>
                     </div>
 
-                    {/* Progress bar */}
-                    <div className="mb-5">
-                        <div className={`flex justify-between text-xs font-bold mb-2 ${textMuted}`}>
-                            <span>Tiến độ tổng thể</span>
-                            <span>{completedSteps}/{dashboardData?.totalRoadmapSteps || safeRoadmapSteps.length} tuần hoàn thành</span>
+                    {homepageRoadmaps.length === 0 ? (
+                        <div className="text-center py-6">
+                            <p className={`text-sm font-semibold ${textMuted} mb-3`}>Bạn chưa có lộ trình ôn tập nào.</p>
+                            <button onClick={() => navigate('/student/roadmap')} className="bg-[#FF6B4A] hover:bg-[#ff5535] text-white text-sm font-extrabold px-5 py-2.5 rounded-2xl transition-all">
+                                Tạo Lộ trình AI →
+                            </button>
                         </div>
-                        <div className={`h-2 rounded-full overflow-hidden ${isDark ? 'bg-white/10' : 'bg-gray-100'}`}>
-                            <div className="h-full rounded-full bg-[#FF6B4A] transition-all" style={{ width: `${(completedSteps / (dashboardData?.totalRoadmapSteps || Math.max(safeRoadmapSteps.length, 1))) * 100}%` }} />
-                        </div>
-                    </div>
-
-                    {/* Steps */}
-                    <div className={`flex flex-col divide-y ${divider}`}>
-                        {stepsToShow.map((step, i) => (
-                            <div
-                                key={i}
-                                onClick={() => navigate('/student/roadmap')}
-                                className={`flex items-center gap-4 py-3 px-2 -mx-2 rounded-xl cursor-pointer transition-colors ${hoverRow} ${step.current ? (isDark ? 'bg-[#FF6B4A]/10' : 'bg-[#FF6B4A]/5') : ''}`}
-                            >
-                                {/* Icon */}
-                                <div className={`w-8 h-8 rounded-full flex items-center justify-center shrink-0 ${step.done ? 'bg-[#10B981]' : step.current ? 'bg-[#FF6B4A]' : (isDark ? 'bg-white/10' : 'bg-gray-100')}`}>
-                                    {step.done
-                                        ? <CheckCircle className="w-4 h-4 text-white" weight="fill" />
-                                        : <span className={`text-xs font-extrabold ${step.current ? 'text-white' : textMuted}`}>{step.week}</span>
-                                    }
+                    ) : (
+                        <>
+                            {/* Progress bar */}
+                            <div className="mb-5">
+                                <div className={`flex justify-between text-xs font-bold mb-2 ${textMuted}`}>
+                                    <span>Tiến độ tổng thể</span>
+                                    <span>{roadmapChapters.length} chương · {roadmapChapters.reduce((s: number, c: any) => s + (c.lessons?.length || 0), 0)} bài học</span>
                                 </div>
-
-                                {/* Title */}
-                                <div className="flex-1">
-                                    <p className={`text-sm font-extrabold ${step.done ? textMuted : text} ${step.done ? 'line-through' : ''}`}>{step.title}</p>
-                                    <p className={`text-[11px] font-semibold ${textMuted}`}>Tuần {step.week}</p>
+                                <div className={`h-2 rounded-full overflow-hidden ${isDark ? 'bg-white/10' : 'bg-gray-100'}`}>
+                                    <div className="h-full rounded-full bg-[#FF6B4A] transition-all" style={{ width: '0%' }} />
                                 </div>
-
-                                {/* Badge */}
-                                {step.current && (
-                                    <span className="text-[10px] font-extrabold bg-[#FF6B4A] text-white px-2.5 py-1 rounded-full uppercase tracking-widest">Đang học</span>
-                                )}
-                                {step.done && (
-                                    <span className={`text-[10px] font-extrabold px-2.5 py-1 rounded-full uppercase tracking-widest ${isDark ? 'bg-[#10B981]/20 text-[#10B981]' : 'bg-[#10B981]/10 text-[#10B981]'}`}>Hoàn thành</span>
-                                )}
                             </div>
-                        ))}
-                    </div>
 
-                    <div className="flex items-center justify-between mt-4">
-                        <button
-                            onClick={() => setRoadmapExpanded(v => !v)}
-                            className={`text-xs font-extrabold ${textMuted} hover:text-[#FF6B4A] transition-colors`}
-                        >
-                            {roadmapExpanded ? '▲ Thu gọn' : `▼ Xem thêm ${safeRoadmapSteps.length - 5 > 0 ? safeRoadmapSteps.length - 5 : ''} tuần`}
-                        </button>
-                        <button
-                            onClick={() => navigate('/student/study')}
-                            className="bg-[#FF6B4A] hover:bg-[#ff5535] text-white text-sm font-extrabold px-5 py-2.5 rounded-2xl transition-all shadow-sm hover:shadow-md"
-                        >
-                            Bắt đầu tuần này →
-                        </button>
-                    </div>
+                            {/* Chapter steps */}
+                            <div className={`flex flex-col divide-y ${divider}`}>
+                                {chaptersToShow.map((chapter: any, i: number) => (
+                                    <div
+                                        key={chapter.chapterid || i}
+                                        onClick={() => navigate('/student/roadmap')}
+                                        className={`flex items-center gap-4 py-3 px-2 -mx-2 rounded-xl cursor-pointer transition-colors ${hoverRow} ${i === 0 ? (isDark ? 'bg-[#FF6B4A]/10' : 'bg-[#FF6B4A]/5') : ''}`}
+                                    >
+                                        <div className={`w-8 h-8 rounded-full flex items-center justify-center shrink-0 ${i === 0 ? 'bg-[#FF6B4A]' : (isDark ? 'bg-white/10' : 'bg-gray-100')}`}>
+                                            <span className={`text-xs font-extrabold ${i === 0 ? 'text-white' : textMuted}`}>{i + 1}</span>
+                                        </div>
+                                        <div className="flex-1">
+                                            <p className={`text-sm font-extrabold ${text}`}>{chapter.title}</p>
+                                            <p className={`text-[11px] font-semibold ${textMuted}`}>{chapter.lessons?.length || 0} bài học</p>
+                                        </div>
+                                        {i === 0 && (
+                                            <span className="text-[10px] font-extrabold bg-[#FF6B4A] text-white px-2.5 py-1 rounded-full uppercase tracking-widest">Bắt đầu</span>
+                                        )}
+                                    </div>
+                                ))}
+                            </div>
+
+                            <div className="flex items-center justify-between mt-4">
+                                <button
+                                    onClick={() => setRoadmapExpanded(v => !v)}
+                                    className={`text-xs font-extrabold ${textMuted} hover:text-[#FF6B4A] transition-colors`}
+                                >
+                                    {roadmapExpanded ? '▲ Thu gọn' : `▼ Xem thêm ${roadmapChapters.length - 4 > 0 ? roadmapChapters.length - 4 : ''} chương`}
+                                </button>
+                                <button
+                                    onClick={() => navigate('/student/study')}
+                                    className="bg-[#FF6B4A] hover:bg-[#ff5535] text-white text-sm font-extrabold px-5 py-2.5 rounded-2xl transition-all shadow-sm hover:shadow-md"
+                                >
+                                    Bắt đầu học →
+                                </button>
+                            </div>
+                        </>
+                    )}
                 </div>
 
                 {/* Pomodoro — col-span-1 */}
