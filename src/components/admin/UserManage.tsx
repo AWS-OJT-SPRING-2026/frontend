@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
+import { createPortal } from 'react-dom';
 import { MagnifyingGlass, UserPlus, PencilSimple, Trash, X, ChalkboardTeacher, Student, Eye, EyeSlash, Lock, LockOpen } from '@phosphor-icons/react';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
 import { api } from '../../services/api';
@@ -22,6 +23,14 @@ interface UserResponse {
     createdAt: string;
     classes: string[] | null;
     role: RoleResponse;
+}
+
+type UserRoleCluster = 'ADMIN' | 'TEACHER' | 'STUDENT' | 'OTHER';
+
+interface UserMutationSuccessMeta {
+    roleCluster: UserRoleCluster;
+    userId?: number;
+    username?: string;
 }
 
 interface PageResponse<T> {
@@ -48,6 +57,7 @@ interface TeacherForm {
     gender: string;
     specialization: string;
     dateOfBirth: string;
+    address: string;
     isHomeroomTeacher: boolean;
     status: string;
 }
@@ -72,7 +82,7 @@ interface StudentForm {
 
 const EMPTY_TEACHER: TeacherForm = {
     username: '', password: '', fullName: '', email: '',
-    phone: '', gender: '', specialization: '', dateOfBirth: '', isHomeroomTeacher: false, status: 'ACTIVE',
+    phone: '', gender: '', specialization: '', dateOfBirth: '', address: '', isHomeroomTeacher: false, status: 'ACTIVE',
 };
 const EMPTY_STUDENT: StudentForm = {
     username: '', password: '', email: '', phone: '',
@@ -94,6 +104,13 @@ function Field({ label, required, children }: { label: string; required?: boolea
 
 const inputCls = "w-full px-3 py-2 bg-white border-2 border-[#1A1A1A]/20 rounded-xl text-sm font-semibold focus:outline-none focus:border-[#FF6B4A] transition-colors placeholder:text-gray-300 dark:bg-[#111827] dark:border-white/10 dark:text-slate-100 dark:placeholder:text-slate-400 dark:focus:border-[#f08a5d] dark:[color-scheme:dark] dark:[&::-webkit-calendar-picker-indicator]:invert dark:[&::-webkit-calendar-picker-indicator]:opacity-85";
 
+function BodyPortal({ children }: { children: React.ReactNode }) {
+    if (typeof document === 'undefined') {
+        return null;
+    }
+    return createPortal(children, document.body);
+}
+
 const AVATAR_MAX_SIZE_BYTES = 5 * 1024 * 1024;
 const AVATAR_ACCEPT = 'image/png,image/jpeg,image/webp,image/gif';
 const AVATAR_ALLOWED_TYPES = ['image/png', 'image/jpeg', 'image/webp', 'image/gif'];
@@ -109,6 +126,15 @@ function getAvatarValidationError(file: File): string | null {
 }
 
 function buildStudentFormData(payload: Record<string, unknown>, avatar?: File | null): FormData {
+    const formData = new FormData();
+    formData.append('data', new Blob([JSON.stringify(payload)], { type: 'application/json' }));
+    if (avatar) {
+        formData.append('avatar', avatar);
+    }
+    return formData;
+}
+
+function buildTeacherFormData(payload: Record<string, unknown>, avatar?: File | null): FormData {
     const formData = new FormData();
     formData.append('data', new Blob([JSON.stringify(payload)], { type: 'application/json' }));
     if (avatar) {
@@ -178,7 +204,7 @@ function AvatarZoomModal({
 }
 
 /* ─── Add User Modal ─────────────────────────────────────────────────────── */
-function AddUserModal({ onClose, onSuccess }: { onClose: () => void; onSuccess: () => void }) {
+function AddUserModal({ onClose, onSuccess }: { onClose: () => void; onSuccess: (meta?: UserMutationSuccessMeta) => void | Promise<void> }) {
     const [tab, setTab] = useState<'teacher' | 'student'>('teacher');
     const [teacherForm, setTeacherForm] = useState<TeacherForm>(EMPTY_TEACHER);
     const [studentForm, setStudentForm] = useState<StudentForm>(EMPTY_STUDENT);
@@ -187,6 +213,10 @@ function AddUserModal({ onClose, onSuccess }: { onClose: () => void; onSuccess: 
     const [success, setSuccess] = useState<string | null>(null);
     const [showTeacherPassword, setShowTeacherPassword] = useState(false);
     const [showStudentPassword, setShowStudentPassword] = useState(false);
+    const [teacherAvatarFile, setTeacherAvatarFile] = useState<File | null>(null);
+    const [teacherAvatarPreviewUrl, setTeacherAvatarPreviewUrl] = useState<string | null>(null);
+    const [teacherAvatarError, setTeacherAvatarError] = useState<string | null>(null);
+    const addTeacherAvatarInputRef = useRef<HTMLInputElement | null>(null);
     const [studentAvatarFile, setStudentAvatarFile] = useState<File | null>(null);
     const [studentAvatarPreviewUrl, setStudentAvatarPreviewUrl] = useState<string | null>(null);
     const [studentAvatarError, setStudentAvatarError] = useState<string | null>(null);
@@ -197,6 +227,28 @@ function AddUserModal({ onClose, onSuccess }: { onClose: () => void; onSuccess: 
     }
     function updateStudent(field: keyof StudentForm, value: string) {
         setStudentForm(prev => ({ ...prev, [field]: value }));
+    }
+
+    function handleTeacherAvatarChange(file?: File) {
+        setTeacherAvatarError(null);
+        if (!file) {
+            setTeacherAvatarFile(null);
+            setTeacherAvatarPreviewUrl(null);
+            return;
+        }
+
+        const validationError = getAvatarValidationError(file);
+        if (validationError) {
+            setTeacherAvatarError(validationError);
+            return;
+        }
+
+        setTeacherAvatarFile(file);
+        setTeacherAvatarPreviewUrl(URL.createObjectURL(file));
+    }
+
+    function openAddTeacherAvatarPicker() {
+        addTeacherAvatarInputRef.current?.click();
     }
 
     function handleStudentAvatarChange(file?: File) {
@@ -223,6 +275,14 @@ function AddUserModal({ onClose, onSuccess }: { onClose: () => void; onSuccess: 
 
     useEffect(() => {
         return () => {
+            if (teacherAvatarPreviewUrl?.startsWith('blob:')) {
+                URL.revokeObjectURL(teacherAvatarPreviewUrl);
+            }
+        };
+    }, [teacherAvatarPreviewUrl]);
+
+    useEffect(() => {
+        return () => {
             if (studentAvatarPreviewUrl?.startsWith('blob:')) {
                 URL.revokeObjectURL(studentAvatarPreviewUrl);
             }
@@ -237,11 +297,18 @@ function AddUserModal({ onClose, onSuccess }: { onClose: () => void; onSuccess: 
 
         setLoading(true);
         try {
+            let successMeta: UserMutationSuccessMeta | undefined;
             if (tab === 'teacher') {
                 const payload: any = { ...teacherForm };
                 if (!payload.dateOfBirth) delete payload.dateOfBirth;
                 if (!payload.gender) delete payload.gender;
-                await api.authPost('/users/teachers', payload, token);
+                if (!payload.address) delete payload.address;
+                const formData = buildTeacherFormData(payload, teacherAvatarFile);
+                await api.authPostForm('/users/teachers', formData, token);
+                successMeta = {
+                    roleCluster: 'TEACHER',
+                    username: teacherForm.username.trim(),
+                };
                 setSuccess('Tạo giáo viên thành công!');
             } else {
                 // Build student payload — omit empty optional fields
@@ -261,9 +328,16 @@ function AddUserModal({ onClose, onSuccess }: { onClose: () => void; onSuccess: 
                 if (studentForm.parentRelationship) payload.parentRelationship = studentForm.parentRelationship;
                 const formData = buildStudentFormData(payload, studentAvatarFile);
                 await api.authPostForm('/users/students', formData, token);
+                successMeta = {
+                    roleCluster: 'STUDENT',
+                    username: studentForm.username.trim(),
+                };
                 setSuccess('Tạo học sinh thành công!');
             }
-            setTimeout(() => { onSuccess(); onClose(); }, 1200);
+            setTimeout(async () => {
+                await onSuccess(successMeta);
+                onClose();
+            }, 1200);
         } catch (e: any) {
             setError(e?.message ?? 'Có lỗi xảy ra, vui lòng thử lại.');
         } finally {
@@ -271,12 +345,12 @@ function AddUserModal({ onClose, onSuccess }: { onClose: () => void; onSuccess: 
         }
     }
 
-    return (
+    const modalContent = (
         /* Backdrop */
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4 dark:bg-black/75" onClick={onClose}>
             {/* Modal — wider when student tab */}
-            <div
-                className={`bg-[#FAF9F6] w-full rounded-3xl border-2 border-[#1A1A1A] shadow-2xl overflow-hidden transition-all dark:bg-[#1b2230] dark:border-white/10 dark:shadow-[0_24px_70px_rgba(0,0,0,0.65)] ${tab === 'student' ? 'max-w-5xl' : 'max-w-xl'}`}
+                <div
+                    className={`bg-[#FAF9F6] w-full rounded-3xl border-2 border-[#1A1A1A] shadow-2xl overflow-hidden transition-all dark:bg-[#1b2230] dark:border-white/10 dark:shadow-[0_24px_70px_rgba(0,0,0,0.65)] ${tab === 'student' ? 'max-w-5xl' : 'max-w-5xl'}`}
                 style={{ fontFamily: "'Nunito', sans-serif" }}
                 onClick={e => e.stopPropagation()}
             >
@@ -314,65 +388,119 @@ function AddUserModal({ onClose, onSuccess }: { onClose: () => void; onSuccess: 
                 <div className="px-6 py-4 space-y-4 max-h-[65vh] overflow-y-auto">
                     {tab === 'teacher' ? (
                         <>
-                            <div className="grid grid-cols-2 gap-4">
-                                <Field label="Tên đăng nhập" required>
-                                    <input className={inputCls} placeholder="vd: gv.nguyenvan" value={teacherForm.username} onChange={e => updateTeacher('username', e.target.value)} />
-                                </Field>
-                                <Field label="Mật khẩu" required>
-                                    <div className="relative">
-                                        <input type={showTeacherPassword ? 'text' : 'password'} className={inputCls + ' pr-10'} placeholder="Tối thiểu 6 ký tự" value={teacherForm.password} onChange={e => updateTeacher('password', e.target.value)} />
-                                        <button type="button" onClick={() => setShowTeacherPassword(p => !p)} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-[#FF6B4A] transition-colors dark:text-slate-300 dark:hover:text-[#f0b09b]">
-                                            {showTeacherPassword ? <EyeSlash className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                                        </button>
+                            <input
+                                ref={addTeacherAvatarInputRef}
+                                type="file"
+                                accept={AVATAR_ACCEPT}
+                                className="hidden"
+                                onChange={(e) => handleTeacherAvatarChange(e.target.files?.[0])}
+                            />
+
+                            <div className="grid grid-cols-1 lg:grid-cols-5 gap-4">
+                                <div className="rounded-2xl border-2 border-[#1A1A1A]/10 overflow-hidden bg-white lg:col-span-3 dark:bg-[#161b22] dark:border-white/10">
+                                    <div className="flex items-center gap-2 px-4 py-2.5 bg-[#B8B5FF]/20 border-b-2 border-[#1A1A1A]/10 dark:bg-transparent dark:border-b-white/[0.08] dark:border-t-2 dark:border-t-[#7f87d7]">
+                                        <span className="w-5 h-5 rounded-lg bg-[#B8B5FF] flex items-center justify-center text-[#1A1A1A] text-xs font-extrabold dark:bg-[#7f87d7] dark:text-slate-50">1</span>
+                                        <p className="text-xs font-extrabold text-[#6C63FF] uppercase tracking-wider dark:text-[#aab4ff]">Thông tin cá nhân</p>
                                     </div>
-                                </Field>
+                                    <div className="p-4 space-y-3">
+                                        <button
+                                            type="button"
+                                            onClick={openAddTeacherAvatarPicker}
+                                            className="w-full rounded-2xl border-2 border-dashed border-[#1A1A1A]/15 bg-[#F7F7F2] p-4 hover:border-[#FF6B4A]/40 transition-colors dark:bg-[#111827] dark:border-white/10 dark:hover:border-[#d97757]/60"
+                                        >
+                                            <div className="flex flex-col items-center text-center gap-2">
+                                                <AvatarPreview
+                                                    avatarUrl={teacherAvatarPreviewUrl}
+                                                    fallbackName={teacherForm.fullName || teacherForm.username || 'Giáo viên'}
+                                                    userId={0}
+                                                    sizeClass="w-24 h-24"
+                                                    textClass="text-3xl"
+                                                />
+                                                <p className="text-sm font-extrabold text-[#1A1A1A] dark:text-slate-100">{teacherAvatarFile ? 'Nhấn để đổi avatar' : 'Nhấn để thêm avatar'}</p>
+                                                <p className="text-[11px] font-bold text-[#1A1A1A]/50 dark:text-[#94a3b8]">PNG/JPG/WEBP/GIF, tối đa 5MB</p>
+                                            </div>
+                                        </button>
+                                        {teacherAvatarError && <p className="text-xs font-extrabold text-[#c0392b]">{teacherAvatarError}</p>}
+
+                                        <Field label="Họ và tên" required>
+                                            <input className={inputCls} placeholder="Nguyễn Văn A" value={teacherForm.fullName} onChange={e => updateTeacher('fullName', e.target.value)} />
+                                        </Field>
+                                        <div className="grid grid-cols-2 gap-3">
+                                            <Field label="Giới tính">
+                                                <select className={inputCls} value={teacherForm.gender} onChange={e => updateTeacher('gender', e.target.value)}>
+                                                    <option value="">-- Chọn --</option>
+                                                    <option value="MALE">Nam</option>
+                                                    <option value="FEMALE">Nữ</option>
+                                                    <option value="OTHER">Khác</option>
+                                                </select>
+                                            </Field>
+                                            <Field label="Ngày sinh">
+                                                <input type="date" className={inputCls} value={teacherForm.dateOfBirth} onChange={e => updateTeacher('dateOfBirth', e.target.value)} />
+                                            </Field>
+                                        </div>
+                                        <Field label="Địa chỉ">
+                                            <input className={inputCls} placeholder="123 Đường ABC, Quận 1, TP.HCM" value={teacherForm.address} onChange={e => updateTeacher('address', e.target.value)} />
+                                        </Field>
+                                    </div>
+                                </div>
+
+                                <div className="rounded-2xl border-2 border-[#1A1A1A]/10 overflow-hidden bg-white lg:col-span-2 dark:bg-[#161b22] dark:border-white/10">
+                                    <div className="flex items-center gap-2 px-4 py-2.5 bg-[#FF6B4A]/8 border-b-2 border-[#1A1A1A]/10 dark:bg-transparent dark:border-b-white/[0.08] dark:border-t-2 dark:border-t-[#d97757]">
+                                        <span className="w-5 h-5 rounded-lg bg-[#FF6B4A] flex items-center justify-center text-white text-xs font-extrabold dark:bg-[#d97757]">2</span>
+                                        <p className="text-xs font-extrabold text-[#FF6B4A] uppercase tracking-wider dark:text-[#f0b09b]">Thông tin tài khoản</p>
+                                    </div>
+                                    <div className="p-4 space-y-3">
+                                        <Field label="Tên đăng nhập" required>
+                                            <input className={inputCls} placeholder="vd: gv.nguyenvan" value={teacherForm.username} onChange={e => updateTeacher('username', e.target.value)} />
+                                        </Field>
+                                        <Field label="Mật khẩu" required>
+                                            <div className="relative">
+                                                <input type={showTeacherPassword ? 'text' : 'password'} className={inputCls + ' pr-10'} placeholder="Tối thiểu 6 ký tự" value={teacherForm.password} onChange={e => updateTeacher('password', e.target.value)} />
+                                                <button type="button" onClick={() => setShowTeacherPassword(p => !p)} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-[#FF6B4A] transition-colors dark:text-slate-300 dark:hover:text-[#f0b09b]">
+                                                    {showTeacherPassword ? <EyeSlash className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                                                </button>
+                                            </div>
+                                        </Field>
+                                        <div className="grid grid-cols-2 gap-3">
+                                            <Field label="Email">
+                                                <input type="email" className={inputCls} placeholder="giaovien@school.edu.vn" value={teacherForm.email} onChange={e => updateTeacher('email', e.target.value)} />
+                                            </Field>
+                                            <Field label="Số điện thoại">
+                                                <input className={inputCls} placeholder="0912345678" value={teacherForm.phone} onChange={e => updateTeacher('phone', e.target.value)} />
+                                            </Field>
+                                        </div>
+                                        <Field label="Trạng thái">
+                                            <select className={inputCls} value={teacherForm.status} onChange={e => updateTeacher('status', e.target.value)}>
+                                                <option value="ACTIVE">Hoạt động</option>
+                                                <option value="LOCKED">Khóa</option>
+                                            </select>
+                                        </Field>
+                                    </div>
+                                </div>
                             </div>
-                            <Field label="Họ và tên" required>
-                                <input className={inputCls} placeholder="Nguyễn Văn A" value={teacherForm.fullName} onChange={e => updateTeacher('fullName', e.target.value)} />
-                            </Field>
-                            <div className="grid grid-cols-2 gap-4">
-                                <Field label="Email" required>
-                                    <input type="email" className={inputCls} placeholder="giaovien@school.edu.vn" value={teacherForm.email} onChange={e => updateTeacher('email', e.target.value)} />
-                                </Field>
-                                <Field label="Số điện thoại">
-                                    <input className={inputCls} placeholder="0912345678" value={teacherForm.phone} onChange={e => updateTeacher('phone', e.target.value)} />
-                                </Field>
-                            </div>
-                            <div className="grid grid-cols-2 gap-4">
-                                <Field label="Chuyên môn">
-                                    <input className={inputCls} placeholder="Toán học" value={teacherForm.specialization} onChange={e => updateTeacher('specialization', e.target.value)} />
-                                </Field>
-                                <Field label="Ngày sinh">
-                                    <input type="date" className={inputCls} value={teacherForm.dateOfBirth} onChange={e => updateTeacher('dateOfBirth', e.target.value)} />
-                                </Field>
-                            </div>
-                            <div className="grid grid-cols-2 gap-4">
-                                <Field label="Trạng thái">
-                                    <select className={inputCls} value={teacherForm.status} onChange={e => updateTeacher('status', e.target.value)}>
-                                        <option value="ACTIVE">Hoạt động</option>
-                                        <option value="LOCKED">Khóa</option>
-                                    </select>
-                                </Field>
-                                <Field label="Giới tính">
-                                    <select className={inputCls} value={teacherForm.gender} onChange={e => updateTeacher('gender', e.target.value)}>
-                                        <option value="">-- Chọn --</option>
-                                        <option value="MALE">Nam</option>
-                                        <option value="FEMALE">Nữ</option>
-                                        <option value="OTHER">Khác</option>
-                                    </select>
-                                </Field>
-                            </div>
-                            <div className="flex items-center gap-3 bg-white border-2 border-[#1A1A1A]/10 rounded-2xl px-4 py-3 dark:bg-[#161b22] dark:border-white/10">
-                                <input
-                                    id="homeroom"
-                                    type="checkbox"
-                                    className="w-4 h-4 accent-[#FF6B4A]"
-                                    checked={teacherForm.isHomeroomTeacher}
-                                    onChange={e => updateTeacher('isHomeroomTeacher', e.target.checked)}
-                                />
-                                <label htmlFor="homeroom" className="text-sm font-bold text-[#1A1A1A] cursor-pointer select-none dark:text-slate-100">
-                                    Là giáo viên chủ nhiệm
-                                </label>
+
+                            <div className="rounded-2xl border-2 border-[#1A1A1A]/10 overflow-hidden bg-white dark:bg-[#161b22] dark:border-white/10">
+                                <div className="flex items-center gap-2 px-4 py-2.5 bg-[#95E1D3]/20 border-b-2 border-[#1A1A1A]/10 dark:bg-transparent dark:border-b-white/[0.08] dark:border-t-2 dark:border-t-[#6ba79c]">
+                                    <span className="w-5 h-5 rounded-lg bg-[#95E1D3] flex items-center justify-center text-[#1A1A1A] text-xs font-extrabold dark:bg-[#6ba79c] dark:text-slate-50">3</span>
+                                    <p className="text-xs font-extrabold text-[#1A7A6E] uppercase tracking-wider dark:text-[#93c7bf]">Thông tin giảng dạy</p>
+                                </div>
+                                <div className="p-4 space-y-3">
+                                    <Field label="Chuyên môn">
+                                        <input className={inputCls} placeholder="Toán học" value={teacherForm.specialization} onChange={e => updateTeacher('specialization', e.target.value)} />
+                                    </Field>
+                                    <div className="flex items-center gap-3 bg-[#FAF9F6] border-2 border-[#1A1A1A]/10 rounded-2xl px-4 py-3 dark:bg-[#111827] dark:border-white/10">
+                                        <input
+                                            id="homeroom"
+                                            type="checkbox"
+                                            className="w-4 h-4 accent-[#FF6B4A]"
+                                            checked={teacherForm.isHomeroomTeacher}
+                                            onChange={e => updateTeacher('isHomeroomTeacher', e.target.checked)}
+                                        />
+                                        <label htmlFor="homeroom" className="text-sm font-bold text-[#1A1A1A] cursor-pointer select-none dark:text-slate-100">
+                                            Là giáo viên chủ nhiệm
+                                        </label>
+                                    </div>
+                                </div>
                             </div>
                         </>
                     ) : (
@@ -534,6 +662,8 @@ function AddUserModal({ onClose, onSuccess }: { onClose: () => void; onSuccess: 
 
         </div>
     );
+
+    return <BodyPortal>{modalContent}</BodyPortal>;
 }
 
 /* ─── Helpers ────────────────────────────────────────────────────────────── */
@@ -548,6 +678,27 @@ function getInitials(name: string): string {
 
 function getAvatarColor(id: number): string {
     return AVATAR_COLORS[id % AVATAR_COLORS.length];
+}
+
+function normalizeRoleCluster(roleName?: string): UserRoleCluster {
+    const normalizedRole = roleName?.toUpperCase() ?? '';
+    if (normalizedRole.includes('ADMIN')) return 'ADMIN';
+    if (normalizedRole.includes('TEACHER')) return 'TEACHER';
+    if (normalizedRole.includes('STUDENT') || normalizedRole.includes('USER')) return 'STUDENT';
+    return 'OTHER';
+}
+
+function getRoleClusterOrder(cluster: UserRoleCluster): number {
+    if (cluster === 'ADMIN') return 0;
+    if (cluster === 'TEACHER') return 1;
+    if (cluster === 'STUDENT') return 2;
+    return 3;
+}
+
+function parseTimestamp(dateTime?: string | null): number {
+    if (!dateTime) return 0;
+    const parsed = new Date(dateTime).getTime();
+    return Number.isNaN(parsed) ? 0 : parsed;
 }
 
 function getRoleLabel(roleName: string): string {
@@ -648,6 +799,7 @@ interface TeacherDetailResponse {
     gender: string;
     isHomeroomTeacher: boolean;
     dateOfBirth: string | null;
+    address: string | null;
     classes: string[] | null;
 }
 
@@ -680,6 +832,7 @@ interface TeacherEditForm {
     gender: string;
     specialization: string;
     dateOfBirth: string;
+    address: string;
     isHomeroomTeacher: boolean;
 }
 
@@ -697,7 +850,7 @@ interface StudentEditForm {
     parentRelationship: string;
 }
 
-function EditUserModal({ user, onClose, onSuccess }: { user: UserResponse; onClose: () => void; onSuccess: () => void }) {
+function EditUserModal({ user, onClose, onSuccess }: { user: UserResponse; onClose: () => void; onSuccess: (meta?: UserMutationSuccessMeta) => void | Promise<void> }) {
     const isTeacher = user.role?.roleName?.toUpperCase().includes('TEACHER');
 
     const [teacherForm, setTeacherForm] = useState<TeacherEditForm>({
@@ -708,6 +861,7 @@ function EditUserModal({ user, onClose, onSuccess }: { user: UserResponse; onClo
         gender: '',
         specialization: '',
         dateOfBirth: '',
+        address: '',
         isHomeroomTeacher: false,
     });
 
@@ -758,8 +912,10 @@ function EditUserModal({ user, onClose, onSuccess }: { user: UserResponse; onClo
                         gender: (t.gender ?? '').toUpperCase(),
                         specialization: t.specialization ?? '',
                         dateOfBirth: t.dateOfBirth ? t.dateOfBirth.toString().slice(0, 10) : '',
+                        address: t.address ?? '',
                         isHomeroomTeacher: t.isHomeroomTeacher ?? false,
                     });
+                    setStudentAvatarCurrentUrl(t.avatarUrl ?? user.avatarUrl ?? null);
                 } else {
                     const s = detail as StudentDetailResponse;
                     setStudentForm({
@@ -845,6 +1001,11 @@ function EditUserModal({ user, onClose, onSuccess }: { user: UserResponse; onClo
         if (!token) { setError('Bạn chưa đăng nhập.'); return; }
         setLoading(true);
         try {
+            const successMeta: UserMutationSuccessMeta = {
+                roleCluster: normalizeRoleCluster(user.role?.roleName),
+                userId: user.userID,
+                username: user.username,
+            };
             if (isTeacher) {
                 const payload: any = {
                     fullName: teacherForm.fullName,
@@ -856,7 +1017,9 @@ function EditUserModal({ user, onClose, onSuccess }: { user: UserResponse; onClo
                 if (teacherForm.gender) payload.gender = teacherForm.gender;
                 if (teacherForm.specialization) payload.specialization = teacherForm.specialization;
                 if (teacherForm.dateOfBirth) payload.dateOfBirth = teacherForm.dateOfBirth;
-                await api.authPut(`/users/teachers/${user.userID}`, payload, token);
+                if (teacherForm.address) payload.address = teacherForm.address;
+                const formData = buildTeacherFormData(payload, studentAvatarFile);
+                await api.authPutForm(`/users/teachers/${user.userID}`, formData, token);
                 setSuccess('Cập nhật giáo viên thành công!');
             } else {
                 const payload: any = {
@@ -876,7 +1039,10 @@ function EditUserModal({ user, onClose, onSuccess }: { user: UserResponse; onClo
                 await api.authPutForm(`/users/students/${user.userID}`, formData, token);
                 setSuccess('Cập nhật học sinh thành công!');
             }
-            setTimeout(() => { onSuccess(); onClose(); }, 1200);
+            setTimeout(async () => {
+                await onSuccess(successMeta);
+                onClose();
+            }, 1200);
         } catch (e: any) {
             setError(e?.message ?? 'Có lỗi xảy ra, vui lòng thử lại.');
         } finally {
@@ -884,7 +1050,7 @@ function EditUserModal({ user, onClose, onSuccess }: { user: UserResponse; onClo
         }
     }
 
-    return (
+    const modalContent = (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4 dark:bg-black/75" onClick={onClose}>
             <div
                 className={`bg-[#FAF9F6] w-full rounded-3xl border-2 border-[#1A1A1A] shadow-2xl overflow-hidden transition-all dark:bg-[#1b2230] dark:border-white/10 dark:shadow-[0_24px_70px_rgba(0,0,0,0.65)] ${!isTeacher ? 'max-w-5xl' : 'max-w-xl'}`}
@@ -915,6 +1081,39 @@ function EditUserModal({ user, onClose, onSuccess }: { user: UserResponse; onClo
                         </div>
                     ) : isTeacher ? (
                         <>
+                            <input
+                                ref={editStudentAvatarInputRef}
+                                type="file"
+                                accept={AVATAR_ACCEPT}
+                                className="hidden"
+                                onChange={(e) => handleStudentAvatarChange(e.target.files?.[0])}
+                            />
+                            <div className="rounded-2xl border-2 border-[#1A1A1A]/10 bg-white p-4 dark:bg-[#161b22] dark:border-white/10">
+                                <div className="flex items-center justify-between gap-4">
+                                    <div className="flex items-center gap-3">
+                                        <AvatarPreview
+                                            avatarUrl={studentAvatarPreviewUrl ?? studentAvatarCurrentUrl}
+                                            fallbackName={teacherForm.fullName || user.fullName || user.username}
+                                            userId={user.userID}
+                                            sizeClass="w-16 h-16"
+                                            textClass="text-xl"
+                                        />
+                                        <div>
+                                            <p className="text-sm font-extrabold text-[#1A1A1A] dark:text-slate-100">Avatar giáo viên</p>
+                                            <p className="text-[11px] font-bold text-[#1A1A1A]/50 dark:text-[#94a3b8]">PNG/JPG/WEBP/GIF, tối đa 5MB</p>
+                                        </div>
+                                    </div>
+                                    <button
+                                        type="button"
+                                        onClick={openEditStudentAvatarPicker}
+                                        className="px-3 py-2 rounded-xl border-2 border-[#FF6B4A]/30 text-[#FF6B4A] text-xs font-extrabold hover:bg-[#FF6B4A]/10 transition-colors"
+                                    >
+                                        {studentAvatarFile ? 'Đổi avatar' : 'Chọn avatar'}
+                                    </button>
+                                </div>
+                                {studentAvatarError && <p className="mt-2 text-xs font-extrabold text-[#c0392b]">{studentAvatarError}</p>}
+                            </div>
+
                             <Field label="Họ và tên" required>
                                 <input className={inputCls} placeholder="Nguyễn Văn A" value={teacherForm.fullName} onChange={e => updateTeacher('fullName', e.target.value)} />
                             </Field>
@@ -934,6 +1133,9 @@ function EditUserModal({ user, onClose, onSuccess }: { user: UserResponse; onClo
                                     <input type="date" className={inputCls} value={teacherForm.dateOfBirth} onChange={e => updateTeacher('dateOfBirth', e.target.value)} />
                                 </Field>
                             </div>
+                            <Field label="Địa chỉ">
+                                <input className={inputCls} placeholder="123 Đường ABC, Quận 1, TP.HCM" value={teacherForm.address} onChange={e => updateTeacher('address', e.target.value)} />
+                            </Field>
                             <div className="grid grid-cols-2 gap-4">
                                 <Field label="Trạng thái">
                                     <select className={inputCls} value={teacherForm.status} onChange={e => updateTeacher('status', e.target.value)}>
@@ -1158,6 +1360,8 @@ function EditUserModal({ user, onClose, onSuccess }: { user: UserResponse; onClo
             )}
         </div>
     );
+
+    return <BodyPortal>{modalContent}</BodyPortal>;
 }
 
 function UserDetailModal({ user, onClose }: { user: UserResponse; onClose: () => void }) {
@@ -1202,7 +1406,7 @@ function UserDetailModal({ user, onClose }: { user: UserResponse; onClose: () =>
         { label: 'Giới tính', value: getGenderLabel(detail?.gender) },
     ];
 
-    return (
+    const modalContent = (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4 dark:bg-black/75" onClick={onClose}>
             <div
                 className="bg-[#FAF9F6] w-full max-w-4xl rounded-3xl border-2 border-[#1A1A1A] shadow-2xl overflow-hidden dark:bg-[#1b2230] dark:border-white/10 dark:shadow-[0_24px_70px_rgba(0,0,0,0.65)]"
@@ -1312,6 +1516,8 @@ function UserDetailModal({ user, onClose }: { user: UserResponse; onClose: () =>
             )}
         </div>
     );
+
+    return <BodyPortal>{modalContent}</BodyPortal>;
 }
 
 /* ─── Main Component ─────────────────────────────────────────────────────── */
@@ -1336,11 +1542,12 @@ export function UserManage() {
     const [lockLoading, setLockLoading] = useState(false);
     const [deleteConfirmUser, setDeleteConfirmUser] = useState<UserResponse | null>(null);
     const [deleteLoading, setDeleteLoading] = useState(false);
+    const [recentMutationMeta, setRecentMutationMeta] = useState<UserMutationSuccessMeta | null>(null);
     const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-    async function fetchUsers(page: number, role: string, keyword: string) {
+    async function fetchUsers(page: number, role: string, keyword: string): Promise<UserResponse[]> {
         const token = authService.getToken();
-        if (!token) return;
+        if (!token) return [];
         setLoading(true);
         setError(null);
         try {
@@ -1350,17 +1557,27 @@ export function UserManage() {
             if (keyword) url += `&keyword=${encodeURIComponent(keyword)}`;
             const resp = await api.get<ApiResponse<PageResponse<UserResponse>>>(url, token);
             if (resp.result) {
-                setAllUsers(resp.result.data ?? []);
+                const nextUsers = resp.result.data ?? [];
+                setAllUsers(nextUsers);
                 setTotalPages(resp.result.totalPages ?? 1);
                 setTotalElements(resp.result.totalElements ?? 0);
+
+                // If current page is now out of range (e.g. after delete), step back to the last valid page.
+                const nextTotalPages = resp.result.totalPages ?? 1;
+                if (nextTotalPages > 0 && page > nextTotalPages) {
+                    setCurrentPage(nextTotalPages);
+                }
+                return nextUsers;
             } else {
                 setAllUsers([]);
                 setTotalPages(1);
                 setTotalElements(0);
+                return [];
             }
         } catch (e: any) {
             setError(e?.message ?? 'Không thể tải danh sách người dùng.');
             setAllUsers([]);
+            return [];
         } finally {
             setLoading(false);
         }
@@ -1382,8 +1599,36 @@ export function UserManage() {
         if (classFilter !== 'all') {
             filtered = filtered.filter(u => u.classes?.includes(classFilter));
         }
-        setUsers(filtered);
-    }, [allUsers, statusFilter, classFilter]);
+
+        const sorted = [...filtered].sort((a, b) => {
+            const roleA = normalizeRoleCluster(a.role?.roleName);
+            const roleB = normalizeRoleCluster(b.role?.roleName);
+            const roleOrderDiff = getRoleClusterOrder(roleA) - getRoleClusterOrder(roleB);
+            if (roleOrderDiff !== 0) {
+                return roleOrderDiff;
+            }
+
+            if (recentMutationMeta && roleA === recentMutationMeta.roleCluster && roleB === recentMutationMeta.roleCluster) {
+                const aIsRecent =
+                    (recentMutationMeta.userId != null && a.userID === recentMutationMeta.userId) ||
+                    (!!recentMutationMeta.username && a.username === recentMutationMeta.username);
+                const bIsRecent =
+                    (recentMutationMeta.userId != null && b.userID === recentMutationMeta.userId) ||
+                    (!!recentMutationMeta.username && b.username === recentMutationMeta.username);
+                if (aIsRecent !== bIsRecent) {
+                    return aIsRecent ? -1 : 1;
+                }
+            }
+
+            const createdDiff = parseTimestamp(b.createdAt) - parseTimestamp(a.createdAt);
+            if (createdDiff !== 0) {
+                return createdDiff;
+            }
+            return b.userID - a.userID;
+        });
+
+        setUsers(sorted);
+    }, [allUsers, statusFilter, classFilter, recentMutationMeta]);
 
     // Fetch whenever page, role or searchTerm changes
     useEffect(() => {
@@ -1407,10 +1652,12 @@ export function UserManage() {
 
     function handleStatusChange(value: string) {
         setStatusFilter(value);
+        setCurrentPage(1);
     }
 
     function handleClassChange(value: string) {
         setClassFilter(value);
+        setCurrentPage(1);
     }
 
     async function handleLockUser() {
@@ -1448,8 +1695,12 @@ export function UserManage() {
         }
     }
 
-    const startItem = totalElements === 0 ? 0 : (currentPage - 1) * pageSize + 1;
-    const endItem = Math.min(currentPage * pageSize, totalElements);
+    const isClientFilterActive = statusFilter !== 'all' || classFilter !== 'all';
+    const displayedTotalElements = isClientFilterActive ? users.length : totalElements;
+    const displayedStartItem = displayedTotalElements === 0 ? 0 : (currentPage - 1) * pageSize + 1;
+    const displayedEndItem = isClientFilterActive
+        ? users.length
+        : Math.min(currentPage * pageSize, totalElements);
 
     return (
         <div className="p-8 space-y-6" style={{ fontFamily: "'Nunito', sans-serif" }}>
@@ -1641,9 +1892,9 @@ export function UserManage() {
                 </table>
                 <div className="p-4 border-t-2 border-[#1A1A1A]/10 flex items-center justify-between text-sm font-bold text-gray-400">
                     <span>
-                        {totalElements === 0
+                        {displayedTotalElements === 0
                             ? 'Không có dữ liệu'
-                            : `Hiển thị ${startItem}–${endItem} trên ${totalElements.toLocaleString('vi-VN')} người dùng`}
+                            : `Hiển thị ${displayedStartItem}–${displayedEndItem} trên ${displayedTotalElements.toLocaleString('vi-VN')} người dùng`}
                     </span>
                     <div className="flex gap-2">
                         <button
@@ -1680,7 +1931,25 @@ export function UserManage() {
             {showAddModal && (
                 <AddUserModal
                     onClose={() => setShowAddModal(false)}
-                    onSuccess={() => fetchUsers(currentPage, roleFilter, searchTerm)}
+                    onSuccess={async (meta) => {
+                        const latestUsers = await fetchUsers(currentPage, roleFilter, searchTerm);
+                        if (!meta) return;
+
+                        if (meta.userId != null) {
+                            setRecentMutationMeta(meta);
+                            return;
+                        }
+
+                        if (meta.username) {
+                            const matchedUser = latestUsers.find(
+                                (u) => u.username === meta.username && normalizeRoleCluster(u.role?.roleName) === meta.roleCluster
+                            );
+                            setRecentMutationMeta({
+                                ...meta,
+                                userId: matchedUser?.userID,
+                            });
+                        }
+                    }}
                 />
             )}
 
@@ -1697,7 +1966,12 @@ export function UserManage() {
                 <EditUserModal
                     user={editUser}
                     onClose={() => setEditUser(null)}
-                    onSuccess={() => fetchUsers(currentPage, roleFilter, searchTerm)}
+                    onSuccess={async (meta) => {
+                        await fetchUsers(currentPage, roleFilter, searchTerm);
+                        if (meta) {
+                            setRecentMutationMeta(meta);
+                        }
+                    }}
                 />
             )}
 

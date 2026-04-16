@@ -146,7 +146,7 @@ function getParentRelationshipLabel(relationship?: string | null): string {
 
 // ─── Reusable Modal Wrapper ───────────────────────────────────────────────────
 function Modal({ title, onClose, children }: { title: string; onClose: () => void; children: React.ReactNode }) {
-    return (
+    const modalContent = (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/45 backdrop-blur-[4px] dark:bg-black/70">
             <div className="bg-white dark:bg-[#111827] rounded-3xl border-2 border-[#1A1A1A] dark:border-white/15 shadow-2xl w-full max-w-lg animate-fadeIn">
                 <div className="flex items-center justify-between px-6 py-5 border-b-2 border-[#1A1A1A]/10 dark:border-white/10">
@@ -159,6 +159,12 @@ function Modal({ title, onClose, children }: { title: string; onClose: () => voi
             </div>
         </div>
     );
+
+    if (typeof document === 'undefined') {
+        return null;
+    }
+
+    return createPortal(modalContent, document.body);
 }
 
 function Field({ label, children }: { label: string; children: React.ReactNode }) {
@@ -745,7 +751,7 @@ function StudentDetailModal({
         return String(d).substring(0, 10);
     };
 
-    return (
+    const modalContent = (
         <div className="fixed inset-0 z-[70] flex items-center justify-center p-4 bg-black/55 backdrop-blur-[6px] dark:bg-black/80">
             <div className={`bg-white dark:bg-[#111827] rounded-3xl border-2 shadow-2xl w-full max-w-md animate-fadeIn ${isMemberActive ? 'border-[#1A1A1A]/10 dark:border-white/15' : 'border-orange-200 dark:border-orange-400/50'}`}>
                 {/* Header */}
@@ -921,6 +927,12 @@ function StudentDetailModal({
             )}
         </div>
     );
+
+    if (typeof document === 'undefined') {
+        return null;
+    }
+
+    return createPortal(modalContent, document.body);
 }
 
 // ─── Class Detail Modal ───────────────────────────────────────────────────────
@@ -1324,7 +1336,7 @@ function EditClassModal({ cls, onClose, onSuccess }: { cls: ClassroomDetail; onC
     const STATUS_OPTIONS = ['ACTIVE', 'INACTIVE', 'COMPLETED'];
     const selectedTeacherName = teachers.find(t => t.teacherID === selectedTeacher)?.fullName;
 
-    return (
+    const modalContent = (
         // Modal rộng hơn để chứa 2 cột
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4" style={{ backgroundColor: 'rgba(0,0,0,0.45)', backdropFilter: 'blur(4px)' }}>
             <div className="bg-white rounded-3xl border-2 border-[#1A1A1A] shadow-2xl w-full max-w-4xl animate-fadeIn" style={{ maxHeight: '90vh' }}>
@@ -1461,6 +1473,12 @@ function EditClassModal({ cls, onClose, onSuccess }: { cls: ClassroomDetail; onC
             </div>
         </div>
     );
+
+    if (typeof document === 'undefined') {
+        return null;
+    }
+
+    return createPortal(modalContent, document.body);
 }
 
 // ─── Toggle Status Modal ──────────────────────────────────────────────────────
@@ -1486,7 +1504,7 @@ function ToggleStatusModal({ cls, onClose, onSuccess }: { cls: ClassroomDetail; 
         }
     };
 
-    return (
+    const modalContent = (
         <div className="fixed inset-0 z-[60] flex items-center justify-center p-4" style={{ backgroundColor: 'rgba(0,0,0,0.55)', backdropFilter: 'blur(4px)' }}>
             <div className={`bg-white rounded-3xl border-2 shadow-2xl w-full max-w-md animate-fadeIn ${isLocked ? 'border-emerald-200' : 'border-orange-200'}`}>
                 <div className="px-7 py-6 flex flex-col items-center text-center">
@@ -1528,6 +1546,12 @@ function ToggleStatusModal({ cls, onClose, onSuccess }: { cls: ClassroomDetail; 
             </div>
         </div>
     );
+
+    if (typeof document === 'undefined') {
+        return null;
+    }
+
+    return createPortal(modalContent, document.body);
 }
 
 // ─── Main Component ───────────────────────────────────────────────────────────

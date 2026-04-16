@@ -3,7 +3,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '.
 import { Input } from '../ui/input';
 import { Label } from '../ui/label';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '../ui/dialog';
-import { CalendarBlank, Plus, VideoCamera, CaretRight, CaretLeft, FloppyDisk, Repeat, ListChecks, Trash, PencilSimple, Users } from '@phosphor-icons/react';
+import { CalendarBlank, Plus, VideoCamera, CaretRight, CaretLeft, FloppyDisk, Repeat, ListChecks, Trash, PencilSimple, Users, Lock } from '@phosphor-icons/react';
 import { AttendanceModal } from '../shared/AttendanceModal';
 import { authService } from '../../services/authService';
 import { classroomService, type ClassroomItem, type SubjectItem } from '../../services/classroomService';
@@ -13,6 +13,7 @@ import {
     type TimetableItem,
     type TimetableStats,
 } from '../../services/timetableService';
+import { isInactiveStatus } from '../shared/InactiveClassState';
 import { parseVnDate } from '../../lib/timeUtils';
 
 // ─── Types ────────────────────────────────────────────────────────────
@@ -32,9 +33,13 @@ interface ScheduleEvent {
     dayIndex: number;
     startHour: number;
     duration: number;
+    classStatus: string;
 }
 
 type ViewMode = 'week' | 'month' | 'today';
+
+const CLASS_FILTER_ACTIVE = '__CLASS_ACTIVE__';
+const CLASS_FILTER_LOCKED = '__CLASS_LOCKED__';
 
 type FormData = {
     classroomId: string;
@@ -243,6 +248,7 @@ const mapTimetableItem = (item: TimetableItem): ScheduleEvent => {
         dayIndex: (start.getDay() + 6) % 7,
         startHour,
         duration: Math.max(MIN_DURATION_HOURS, endHour - startHour),
+        classStatus: item.classStatus,
     };
 };
 
@@ -358,7 +364,9 @@ export function AdminSchedule() {
     }, [classrooms, events]);
 
     const filteredEvents = useMemo(() => events.filter((e) => {
-        if (filterClass !== 'all' && e.classroom !== filterClass) return false;
+        if (filterClass === CLASS_FILTER_ACTIVE && isInactiveStatus(e.classStatus)) return false;
+        if (filterClass === CLASS_FILTER_LOCKED && !isInactiveStatus(e.classStatus)) return false;
+        if (filterClass !== 'all' && filterClass !== CLASS_FILTER_ACTIVE && filterClass !== CLASS_FILTER_LOCKED && e.classroom !== filterClass) return false;
         if (filterTeacher !== 'all' && e.teacher !== filterTeacher) return false;
         if (filterSubject !== 'all' && e.subject !== filterSubject) return false;
         return true;
@@ -390,7 +398,7 @@ export function AdminSchedule() {
         setLoading(true);
         setError(null);
         try {
-            const list = await timetableService.getTimetables(start, end);
+            const list = await timetableService.getTimetables(start, end, true);
             setEvents(list.map(mapTimetableItem));
         } catch (e) {
             setError(e instanceof Error ? e.message : 'Không thể tải lịch học.');
@@ -901,8 +909,18 @@ export function AdminSchedule() {
             {/* ── Filters ─────────────────────────── */}
             <div className="flex flex-wrap gap-3 items-center">
                 <span className="text-xs font-extrabold text-gray-400 uppercase tracking-wider">Lọc:</span>
+                <Select value={filterClass} onValueChange={setFilterClass}>
+                    <SelectTrigger className="w-[190px] bg-white rounded-xl border-2 border-[#1A1A1A]/20 font-bold text-sm h-9">
+                        <SelectValue placeholder="Tất cả lớp học" />
+                    </SelectTrigger>
+                    <SelectContent>
+                        <SelectItem value="all">Tất cả lớp học</SelectItem>
+                        <SelectItem value={CLASS_FILTER_ACTIVE}>Lớp đang hoạt động</SelectItem>
+                        <SelectItem value={CLASS_FILTER_LOCKED}>Lớp đã khóa</SelectItem>
+                        {allClassrooms.map((o) => <SelectItem key={o} value={o}>{o}</SelectItem>)}
+                    </SelectContent>
+                </Select>
                 {[
-                    { label: 'Lớp học', value: filterClass, setter: setFilterClass, options: allClassrooms },
                     { label: 'Giáo viên', value: filterTeacher, setter: setFilterTeacher, options: allTeachers },
                     { label: 'Môn học', value: filterSubject, setter: setFilterSubject, options: allSubjects },
                 ].map((f) => (
@@ -1884,7 +1902,7 @@ function WeekView({
                                                 onMouseLeave={onHideTooltip}
                                                 onClick={(e) => { e.stopPropagation(); onEventClick(ev); }}
                                                 onMouseDown={(e) => onDragStart(ev.id, 'move', e)}
-                                                className={`relative h-full rounded-xl border-2 p-2 flex flex-col cursor-pointer overflow-hidden ${draggingEventId === ev.id ? 'ring-2 ring-[#FF6B4A]/30' : ''}`}
+                                                className={`relative h-full rounded-xl border-2 p-2 flex flex-col cursor-pointer overflow-hidden ${isInactiveStatus(ev.classStatus) ? 'grayscale opacity-50' : ''} ${draggingEventId === ev.id ? 'ring-2 ring-[#FF6B4A]/30' : ''}`}
                                                 style={{
                                                     backgroundColor: stCard.bg,
                                                     borderColor: stCard.border,
@@ -1894,6 +1912,11 @@ function WeekView({
                                                     transition: 'box-shadow 0.22s cubic-bezier(.4,0,.2,1), border-color 0.15s ease',
                                                 }}
                                             >
+                                                {isInactiveStatus(ev.classStatus) && (
+                                                    <span className="absolute top-1.5 left-1.5 inline-flex items-center gap-1 rounded-md bg-black/70 px-1.5 py-0.5 text-[8px] font-extrabold text-white">
+                                                        <Lock className="w-2.5 h-2.5" weight="fill" /> Khóa
+                                                    </span>
+                                                )}
                                                 {hasMeetLink(ev.meetLink) ? (
                                                     <span className="absolute top-1.5 right-1.5 inline-flex items-center justify-center rounded-md border border-[#86EFAC] bg-[#DCFCE7] p-1" title="Có link Meet">
                                                         <VideoCamera className="w-2.5 h-2.5 text-[#15803D]" weight="fill" />
@@ -1976,7 +1999,7 @@ function WeekView({
                                             onMouseLeave={onHideTooltip}
                                             onClick={(e) => { e.stopPropagation(); onEventClick(ev); }}
                                             onMouseDown={(e) => onDragStart(ev.id, 'move', e)}
-                                            className={`relative h-full rounded-xl border-2 p-1.5 flex flex-col cursor-pointer overflow-hidden
+                                            className={`relative h-full rounded-xl border-2 p-1.5 flex flex-col cursor-pointer overflow-hidden ${isInactiveStatus(ev.classStatus) ? 'grayscale opacity-50' : ''}
                                                 ${draggingEventId === ev.id ? 'ring-2 ring-[#FF6B4A]/30' : ''}`}
                                             style={{
                                                 backgroundColor: stCard.bg,
@@ -1987,6 +2010,11 @@ function WeekView({
                                                 transition: 'box-shadow 0.22s cubic-bezier(.4,0,.2,1), border-color 0.15s ease',
                                             }}
                                         >
+                                            {isInactiveStatus(ev.classStatus) && (
+                                                <span className="absolute top-1 left-1 inline-flex items-center gap-1 rounded bg-black/70 px-1 py-0.5 text-[7px] font-extrabold text-white leading-none">
+                                                    <Lock className="w-2 h-2" weight="fill" /> INACTIVE
+                                                </span>
+                                            )}
                                             {hasMeetLink(ev.meetLink) ? (
                                                 <span className="absolute top-1 right-1 inline-flex items-center justify-center rounded border border-[#86EFAC] bg-[#DCFCE7] p-1" title="Có link Meet">
                                                     <VideoCamera className="w-2 h-2 text-[#15803D]" weight="fill" />
@@ -2180,12 +2208,17 @@ function TodayTimelineView({
                                 }}
                             >
                                 <div
-                                    className="relative h-full rounded-2xl border-2 p-3 cursor-pointer overflow-hidden hover:shadow-lg hover:-translate-y-0.5 transition-all"
+                                    className={`relative h-full rounded-2xl border-2 p-3 cursor-pointer overflow-hidden hover:shadow-lg hover:-translate-y-0.5 transition-all ${isInactiveStatus(ev.classStatus) ? 'grayscale opacity-50' : ''}`}
                                     style={{ borderColor: stCard.border, backgroundColor: stCard.bg }}
                                     onMouseEnter={(e) => onShowTooltip(ev, e)}
                                     onMouseLeave={onHideTooltip}
                                     onClick={() => onEventClick(ev)}
                                 >
+                                    {isInactiveStatus(ev.classStatus) && (
+                                        <span className="absolute top-2 left-2 inline-flex items-center gap-1 rounded-md bg-black/70 px-1.5 py-0.5 text-[9px] font-extrabold text-white">
+                                            <Lock className="w-2.5 h-2.5" weight="fill" /> INACTIVE
+                                        </span>
+                                    )}
                                     {hasMeetLink(ev.meetLink) ? (
                                         <span className="absolute top-2 right-2 inline-flex items-center justify-center rounded-md border border-[#86EFAC] bg-[#DCFCE7] p-1" title="Có link Meet">
                                             <VideoCamera className="w-3 h-3 text-[#15803D]" weight="fill" />
@@ -2339,7 +2372,7 @@ function MonthView({
                                                             hideMonthHover();
                                                         }}
                                                         onClick={() => onEventClick(ev)}
-                                                        className="relative text-xs font-bold px-1.5 py-1 rounded-lg cursor-pointer border-2 overflow-hidden"
+                                                        className={`relative text-xs font-bold px-1.5 py-1 rounded-lg cursor-pointer border-2 overflow-hidden ${isInactiveStatus(ev.classStatus) ? 'grayscale opacity-50' : ''}`}
                                                         style={{
                                                             backgroundColor: stCard.bg,
                                                             color: stCard.text,
@@ -2351,6 +2384,11 @@ function MonthView({
                                                             transition: 'box-shadow 0.22s cubic-bezier(.4,0,.2,1), border-color 0.15s ease, transform 0.22s cubic-bezier(.4,0,.2,1)',
                                                         }}
                                                     >
+                                                        {isInactiveStatus(ev.classStatus) && (
+                                                            <span className="absolute top-1 left-1 inline-flex items-center gap-1 rounded bg-black/70 px-1 py-0.5 text-[7px] font-extrabold text-white leading-none">
+                                                                <Lock className="w-2 h-2" weight="fill" />
+                                                            </span>
+                                                        )}
                                                         {hasMeetLink(ev.meetLink) ? (
                                                             <span className="absolute top-1 right-1 inline-flex h-4 w-4 items-center justify-center rounded-full border border-[#86EFAC] bg-[#DCFCE7] shadow-[0_1px_2px_rgba(0,0,0,0.08)]" title="Có link Meet">
                                                                 <VideoCamera className="w-2.5 h-2.5 text-[#15803D]" weight="fill" />

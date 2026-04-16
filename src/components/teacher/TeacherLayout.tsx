@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Outlet, NavLink, useNavigate, useLocation, Link } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import { useSettings } from '../../context/SettingsContext';
@@ -9,6 +9,7 @@ import { cn } from '../../lib/utils';
 import { useActivityPing } from '../../lib/useActivityPing';
 import { UserMenu } from '../UserMenu';
 import { SettingsPanel } from '../SettingsPanel';
+import { notificationService, type NotificationItem } from '../../services/notificationService';
 
 const BASE_PATH = '/teacher';
 
@@ -19,6 +20,9 @@ export function TeacherLayout() {
     const navigate = useNavigate();
     const location = useLocation();
     const [resetKey, setResetKey] = useState(0);
+    const [toastNotification, setToastNotification] = useState<NotificationItem | null>(null);
+    const newestNotificationIdRef = useRef<number | null>(null);
+    const firstPollDoneRef = useRef(false);
 
     const isDark = theme === 'dark';
     const isExpanded = sidebarMode === 'visible';
@@ -51,6 +55,68 @@ export function TeacherLayout() {
             if (mainContent) mainContent.scrollTo({ top: 0, behavior: 'smooth' });
         }
     };
+
+    useEffect(() => {
+        let disposed = false;
+
+        const shouldShowInactiveToast = (item: NotificationItem): boolean => {
+            const content = (item.content ?? '').toUpperCase();
+            return item.type === 'SCHEDULE_CHANGED' && content.includes('INACTIVE');
+        };
+
+        const pollNotifications = async () => {
+            try {
+                const systemNotifications = await notificationService.getMyNotifications('SYSTEM');
+                if (disposed || systemNotifications.length === 0) {
+                    return;
+                }
+
+                const newestId = systemNotifications[0].notificationId;
+                const previousNewestId = newestNotificationIdRef.current;
+
+                if (!firstPollDoneRef.current) {
+                    firstPollDoneRef.current = true;
+                    newestNotificationIdRef.current = newestId;
+                    return;
+                }
+
+                if (previousNewestId == null || newestId <= previousNewestId) {
+                    newestNotificationIdRef.current = Math.max(previousNewestId ?? 0, newestId);
+                    return;
+                }
+
+                const newItems = systemNotifications.filter((item) => item.notificationId > previousNewestId);
+                newestNotificationIdRef.current = newestId;
+
+                const inactiveItem = newItems
+                    .sort((a, b) => b.notificationId - a.notificationId)
+                    .find(shouldShowInactiveToast);
+
+                if (inactiveItem && document.visibilityState === 'visible') {
+                    setToastNotification(inactiveItem);
+                }
+            } catch {
+                // Silent fail to avoid interrupting navigation/layout rendering.
+            }
+        };
+
+        void pollNotifications();
+        const intervalId = window.setInterval(pollNotifications, 15000);
+
+        return () => {
+            disposed = true;
+            window.clearInterval(intervalId);
+        };
+    }, []);
+
+    useEffect(() => {
+        if (!toastNotification) {
+            return;
+        }
+
+        const timerId = window.setTimeout(() => setToastNotification(null), 5000);
+        return () => window.clearTimeout(timerId);
+    }, [toastNotification]);
 
     return (
         <div className={cn("min-h-screen flex transition-colors duration-300", isDark ? "bg-[#0a0a0a]" : "bg-[#111111]")} style={{ fontFamily: "'Nunito', sans-serif" }}>
@@ -124,6 +190,13 @@ export function TeacherLayout() {
                         backgroundBlendMode: 'normal',
                     }}
                 >
+                    {toastNotification && (
+                        <div className="fixed top-5 right-5 z-[120] max-w-sm rounded-2xl border border-amber-300 bg-amber-50 px-4 py-3 shadow-lg">
+                            <p className="text-xs font-extrabold uppercase tracking-wider text-amber-700">Thông báo hệ thống</p>
+                            <p className="mt-1 text-sm font-extrabold text-amber-800">{toastNotification.title}</p>
+                            <p className="mt-1 text-xs font-bold text-amber-700 line-clamp-3">{toastNotification.content}</p>
+                        </div>
+                    )}
                     <Outlet key={resetKey} />
                 </div>
             </main>

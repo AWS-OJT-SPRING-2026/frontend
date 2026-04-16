@@ -1,9 +1,9 @@
-import { useMemo, useState, useEffect, useRef } from 'react';
+import { useMemo, useState, useEffect, useRef, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
     CalendarBlank, Clock, BookOpen, ChalkboardTeacher, CaretLeft, CaretRight,
     Video, Rows, SquaresFour, WarningCircle, MapPin, X, Target, CalendarDots,
-    CheckCircle, XCircle, Bell, PaperPlaneRight, FileText, Users, Student, ClipboardText
+    CheckCircle, XCircle, Bell, PaperPlaneRight, FileText, Users, Student, ClipboardText, Lock
 } from '@phosphor-icons/react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '../ui/dialog';
 import { useSettings } from '../../context/SettingsContext';
@@ -13,6 +13,7 @@ import { NotificationDropdown } from './NotificationDropdown';
 import { notificationService } from '../../services/notificationService';
 import { upcomingTaskService, UpcomingTask } from '../../services/upcomingTaskService';
 import { parseVnDate } from '../../lib/timeUtils';
+import { isInactiveStatus } from '../shared/InactiveClassState';
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL;
 
@@ -73,7 +74,10 @@ interface ScheduleEntry {
     materials?: { name: string; url: string; type: 'pdf' | 'slide' }[];
     studentsCount?: number;
     classmates?: StudentClassmate[];
+    classStatus: string;
 }
+
+const INACTIVE_CLASS_MESSAGE = 'Lớp học này hiện đang ở trạng thái Khóa. Vui lòng liên hệ Admin để biết thêm chi tiết.';
 
 const STATS_META = [
     { key: 'totalClassesThisWeek', label: 'Tiết học tuần này', icon: BookOpen, bg: '#FCE38A' },
@@ -287,6 +291,7 @@ function mapStudentScheduleToEntry(item: StudentScheduleItem, index: number): Sc
         studentsCount: item.studentCount,
         attendanceStatus: mapAttendanceStatus(item.attendanceStatus),
         classmates: item.classmates ?? [],
+        classStatus: item.classStatus,
     };
 }
 
@@ -342,8 +347,9 @@ function EventTooltip({ event, x, y, now }: { event: ScheduleEntry; x: number; y
     );
 }
 
-function EventDetailDialog({ event, onClose, onViewHomework }: { event: ScheduleEntry | null; onClose: () => void; onViewHomework: (event: ScheduleEntry) => void }) {
+function EventDetailDialog({ event, onClose, onViewHomework, onBlockedAction }: { event: ScheduleEntry | null; onClose: () => void; onViewHomework: (event: ScheduleEntry) => void; onBlockedAction: () => void }) {
     if (!event) return null;
+    const inactiveClass = isInactiveStatus(event.classStatus);
 
     return (
         <Dialog open={!!event} onOpenChange={(open) => !open && onClose()}>
@@ -414,15 +420,20 @@ function EventDetailDialog({ event, onClose, onViewHomework }: { event: Schedule
 
                     <div className="grid grid-cols-2 gap-3">
                         {event.meet && (
-                            <a
-                                href={event.meet}
-                                target="_blank"
-                                rel="noreferrer"
-                                className="inline-flex w-full items-center justify-center gap-2 rounded-2xl border-2 border-[#2563EB]/20 bg-[#EEF4FF] px-3 py-3.5 text-[#2563EB] hover:bg-[#E2ECFF] text-sm font-extrabold transition-colors active:scale-95"
+                            <button
+                                type="button"
+                                onClick={() => {
+                                    if (inactiveClass) {
+                                        onBlockedAction();
+                                        return;
+                                    }
+                                    window.open(event.meet, '_blank', 'noopener,noreferrer');
+                                }}
+                                className={`inline-flex w-full items-center justify-center gap-2 rounded-2xl border-2 px-3 py-3.5 text-sm font-extrabold transition-colors active:scale-95 ${inactiveClass ? 'border-gray-300 bg-gray-100 text-gray-400 cursor-not-allowed' : 'border-[#2563EB]/20 bg-[#EEF4FF] text-[#2563EB] hover:bg-[#E2ECFF]'}`}
                             >
                                 <Video className="w-5 h-5" weight="fill" />
                                 Tham gia Meet
-                            </a>
+                            </button>
                         )}
                         {event.hasHomework && (
                             <button
@@ -435,6 +446,12 @@ function EventDetailDialog({ event, onClose, onViewHomework }: { event: Schedule
                         )}
                     </div>
                 </div>
+
+                {inactiveClass && (
+                    <div className="rounded-xl border border-amber-300 bg-amber-50 px-3 py-2 text-xs font-bold text-amber-700">
+                        {INACTIVE_CLASS_MESSAGE}
+                    </div>
+                )}
 
                 <div className="pt-2">
                     <button
@@ -463,6 +480,7 @@ export function StudentSchedule() {
     const [hoveredEventId, setHoveredEventId] = useState<string | null>(null);
     const [tooltipData, setTooltipData] = useState<{ event: ScheduleEntry; x: number; y: number } | null>(null);
     const tooltipTimeout = useRef<ReturnType<typeof setTimeout>>();
+    const [showInactive, setShowInactive] = useState(false);
 
     const [weeklyStats, setWeeklyStats] = useState<StudentWeeklyStats>({
         totalClassesThisWeek: 0,
@@ -616,11 +634,19 @@ export function StudentSchedule() {
             try {
                 setScheduleError(null);
 
-                const scheduleResult = await timetableService.getStudentSchedule(scheduleRange.start, scheduleRange.end);
+                const scheduleResult = await timetableService.getStudentSchedule(
+                    scheduleRange.start,
+                    scheduleRange.end,
+                    showInactive
+                );
 
                 if (!isMounted) return;
 
-                setScheduleEvents(scheduleResult.map((item, index) => mapStudentScheduleToEntry(item, index)));
+                setScheduleEvents(
+                    scheduleResult
+                        .map((item, index) => mapStudentScheduleToEntry(item, index))
+                        .filter((event) => showInactive || !isInactiveStatus(event.classStatus))
+                );
             } catch (error) {
                 if (!isMounted) return;
                 const message = error instanceof Error ? error.message : 'Không thể tải dữ liệu lịch học.';
@@ -634,7 +660,20 @@ export function StudentSchedule() {
         return () => {
             isMounted = false;
         };
-    }, [scheduleRange.start.getTime(), scheduleRange.end.getTime()]);
+    }, [scheduleRange.start.getTime(), scheduleRange.end.getTime(), showInactive]);
+
+    const handleInactiveBlockedAction = useCallback(() => {
+        window.alert(INACTIVE_CLASS_MESSAGE);
+    }, []);
+
+    const handleEventSelect = useCallback((ev: ScheduleEntry) => {
+        if (isInactiveStatus(ev.classStatus)) {
+            handleInactiveBlockedAction();
+            return;
+        }
+
+        setSelectedEvent(ev);
+    }, [handleInactiveBlockedAction]);
 
     useEffect(() => {
         let isMounted = true;
@@ -962,6 +1001,19 @@ export function StudentSchedule() {
                     <button onClick={goToday} className="px-5 h-10 bg-[#ff7849] hover:bg-[#ff8b63] text-white font-extrabold text-sm rounded-2xl active:scale-95 transition-all shadow-sm">
                         Hôm nay
                     </button>
+
+                    <label className={`ml-auto inline-flex items-center gap-3 rounded-2xl px-3 py-2 text-sm font-extrabold ${isDark ? 'bg-[#1a1a1f] text-[#f3f4f6]' : 'bg-white border-2 border-[#1A1A1A]/15 text-[#1A1A1A]'}`}>
+                        <span>Hiển thị lớp đã khóa</span>
+                        <button
+                            type="button"
+                            role="switch"
+                            aria-checked={showInactive}
+                            onClick={() => setShowInactive((prev) => !prev)}
+                            className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${showInactive ? 'bg-[#FF6B4A]' : isDark ? 'bg-white/20' : 'bg-gray-300'}`}
+                        >
+                            <span className={`inline-block h-5 w-5 transform rounded-full bg-white transition-transform ${showInactive ? 'translate-x-5' : 'translate-x-1'}`} />
+                        </button>
+                    </label>
                 </div>
             </div>
 
@@ -1059,18 +1111,27 @@ export function StudentSchedule() {
                                                     return (
                                                         <div 
                                                             key={ev.id}
-                                                            onClick={() => setSelectedEvent(ev)}
+                                                            onClick={() => handleEventSelect(ev)}
                                                             onMouseEnter={(e) => { setHoveredEventId(ev.id); showTooltip(ev, e); }}
                                                             onMouseLeave={() => { setHoveredEventId(null); hideTooltip(); }}
-                                                            className={`px-2 py-1.5 rounded-lg truncate text-[11px] font-extrabold cursor-pointer transition-transform hover:scale-[1.02] border flex flex-col ${status === 'ongoing' ? 'animate-border-blink shadow-sm' : status === 'past' ? 'opacity-70' : 'opacity-100'}`}
-                                                            style={{ backgroundColor: style.bg, borderColor: style.border }}
+                                                            className={`px-2 py-1.5 rounded-lg truncate text-[11px] font-extrabold cursor-pointer transition-transform hover:scale-[1.02] border flex flex-col ${isInactiveStatus(ev.classStatus) ? 'grayscale opacity-50' : ''} ${status === 'ongoing' ? 'animate-border-blink shadow-sm' : status === 'past' ? 'opacity-70' : 'opacity-100'}`}
+                                                            style={{
+                                                                backgroundColor: style.bg,
+                                                                borderColor: isInactiveStatus(ev.classStatus) ? '#d1d5db' : style.border,
+                                                                borderStyle: isInactiveStatus(ev.classStatus) ? 'dashed' : 'solid',
+                                                                borderWidth: isInactiveStatus(ev.classStatus) ? '1px' : undefined,
+                                                            }}
                                                         >
                                                             <div className="flex justify-between items-center mb-0.5">
                                                                 <span className="truncate">{pad(ev.startHour)}:{pad(ev.startMin)}</span>
                                                                 {ev.attendanceStatus === 'present' && <CheckCircle className="text-emerald-600 shrink-0 w-3 h-3" weight="fill" />}
                                                                 {ev.attendanceStatus === 'absent' && <XCircle className="text-red-600 shrink-0 w-3 h-3" weight="fill" />}
                                                             </div>
-                                                            <span className={`truncate text-[11px] font-extrabold ${isDark ? 'text-[#1A1A1A]' : 'text-[#1A1A1A]'}`}>{ev.subject}</span>
+                                                            <span className={`truncate text-[11px] font-extrabold ${isInactiveStatus(ev.classStatus) ? 'line-through decoration-gray-500/70' : ''} ${isDark ? 'text-[#1A1A1A]' : 'text-[#1A1A1A]'}`}>{ev.subject}</span>
+                                                            <span className="truncate mt-0.5 text-[10px] font-bold flex items-center gap-1 text-[#1A1A1A]/70">
+                                                                <span>Lớp {ev.className || '—'}</span>
+                                                                {isInactiveStatus(ev.classStatus) && <Lock className="w-2.5 h-2.5" weight="fill" />}
+                                                            </span>
                                                         </div>
                                                     );
                                                 })}
@@ -1152,9 +1213,15 @@ export function StudentSchedule() {
                                     }}
                                 >
                                     <div
-                                        className={`group relative h-full rounded-2xl cursor-pointer transition-all duration-200 overflow-hidden flex flex-col ${isCompactDayCard ? 'px-2.5 py-1.5' : 'px-3 py-2'} ${isDark ? 'border' : 'border-2'} ${selectedEvent?.id === ev.id ? (isDark ? 'shadow-lg scale-[1.02] ring-2 ring-white/20' : 'shadow-lg scale-[1.02] ring-2 ring-[#1A1A1A]/20') : 'hover:shadow-md hover:-translate-y-0.5'} ${status === 'ongoing' ? 'animate-border-blink shadow-xl scale-[1.01]' : ''}`}
-                                        style={{ backgroundColor: style.bg, borderColor: style.border, opacity: status === 'past' ? 0.76 : 1 }}
-                                        onClick={() => setSelectedEvent(ev)}
+                                        className={`group relative h-full rounded-2xl cursor-pointer transition-all duration-200 overflow-hidden flex flex-col ${isCompactDayCard ? 'px-2.5 py-1.5' : 'px-3 py-2'} ${isDark ? 'border' : 'border-2'} ${isInactiveStatus(ev.classStatus) ? 'grayscale opacity-50' : ''} ${selectedEvent?.id === ev.id ? (isDark ? 'shadow-lg scale-[1.02] ring-2 ring-white/20' : 'shadow-lg scale-[1.02] ring-2 ring-[#1A1A1A]/20') : 'hover:shadow-md hover:-translate-y-0.5'} ${status === 'ongoing' ? 'animate-border-blink shadow-xl scale-[1.01]' : ''}`}
+                                        style={{
+                                            backgroundColor: style.bg,
+                                            borderColor: isInactiveStatus(ev.classStatus) ? '#d1d5db' : style.border,
+                                            borderStyle: isInactiveStatus(ev.classStatus) ? 'dashed' : 'solid',
+                                            borderWidth: isInactiveStatus(ev.classStatus) ? '1px' : undefined,
+                                            opacity: status === 'past' ? 0.76 : 1,
+                                        }}
+                                        onClick={() => handleEventSelect(ev)}
                                         onMouseEnter={(e) => { setHoveredEventId(ev.id); showTooltip(ev, e); }}
                                         onMouseLeave={() => { setHoveredEventId(null); hideTooltip(); }}
                                     >
@@ -1179,8 +1246,9 @@ export function StudentSchedule() {
                                         <div className="min-h-0">
                                             {isDayCard ? (
                                                 <>
-                                                    <div className={`font-extrabold leading-tight line-clamp-1 pr-6 ${isDark ? 'text-[#1A1A1A]' : 'text-[#1A1A1A]'} ${isCompactDayCard ? 'text-[15px]' : 'text-[17px]'}`}>
+                                                    <div className={`font-extrabold leading-tight line-clamp-1 pr-6 ${isInactiveStatus(ev.classStatus) ? 'line-through decoration-gray-500/70' : ''} ${isDark ? 'text-[#1A1A1A]' : 'text-[#1A1A1A]'} ${isCompactDayCard ? 'text-[15px]' : 'text-[17px]'}`}>
                                                         {ev.subject} - Lớp {ev.className || '—'}
+                                                        {isInactiveStatus(ev.classStatus) && <Lock className="inline-block w-3.5 h-3.5 ml-1 align-[-1px]" weight="fill" />}
                                                     </div>
 
                                                     {!isUltraCompactDayCard && (
@@ -1195,8 +1263,11 @@ export function StudentSchedule() {
                                                 </>
                                             ) : (
                                                 <>
-                                                    <div className={`font-extrabold leading-tight line-clamp-1 pr-6 ${isDark ? 'text-[#1A1A1A]' : 'text-[#1A1A1A]'} text-[13px]`}>{ev.subject}</div>
-                                                    <div className={`font-extrabold mt-0.5 line-clamp-1 ${isDark ? 'text-[#1A1A1A]/50' : 'text-[#1A1A1A]/75'} text-[11px]`}>Lớp {ev.className}</div>
+                                                    <div className={`font-extrabold leading-tight line-clamp-1 pr-6 ${isInactiveStatus(ev.classStatus) ? 'line-through decoration-gray-500/70' : ''} ${isDark ? 'text-[#1A1A1A]' : 'text-[#1A1A1A]'} text-[13px]`}>{ev.subject}</div>
+                                                    <div className={`font-extrabold mt-0.5 line-clamp-1 ${isDark ? 'text-[#1A1A1A]/50' : 'text-[#1A1A1A]/75'} text-[11px] flex items-center gap-1`}>
+                                                        <span>Lớp {ev.className}</span>
+                                                        {isInactiveStatus(ev.classStatus) && <Lock className="w-3 h-3" weight="fill" />}
+                                                    </div>
                                                     <div className={`font-extrabold mt-1 line-clamp-1 ${isDark ? 'text-[#e5e7eb]' : 'text-[#1A1A1A]'} text-[11px]`}>
                                                         GV: {ev.teacher}
                                                     </div>
@@ -1215,9 +1286,21 @@ export function StudentSchedule() {
                                                 </div>
                                             )}
                                             {ev.meet && (isDayCard || status !== 'past') ? (
-                                                <a href={ev.meet} target="_blank" rel="noreferrer" onClick={e => e.stopPropagation()} className={`rounded-lg px-1.5 py-1 flex items-center gap-1 font-extrabold ${isCompactDayCard ? 'text-[10px]' : 'text-[9px]'} ${isJoinable ? (isDark ? 'bg-emerald-500/20 text-emerald-200 animate-pulse' : 'bg-emerald-100 text-emerald-700 animate-pulse') : (isDark ? 'bg-white/10 text-emerald-300' : 'bg-white/60 text-[#047857]')}`} title={isJoinable ? 'Vào học ngay' : 'Có link Meet'}>
+                                                <button
+                                                    type="button"
+                                                    onClick={e => {
+                                                        e.stopPropagation();
+                                                        if (isInactiveStatus(ev.classStatus)) {
+                                                            handleInactiveBlockedAction();
+                                                            return;
+                                                        }
+                                                        window.open(ev.meet, '_blank', 'noopener,noreferrer');
+                                                    }}
+                                                    className={`rounded-lg px-1.5 py-1 flex items-center gap-1 font-extrabold ${isCompactDayCard ? 'text-[10px]' : 'text-[9px]'} ${isInactiveStatus(ev.classStatus) ? 'bg-gray-200 text-gray-400 cursor-not-allowed' : isJoinable ? (isDark ? 'bg-emerald-500/20 text-emerald-200 animate-pulse' : 'bg-emerald-100 text-emerald-700 animate-pulse') : (isDark ? 'bg-white/10 text-emerald-300' : 'bg-white/60 text-[#047857]')}`}
+                                                    title={isInactiveStatus(ev.classStatus) ? 'Lớp INACTIVE' : isJoinable ? 'Vào học ngay' : 'Có link Meet'}
+                                                >
                                                     <Video className="w-3 h-3" weight="fill" />
-                                                </a>
+                                                </button>
                                             ) : null}
                                             </div>
                                         </div>
@@ -1357,7 +1440,12 @@ export function StudentSchedule() {
                 </div>
             </div>
 
-            <EventDetailDialog event={selectedEvent} onClose={() => setSelectedEvent(null)} onViewHomework={handleViewHomework} />
+            <EventDetailDialog
+                event={selectedEvent}
+                onClose={() => setSelectedEvent(null)}
+                onViewHomework={handleViewHomework}
+                onBlockedAction={handleInactiveBlockedAction}
+            />
             {tooltipData && <EventTooltip event={tooltipData.event} x={tooltipData.x} y={tooltipData.y} now={now} />}
 
             {/* Classmates Dialog */}

@@ -22,6 +22,7 @@ import {
 } from 'recharts';
 import { api } from '../../services/api';
 import { authService } from '../../services/authService';
+import { parseVnDate } from '../../lib/timeUtils';
 
 /* ── API types ──────────────────────────────────────────────────────────── */
 interface ApiResponse<T> { code: number; message: string; result: T; }
@@ -64,6 +65,11 @@ function toLocalDateTime(d: Date): string {
 function formatTime(iso: string): string {
     const d = new Date(iso);
     return `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
+}
+
+function isEndedSession(item: TimetableItem, now: Date): boolean {
+    const endTime = parseVnDate(item.endTime).getTime();
+    return item.status === 'COMPLETED' || endTime <= now.getTime();
 }
 
 /** Extract grade number from class name, e.g. "Lớp 10A1" → 10 */
@@ -143,10 +149,22 @@ export function AdminStatistics() {
                     }));
                 setGradeDistribution(slices);
 
-                // Sort today's sessions by start time
-                const sorted = [...(timetables.result ?? [])].sort(
-                    (a, b) => new Date(a.startTime).getTime() - new Date(b.startTime).getTime(),
-                );
+                // Keep upcoming/ongoing sessions on top, push ended sessions to the bottom.
+                const now = new Date();
+                const sorted = [...(timetables.result ?? [])].sort((a, b) => {
+                    const aEnded = isEndedSession(a, now);
+                    const bEnded = isEndedSession(b, now);
+
+                    if (aEnded !== bEnded) {
+                        return aEnded ? 1 : -1;
+                    }
+
+                    if (!aEnded) {
+                        return parseVnDate(a.startTime).getTime() - parseVnDate(b.startTime).getTime();
+                    }
+
+                    return parseVnDate(b.endTime).getTime() - parseVnDate(a.endTime).getTime();
+                });
                 setTodaySchedule(sorted);
             })
             .catch(console.error)

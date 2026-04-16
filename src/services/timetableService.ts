@@ -12,6 +12,7 @@ export interface TimetableItem {
   timetableID: number;
   classID: number;
   className: string;
+  classStatus: string;
   subjectName: string;
   teacherID: number | null;
   teacherName: string | null;
@@ -98,6 +99,7 @@ export interface StudentClassmate {
 export interface StudentScheduleItem {
   timetableID: number;
   classID: number;
+  classStatus: string;
   subjectName: string;
   className: string;
   teacherName: string;
@@ -156,8 +158,8 @@ function toLocalDateTime(date: Date): string {
 }
 
 export const timetableService = {
-  async getTimetables(start: Date, end: Date): Promise<TimetableItem[]> {
-    const query = `?start=${encodeURIComponent(toLocalDateTime(start))}&end=${encodeURIComponent(toLocalDateTime(end))}`;
+  async getTimetables(start: Date, end: Date, includeInactive = false): Promise<TimetableItem[]> {
+    const query = `?start=${encodeURIComponent(toLocalDateTime(start))}&end=${encodeURIComponent(toLocalDateTime(end))}&includeInactive=${includeInactive}`;
     const response = await api.get<ApiResponse<TimetableItem[]>>(`/timetables${query}`);
     return response.result ?? [];
   },
@@ -207,8 +209,8 @@ export const timetableService = {
     await api.authPost<ApiResponse<void>>(`/timetables/${timetableId}/attendance`, requests);
   },
 
-  async getMyScheduleList(start: Date, end: Date): Promise<TimetableItem[]> {
-    const query = `?start=${encodeURIComponent(toLocalDateTime(start))}&end=${encodeURIComponent(toLocalDateTime(end))}`;
+  async getMyScheduleList(start: Date, end: Date, includeInactive = false): Promise<TimetableItem[]> {
+    const query = `?start=${encodeURIComponent(toLocalDateTime(start))}&end=${encodeURIComponent(toLocalDateTime(end))}&includeInactive=${includeInactive}`;
     const response = await api.get<ApiResponse<TimetableItem[]>>(`/timetables/my-schedule${query}`);
     return response.result ?? [];
   },
@@ -224,12 +226,13 @@ export const timetableService = {
     return response.result;
   },
 
-  async getStudentSchedule(start: Date, end: Date): Promise<StudentScheduleItem[]> {
+  async getStudentSchedule(start: Date, end: Date, includeInactive = false): Promise<StudentScheduleItem[]> {
     try {
       const response = await axiosClient.get<ApiResponse<StudentScheduleItem[]>>('/timetables/my-schedule/student', {
         params: {
           start: toLocalDateTime(start),
           end: toLocalDateTime(end),
+          includeInactive,
         },
       });
 

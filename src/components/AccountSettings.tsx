@@ -104,6 +104,7 @@ function buildTeacherUpdatePayload(formData: {
     dateOfBirth: string;
     gender: string;
     specialization: string;
+    address: string;
 }): UpdateMyTeacherProfileRequest {
     return {
         fullName: formData.name.trim(),
@@ -112,6 +113,7 @@ function buildTeacherUpdatePayload(formData: {
         gender: toApiGender(formData.gender),
         dateOfBirth: formData.dateOfBirth || undefined,
         specialization: formData.specialization.trim() || undefined,
+        address: formData.address.trim() || undefined,
     };
 }
 

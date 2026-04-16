@@ -46,6 +46,7 @@ export interface UpdateMyTeacherProfileRequest {
   gender?: string;
   specialization?: string;
   dateOfBirth?: string;
+  address?: string;
 }
 
 export interface ChangePasswordInitRequest {

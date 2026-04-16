@@ -4,6 +4,7 @@ import type {
   ChangePasswordConfirmRequest,
   ChangePasswordInitRequest,
   MyProfileResponse,
+  UpdateMyTeacherProfileRequest,
   UpdateMyStudentProfileRequest,
 } from '../types/profile';
 

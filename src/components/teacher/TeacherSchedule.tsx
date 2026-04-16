@@ -1,13 +1,14 @@
 import { useState, useCallback, useMemo, useEffect, useRef } from 'react';
 import {
     CaretLeft, CaretRight, Video, Warning,
-    X, CalendarBlank, Clock,
+    X, CalendarBlank, Clock, Lock,
     Check, CalendarDots, Rows, SquaresFour, Users, BookOpen, LinkSimple, LinkBreak,
 } from '@phosphor-icons/react';
 import { Input } from '../ui/input';
 import { AttendanceModal } from '../shared/AttendanceModal';
 import { timetableService, type TimetableItem, type TeacherScheduleStats } from '../../services/timetableService';
 import { useSettings } from '../../context/SettingsContext';
+import { isInactiveStatus } from '../shared/InactiveClassState';
 import { parseVnDate } from '../../lib/timeUtils';
 
 /* ── Status-based color system ── */
@@ -53,7 +54,10 @@ interface ScheduleEvent {
     endTime: string;     // ISO
     time: string;        // "HH:MM - HH:MM"
     dateKey: string;     // "YYYY-MM-DD"
+    classStatus: string;
 }
+
+const INACTIVE_CLASS_MESSAGE = 'Lớp học này hiện đang ở trạng thái Khóa. Vui lòng liên hệ ADMIN để biết thêm chi tiết.';
 
 type ViewMode = 'week' | 'day' | 'month';
 
@@ -122,6 +126,7 @@ function mapToScheduleEvent(item: TimetableItem): ScheduleEvent {
         endTime: item.endTime,
         time: `${fmtHM(start.getHours(), start.getMinutes())} - ${fmtHM(end.getHours(), end.getMinutes())}`,
         dateKey: `${start.getFullYear()}-${pad(start.getMonth() + 1)}-${pad(start.getDate())}`,
+        classStatus: item.classStatus,
     };
 }
 
@@ -194,6 +199,7 @@ function EventDetailPanel({
     onClose,
     onUpdateMeetLink,
     onOpenAttendance,
+    onBlockedAction,
     now,
     isDark,
 }: {
@@ -201,6 +207,7 @@ function EventDetailPanel({
     onClose: () => void;
     onUpdateMeetLink: (event: ScheduleEvent, meetLink: string) => Promise<void>;
     onOpenAttendance: () => void;
+    onBlockedAction: () => void;
     now: Date;
     isDark: boolean;
 }) {
@@ -210,6 +217,7 @@ function EventDetailPanel({
 
     const status = getEventStatus(event, now);
     const style = getStatusStyles(isDark)[status];
+    const inactiveClass = isInactiveStatus(event.classStatus);
 
     useEffect(() => {
         setMeetLink(event.meetLink);
@@ -217,6 +225,11 @@ function EventDetailPanel({
     }, [event.id, event.meetLink]);
 
     const handleSave = async () => {
+        if (inactiveClass) {
+            onBlockedAction();
+            return;
+        }
+
         setIsSaving(true);
         setSaveMessage(null);
         try {
@@ -274,10 +287,17 @@ function EventDetailPanel({
                     </div>
                     <Input
                         value={meetLink}
+                        disabled={inactiveClass}
                         onChange={e => setMeetLink(e.target.value)}
                         placeholder="Dán link Google Meet..."
-                        className={`rounded-2xl border-2 font-semibold focus:border-[#FF6B4A] transition-colors ${isDark ? 'border-white/15 bg-[#20242b] text-gray-100' : 'border-[#1A1A1A]/20 bg-[#F7F7F2]'}`}
+                        className={`rounded-2xl border-2 font-semibold focus:border-[#FF6B4A] transition-colors ${inactiveClass ? 'pointer-events-none opacity-50' : ''} ${isDark ? 'border-white/15 bg-[#20242b] text-gray-100' : 'border-[#1A1A1A]/20 bg-[#F7F7F2]'}`}
                     />
+                    {inactiveClass && (
+                        <div className="flex items-center gap-1.5 text-xs font-bold text-red-500">
+                            <Lock className="w-3.5 h-3.5" weight="fill" />
+                            {INACTIVE_CLASS_MESSAGE}
+                        </div>
+                    )}
                     {!meetLink && (
                         <div className="flex items-center gap-1.5 text-xs text-[#FF6B4A] font-bold">
                             <Warning className="w-3.5 h-3.5" weight="fill" />
@@ -296,13 +316,20 @@ function EventDetailPanel({
             <div className={`p-5 border-t-2 space-y-3 ${isDark ? 'border-white/10' : 'border-[#1A1A1A]/10'}`}>
                 <button
                     onClick={handleSave}
-                    disabled={isSaving}
+                    disabled={isSaving || inactiveClass}
                     className="w-full py-3 bg-[#FF6B4A] hover:bg-[#ff5535] disabled:opacity-60 disabled:cursor-not-allowed text-white font-extrabold rounded-2xl active:scale-[0.98] transition-all flex items-center justify-center gap-2"
                 >
                     <Check className="w-4 h-4" weight="bold" /> {isSaving ? 'Đang cập nhật...' : 'Cập nhật link buổi học'}
                 </button>
                 <button
-                    onClick={onOpenAttendance}
+                    onClick={() => {
+                        if (inactiveClass) {
+                            onBlockedAction();
+                            return;
+                        }
+                        onOpenAttendance();
+                    }}
+                    disabled={inactiveClass}
                     className={`w-full py-3 font-extrabold rounded-2xl active:scale-[0.98] transition-all flex items-center justify-center gap-2 border-2 ${isDark ? 'bg-white/5 hover:bg-white/10 text-gray-100 border-white/10' : 'bg-[#1A1A1A]/5 hover:bg-[#1A1A1A]/10 text-[#1A1A1A] border-[#1A1A1A]/10'}`}
                 >
                     <Users className="w-4 h-4" weight="bold" /> Điểm danh học sinh
@@ -335,6 +362,7 @@ export function TeacherSchedule() {
     const [isAttendanceOpen, setIsAttendanceOpen] = useState(false);
     const [tooltipData, setTooltipData] = useState<{ event: ScheduleEvent; x: number; y: number } | null>(null);
     const tooltipTimeout = useRef<ReturnType<typeof setTimeout>>();
+    const [showInactive, setShowInactive] = useState(false);
 
     // API data
     const [events, setEvents] = useState<ScheduleEvent[]>([]);
@@ -360,12 +388,12 @@ export function TeacherSchedule() {
             }
 
             const [items, statsData] = await Promise.all([
-                timetableService.getMyScheduleList(start, end),
+                timetableService.getMyScheduleList(start, end, showInactive),
                 timetableService.getMyScheduleStats(start, end),
             ]);
 
             const mapped = items.map(item => mapToScheduleEvent(item));
-            setEvents(mapped);
+            setEvents(mapped.filter((event) => showInactive || !isInactiveStatus(event.classStatus)));
             setStats(statsData);
         } catch (err: any) {
             console.error('Failed to fetch schedule:', err);
@@ -373,7 +401,25 @@ export function TeacherSchedule() {
         } finally {
             setIsLoading(false);
         }
-    }, [currentDate.toISOString(), viewMode]);
+    }, [currentDate.toISOString(), viewMode, showInactive]);
+
+    const handleInactiveBlockedAction = useCallback(() => {
+        window.alert(INACTIVE_CLASS_MESSAGE);
+    }, []);
+
+    const handleEventSelect = useCallback((ev: ScheduleEvent, allowToggle = false) => {
+        if (isInactiveStatus(ev.classStatus)) {
+            handleInactiveBlockedAction();
+            return;
+        }
+
+        if (allowToggle) {
+            setSelectedEvent(prev => (prev?.id === ev.id ? null : ev));
+            return;
+        }
+
+        setSelectedEvent(ev);
+    }, [handleInactiveBlockedAction]);
 
     useEffect(() => {
         fetchData();
@@ -540,6 +586,19 @@ export function TeacherSchedule() {
                     <button onClick={goToday} className="px-4 h-10 bg-[#FF6B4A] hover:bg-[#ff5535] text-white font-extrabold text-sm rounded-2xl active:scale-95 transition-all">
                         Hôm nay
                     </button>
+
+                    <label className={`ml-auto inline-flex items-center gap-3 rounded-2xl px-3 py-2 text-sm font-extrabold ${isDark ? 'bg-[#20242b] text-gray-200' : 'bg-white border-2 border-[#1A1A1A]/15 text-[#1A1A1A]'}`}>
+                        <span>Hiển thị lớp đã khóa</span>
+                        <button
+                            type="button"
+                            role="switch"
+                            aria-checked={showInactive}
+                            onClick={() => setShowInactive((prev) => !prev)}
+                            className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${showInactive ? 'bg-[#FF6B4A]' : isDark ? 'bg-white/20' : 'bg-gray-300'}`}
+                        >
+                            <span className={`inline-block h-5 w-5 transform rounded-full bg-white transition-transform ${showInactive ? 'translate-x-5' : 'translate-x-1'}`} />
+                        </button>
+                    </label>
                 </div>
             </div>
 
@@ -632,16 +691,24 @@ export function TeacherSchedule() {
                                         }}
                                     >
                                         <div
-                                            className={`h-full p-2.5 rounded-2xl border-2 cursor-pointer transition-all duration-200 overflow-hidden flex flex-col ${selectedEvent?.id === ev.id ? 'shadow-lg ring-2 ring-[#FF6B4A]/30 scale-[1.02]' : 'hover:shadow-lg hover:-translate-y-0.5 hover:scale-[1.01]'
+                                            className={`relative h-full p-2.5 rounded-2xl border-2 cursor-pointer transition-all duration-200 overflow-hidden flex flex-col ${isInactiveStatus(ev.classStatus) ? 'grayscale opacity-50' : ''} ${selectedEvent?.id === ev.id ? 'shadow-lg ring-2 ring-[#FF6B4A]/30 scale-[1.02]' : 'hover:shadow-lg hover:-translate-y-0.5 hover:scale-[1.01]'
                                                 }`}
-                                            style={{ backgroundColor: evStyle.bg, borderColor: selectedEvent?.id === ev.id ? evStyle.dot : evStyle.border }}
-                                            onClick={() => setSelectedEvent(selectedEvent?.id === ev.id ? null : ev)}
+                                            style={{
+                                                backgroundColor: evStyle.bg,
+                                                borderColor: isInactiveStatus(ev.classStatus) ? '#d1d5db' : selectedEvent?.id === ev.id ? evStyle.dot : evStyle.border,
+                                                borderStyle: isInactiveStatus(ev.classStatus) ? 'dashed' : 'solid',
+                                                borderWidth: isInactiveStatus(ev.classStatus) ? '1px' : undefined,
+                                            }}
+                                            onClick={() => handleEventSelect(ev, true)}
                                             onMouseEnter={(e) => { setHoveredEventId(ev.id); showTooltip(ev, e); }}
                                             onMouseLeave={() => { setHoveredEventId(null); hideTooltip(); }}
                                         >
                                             {/* Title + Class */}
-                                            <div className="font-extrabold text-[11px] leading-tight text-[#1A1A1A]">{ev.title}</div>
-                                            <div className="text-[10px] font-bold mt-0.5" style={{ color: evStyle.text }}>Lớp {ev.className}</div>
+                                            <div className={`font-extrabold text-[11px] leading-tight ${isInactiveStatus(ev.classStatus) ? 'line-through decoration-gray-500/70' : ''} text-[#1A1A1A]`}>{ev.title}</div>
+                                            <div className="text-[10px] font-bold mt-0.5 flex items-center gap-1" style={{ color: evStyle.text }}>
+                                                <span>Lớp {ev.className}</span>
+                                                {isInactiveStatus(ev.classStatus) && <Lock className="w-3 h-3" weight="fill" />}
+                                            </div>
                                             <div className="text-[9px] font-bold mt-0.5" style={{ color: `${evStyle.text}99` }}>{ev.time}</div>
                                             {/* Time status + Meet link indicator */}
                                             <div className="mt-auto flex items-center justify-between gap-1 pt-1">
@@ -716,17 +783,25 @@ export function TeacherSchedule() {
                                                     style={{ top: `${(ev.startMin / 60) * 80}px`, height: `${heightPx}px` }}
                                                 >
                                                     <div
-                                                        className={`h-full p-4 rounded-2xl border-2 cursor-pointer transition-all duration-200 flex flex-col ${selectedEvent?.id === ev.id ? 'shadow-lg ring-2 ring-[#FF6B4A]/30 scale-[1.01]' : 'hover:shadow-md hover:-translate-y-0.5'
+                                                        className={`relative h-full p-4 rounded-2xl border-2 cursor-pointer transition-all duration-200 flex flex-col ${isInactiveStatus(ev.classStatus) ? 'grayscale opacity-50' : ''} ${selectedEvent?.id === ev.id ? 'shadow-lg ring-2 ring-[#FF6B4A]/30 scale-[1.01]' : 'hover:shadow-md hover:-translate-y-0.5'
                                                             }`}
-                                                        style={{ backgroundColor: evStyle.bg, borderColor: selectedEvent?.id === ev.id ? evStyle.dot : evStyle.border }}
-                                                        onClick={() => setSelectedEvent(selectedEvent?.id === ev.id ? null : ev)}
+                                                        style={{
+                                                            backgroundColor: evStyle.bg,
+                                                            borderColor: isInactiveStatus(ev.classStatus) ? '#d1d5db' : selectedEvent?.id === ev.id ? evStyle.dot : evStyle.border,
+                                                            borderStyle: isInactiveStatus(ev.classStatus) ? 'dashed' : 'solid',
+                                                            borderWidth: isInactiveStatus(ev.classStatus) ? '1px' : undefined,
+                                                        }}
+                                                        onClick={() => handleEventSelect(ev, true)}
                                                         onMouseEnter={(e) => { setHoveredEventId(ev.id); showTooltip(ev, e); }}
                                                         onMouseLeave={() => { setHoveredEventId(null); hideTooltip(); }}
                                                     >
                                                         <div className="flex items-start justify-between">
                                                             <div>
-                                                                <h4 className={`font-extrabold text-sm ${isDark ? 'text-gray-100' : 'text-[#1A1A1A]'}`}>{ev.title}</h4>
-                                                                <p className="text-xs font-bold mt-0.5" style={{ color: evStyle.text }}>Lớp {ev.className}</p>
+                                                                <h4 className={`font-extrabold text-sm ${isInactiveStatus(ev.classStatus) ? 'line-through decoration-gray-500/70' : ''} ${isDark ? 'text-gray-100' : 'text-[#1A1A1A]'}`}>{ev.title}</h4>
+                                                                <p className="text-xs font-bold mt-0.5 flex items-center gap-1" style={{ color: evStyle.text }}>
+                                                                    <span>Lớp {ev.className}</span>
+                                                                    {isInactiveStatus(ev.classStatus) && <Lock className="w-3 h-3" weight="fill" />}
+                                                                </p>
                                                             </div>
                                                         </div>
                                                         <div className="flex items-center gap-3 mt-1.5 text-xs font-bold" style={{ color: `${evStyle.text}99` }}>
@@ -815,11 +890,17 @@ export function TeacherSchedule() {
                                                     return (
                                                         <div
                                                             key={ev.id}
-                                                            className="text-[9px] font-extrabold px-1.5 py-0.5 rounded-lg truncate border cursor-pointer hover:brightness-95 transition-colors flex items-center gap-1"
-                                                            style={{ backgroundColor: evStyleM.bg, borderColor: evStyleM.border, color: evStyleM.text }}
+                                                            className={`text-[9px] font-extrabold px-1.5 py-0.5 rounded-lg truncate border cursor-pointer hover:brightness-95 transition-colors flex items-center gap-1 ${isInactiveStatus(ev.classStatus) ? 'grayscale opacity-50' : ''}`}
+                                                            style={{
+                                                                backgroundColor: evStyleM.bg,
+                                                                borderColor: isInactiveStatus(ev.classStatus) ? '#d1d5db' : evStyleM.border,
+                                                                color: evStyleM.text,
+                                                                borderStyle: isInactiveStatus(ev.classStatus) ? 'dashed' : 'solid',
+                                                                borderWidth: isInactiveStatus(ev.classStatus) ? '1px' : undefined,
+                                                            }}
                                                             onClick={(e) => {
                                                                 e.stopPropagation();
-                                                                setSelectedEvent(ev);
+                                                                handleEventSelect(ev);
                                                             }}
                                                             onMouseEnter={(e) => {
                                                                 e.stopPropagation();
@@ -827,8 +908,8 @@ export function TeacherSchedule() {
                                                             }}
                                                             onMouseLeave={() => hideTooltip()}
                                                         >
-                                                            <span className="w-1.5 h-1.5 rounded-full shrink-0" style={{ backgroundColor: evStyleM.dot }} />
-                                                            {ev.title}
+                                                            <span className={`truncate ${isInactiveStatus(ev.classStatus) ? 'line-through decoration-gray-500/70' : ''}`}>{ev.title}</span>
+                                                            {isInactiveStatus(ev.classStatus) && <Lock className="w-2.5 h-2.5 shrink-0" weight="fill" />}
                                                         </div>
                                                     );
                                                 })}
@@ -853,6 +934,7 @@ export function TeacherSchedule() {
                         onClose={() => setSelectedEvent(null)}
                         onUpdateMeetLink={handleUpdateMeetLink}
                         onOpenAttendance={() => setIsAttendanceOpen(true)}
+                        onBlockedAction={handleInactiveBlockedAction}
                         now={now}
                         isDark={isDark}
                     />
@@ -880,6 +962,10 @@ export function TeacherSchedule() {
                         <span className="text-xs font-bold" style={{ color: s.text }}>{s.label}</span>
                     </div>
                 ))}
+                <div className="flex items-center gap-2 px-2.5 py-1 rounded-lg border border-dashed border-[#d1d5db] bg-gray-50 opacity-50 grayscale">
+                    <Lock className="w-3.5 h-3.5 text-gray-500" weight="fill" />
+                    <span className="text-xs font-bold text-gray-600">Lớp ngưng hoạt động</span>
+                </div>
             </div>
 
             {/* ═══ Keyframes ═══ */}
