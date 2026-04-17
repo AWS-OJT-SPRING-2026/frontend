@@ -1,16 +1,15 @@
 import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { api } from '../../services/api';
 import { MathRenderer } from '../ui/MathRenderer';
 import {
     CheckCircle, ClipboardText, Clock, BookOpen, CaretRight,
     ArrowCounterClockwise, Star, Hourglass, WarningCircle,
     Medal, MagnifyingGlass, Funnel, ListNumbers, XCircle, Archive,
-    ShieldWarning, ChatsCircle, PaperPlaneTilt
+    ShieldWarning, ChatsCircle
 } from '@phosphor-icons/react';
 import { useSettings } from '../../context/SettingsContext';
 import { assignmentService, AssignmentResponse, AssignmentDetailResponse, SubmissionResponse, AssignmentAttemptResponse, AssignmentResultResponse } from '../../services/assignmentService';
-import { authService, UserData } from '../../services/authService';
+import { authService } from '../../services/authService';
 import { useQuizDraft } from '../../hooks/useQuizDraft';
 import { quizSessionGuard } from '../../lib/quizSessionGuard';
 import { feedbackService, FeedbackItem } from '../../services/feedbackService';
@@ -1389,7 +1388,9 @@ export function StudentTests() {
             
             const missingSubMap = new Map<number, SubmissionResponse>();
             missingSubmissions.forEach(s => {
-                missingSubMap.set(s.assignmentId, s);
+                if (hasValidAssignmentId(s.assignmentId)) {
+                    missingSubMap.set(s.assignmentId, s);
+                }
             });
 
             const nowMs = Date.now();

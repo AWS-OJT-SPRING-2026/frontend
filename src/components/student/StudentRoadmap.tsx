@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { ArrowClockwise, Check, GraduationCap, Trophy, TrendUp, Question, ArrowRight, CaretRight, CaretDown, Clock, Sparkle, Trash, ArrowLeft, MapTrifold, BookOpen } from '@phosphor-icons/react';
+import { Check, GraduationCap, Trophy, TrendUp, Question, ArrowRight, CaretRight, CaretDown, Sparkle, Trash, ArrowLeft, MapTrifold, BookOpen } from '@phosphor-icons/react';
 import { useSettings } from '../../context/SettingsContext';
 import { useSearchParams, useNavigate } from 'react-router-dom';
 

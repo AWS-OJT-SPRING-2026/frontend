@@ -32,7 +32,7 @@ function CurriculumList() {
             const token = authService.getToken();
             if (!token) throw new Error('Vui lòng đăng nhập.');
             const docs = await teacherDocumentService.getDocuments(token);
-            setDocuments(docs.filter(d => d.doc_type === 'theory' || d.doc_type === 'THEORY'));
+            setDocuments(docs.filter(d => d.doc_type === 'theory'));
         } catch (err: any) {
             setError(err.message || 'Không thể tải danh sách giáo trình.');
         } finally {
@@ -239,7 +239,7 @@ function CurriculumDetail() {
         setLoading(true);
         Promise.all([
             teacherDocumentService.getDocuments(token).then(docs =>
-                docs.find(d => d.id === id && (d.doc_type === 'theory' || d.doc_type === 'THEORY')) || null
+                docs.find(d => d.id === id && d.doc_type === 'theory') || null
             ),
             teacherDocumentService.getBookChapters(id, token),
         ])

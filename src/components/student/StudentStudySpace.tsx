@@ -1,9 +1,9 @@
-import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
     CaretDown, CaretRight, BookOpen, Sparkle, PaperPlaneTilt, CircleNotch,
     Cards, Plus, Trash, Eye, EyeSlash, Exam, ListBullets,
-    FileText, Lightning, ArrowRight, Star, MagnifyingGlass,
+    FileText, Lightning, ArrowRight, Star,
     CaretLeft,
 } from '@phosphor-icons/react';
 import ReactMarkdown from 'react-markdown';
@@ -19,7 +19,6 @@ import { aiFetch } from '../../services/aiFetch';
 import {
     studentMaterialService,
     type BookHierarchyResponse,
-    type ChapterDto,
     type LessonDto,
     type ContentBlockDto,
     type StudentTheorySubjectOverview,
@@ -287,7 +286,7 @@ export function StudentStudySpace() {
     const [quizSelectedSubject, setQuizSelectedSubject] = useState<number | null>(null);
     const [quizLessons, setQuizLessons] = useState<{ id: number; label: string; level: string; levelBg: string; selected: boolean }[]>([]);
     const [quizNumQ, setQuizNumQ] = useState(10);
-    const [quizAiQ, setQuizAiQ] = useState(5);
+    const [quizAiQ] = useState(5);
     const [quizQuestions, setQuizQuestions] = useState<any[]>([]);
     const [quizAnswers, setQuizAnswers] = useState<(number | null)[]>([]);
     const [quizCurrent, setQuizCurrent] = useState(0);

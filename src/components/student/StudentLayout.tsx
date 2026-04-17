@@ -3,7 +3,7 @@ import { Outlet, NavLink, useNavigate, useLocation, Link } from 'react-router-do
 import { useAuth } from '../../context/AuthContext';
 import { useSettings } from '../../context/SettingsContext';
 import {
-    SquaresFour, CalendarBlank, ClipboardText, Books, MapTrifold, BookOpen, ChatCircle, SignOut, Notebook,
+    SquaresFour, CalendarBlank, ClipboardText, Books, MapTrifold, BookOpen, SignOut, Notebook,
 } from '@phosphor-icons/react';
 import { cn } from '../../lib/utils';
 import { useActivityPing } from '../../lib/useActivityPing';

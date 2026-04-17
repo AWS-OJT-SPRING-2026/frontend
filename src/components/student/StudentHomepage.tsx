@@ -4,12 +4,11 @@ import {
     MagnifyingGlass, Bell, ArrowRight, CheckCircle, Fire,
     Timer, NotePencil, Play, Pause, ArrowCounterClockwise,
     Warning, MapTrifold, BookOpen, CalendarBlank, Trash, Plus,
-    Eye, Gear, ArrowLeft, X, CoffeeBean, ChartBar, CaretDown,
+    Eye, Gear, ArrowLeft, X, CoffeeBean, CaretDown,
 } from '@phosphor-icons/react';
 import { useSettings } from '../../context/SettingsContext';
 import { useAuth } from '../../context/AuthContext';
 import { NotificationDropdown } from './NotificationDropdown';
-import { weeklyProgressService, WeeklyProgressData } from '../../services/weeklyProgressService';
 import { notificationService } from '../../services/notificationService';
 import { studentDashboardService, type StudentDashboardResponse } from '../../services/studentDashboardService';
 import { api } from '../../services/api';
@@ -31,9 +30,6 @@ export function StudentHomepage() {
     const [showNotifications, setShowNotifications] = useState(false);
     const [unreadCount, setUnreadCount] = useState(0);
     const notificationsRef = useRef<HTMLDivElement>(null);
-
-    // Weekly progress
-    const [weeklyProgress, setWeeklyProgress] = useState<WeeklyProgressData | null>(null);
 
     // Dashboard Data
     const [dashboardData, setDashboardData] = useState<StudentDashboardResponse | null>(null);
@@ -114,7 +110,7 @@ export function StudentHomepage() {
 
     useEffect(() => {
         const token = authService.getToken();
-        api.get<any>('/quotes/today', token)
+        api.get<any>('/quotes/today', token ?? undefined)
             .then(d => {
                 // API may return [{q,a}] or [{quote,author}] or {quote,author}
                 const item = Array.isArray(d) ? d[0] : d;
@@ -131,13 +127,6 @@ export function StudentHomepage() {
     useEffect(() => {
         notificationService.getMyNotifications('ALL')
             .then(items => setUnreadCount(items.filter(n => !n.isRead).length))
-            .catch(() => {});
-    }, []);
-
-    // Fetch weekly progress on mount
-    useEffect(() => {
-        weeklyProgressService.getMyWeeklyProgress()
-            .then(data => setWeeklyProgress(data))
             .catch(() => {});
     }, []);
 
@@ -263,9 +252,6 @@ export function StudentHomepage() {
         ? ((pomFocusMins * 60 - pomTime) / (pomFocusMins * 60)) * 100
         : ((pomBreakMins * 60 - pomTime) / (pomBreakMins * 60)) * 100;
 
-    const safeRoadmapSteps = dashboardData?.roadmapSteps || [];
-    const stepsToShow = roadmapExpanded ? safeRoadmapSteps : safeRoadmapSteps.slice(0, 5);
-    const completedSteps = dashboardData?.completedRoadmapSteps || 0;
     const streakCount = dashboardData?.streakCount || 0;
     const safeStreakDays = dashboardData?.streakDays || [];
 

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate, Routes, Route } from 'react-router-dom';
 import { 
     Folders, BookOpenText, Plus, FileText, MagnifyingGlass, Funnel, Clock 
@@ -6,7 +6,6 @@ import {
 import { teacherDocumentService, type TeacherDocumentItem } from '../../../services/teacherDocumentService';
 import { authService } from '../../../services/authService';
 import TeacherQuestionBankDetail from './TeacherQuestionBankDetail';
-import { cn } from '../../../lib/utils';
 
 function QuestionBankList() {
     const navigate = useNavigate();
@@ -21,7 +20,7 @@ function QuestionBankList() {
                 const token = authService.getToken();
                 if (!token) throw new Error('Vui lòng đăng nhập.');
                 const docs = await teacherDocumentService.getDocuments(token);
-                setDocuments(docs.filter(doc => doc.doc_type === 'question' || doc.doc_type === 'QUESTION'));
+                setDocuments(docs.filter(doc => doc.doc_type === 'question'));
             } catch (err: any) {
                 setError(err.message || 'Không thể tải danh sách tài liệu.');
             } finally {

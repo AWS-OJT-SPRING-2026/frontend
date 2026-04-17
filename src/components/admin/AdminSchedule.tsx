@@ -46,6 +46,8 @@ type FormData = {
     subject: string;
     teacherId: string;
     topic: string;
+    topicOverrides: Record<string, string>;
+    topicPattern: string;
     date: string;
     startTime: string;
     endTime: string;
@@ -54,6 +56,38 @@ type FormData = {
     selectedDays: number[];
     repeatStartDate: string;
     repeatEndDate: string;
+};
+
+type BulkEditData = {
+    subjectID: string;
+    teacherId: string;
+    topic: string;
+    topicOverrides: Record<string, string>;
+    topicPattern: string;
+    startDate: string;
+    endDate: string;
+    startTime: string;
+    endTime: string;
+    meetLink: string;
+};
+
+type BulkNonTopicSnapshot = {
+    subjectID: string;
+    teacherId: string;
+    startDate: string;
+    endDate: string;
+    startTime: string;
+    endTime: string;
+    meetLink: string;
+};
+
+type RecurringSessionDraft = {
+    key: string;
+    date: string;
+    dayIndex: number;
+    startTime: string;
+    endTime: string;
+    topic?: string;
 };
 
 type EditSingleData = {
@@ -119,6 +153,7 @@ const getSubjectColor = (subject: string) => {
 const DAY_LABELS = ['T2', 'T3', 'T4', 'T5', 'T6', 'T7', 'CN'];
 const DAY_FULL_LABELS = ['Thứ 2', 'Thứ 3', 'Thứ 4', 'Thứ 5', 'Thứ 6', 'Thứ 7', 'Chủ nhật'];
 const DAY_ENUMS = ['MONDAY', 'TUESDAY', 'WEDNESDAY', 'THURSDAY', 'FRIDAY', 'SATURDAY', 'SUNDAY'] as const;
+const DEFAULT_TOPIC_PATTERN = 'Buổi {index}';
 const HOURS_START = 7;
 const HOURS_END = 21;
 const HOUR_SLOTS = Array.from({ length: HOURS_END - HOURS_START }, (_, i) => HOURS_START + i);
@@ -220,6 +255,55 @@ const localDateTimeFromDateAndHour = (date: string, hour: number): string => {
     return `${date}T${String(hh).padStart(2, '0')}:${String(mm).padStart(2, '0')}:00`;
 };
 
+const buildSessionKey = (date: string, startTime: string, endTime: string) => `${date}_${startTime}_${endTime}`;
+
+const buildSessionDateTime = (date: string, hm: string) => `${date}T${hm.length === 5 ? `${hm}:00` : hm}`;
+
+const formatSessionLabel = (session: RecurringSessionDraft) => {
+    const date = parseVnDate(`${session.date}T00:00:00`);
+    return `${DAY_FULL_LABELS[session.dayIndex]}, ${date.toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit', year: 'numeric' })}`;
+};
+
+const applyTopicPattern = (pattern: string, index: number, subject: string) => pattern
+    .replace(/\{index\}/g, String(index))
+    .replace(/\{subject\}/g, subject || 'Môn học');
+
+const generateRecurringSessionDrafts = (
+    startDate: string,
+    endDate: string,
+    selectedDays: number[],
+    startTime: string,
+    endTime: string,
+) => {
+    if (!startDate || !endDate || selectedDays.length === 0 || !startTime || !endTime) {
+        return [] as RecurringSessionDraft[];
+    }
+
+    const start = parseVnDate(`${startDate}T00:00:00`);
+    const end = parseVnDate(`${endDate}T00:00:00`);
+    if (Number.isNaN(start.getTime()) || Number.isNaN(end.getTime()) || end < start) {
+        return [] as RecurringSessionDraft[];
+    }
+
+    const picked = new Set(selectedDays);
+    const sessions: RecurringSessionDraft[] = [];
+    for (let cursor = new Date(start); cursor <= end; cursor.setDate(cursor.getDate() + 1)) {
+        const dayIndex = (cursor.getDay() + 6) % 7;
+        if (!picked.has(dayIndex)) continue;
+
+        const date = toDateKey(cursor);
+        sessions.push({
+            key: buildSessionKey(date, startTime, endTime),
+            date,
+            dayIndex,
+            startTime,
+            endTime,
+        });
+    }
+
+    return sessions;
+};
+
 const mapStatus = (status: string): ScheduleEvent['status'] => {
     const s = status?.toUpperCase();
     if (s === 'ONGOING') return 'ongoing';
@@ -295,6 +379,8 @@ export function AdminSchedule() {
         subject: '',
         teacherId: '',
         topic: '',
+        topicOverrides: {},
+        topicPattern: DEFAULT_TOPIC_PATTERN,
         date: '',
         startTime: '08:00',
         endTime: '09:30',
@@ -306,11 +392,26 @@ export function AdminSchedule() {
     });
 
     const [bulkEditOpen, setBulkEditOpen] = useState(false);
+    const [bulkTopicModalOpen, setBulkTopicModalOpen] = useState(false);
+    const [bulkDraftTopicOverrides, setBulkDraftTopicOverrides] = useState<Record<string, string>>({});
+    const [bulkDraftTopicPattern, setBulkDraftTopicPattern] = useState(DEFAULT_TOPIC_PATTERN);
+    const [bulkAllClassEvents, setBulkAllClassEvents] = useState<ScheduleEvent[]>([]);
     const [bulkEditClassId, setBulkEditClassId] = useState<string>('');
-    const [bulkEditData, setBulkEditData] = useState({
+    const [bulkEditData, setBulkEditData] = useState<BulkEditData>({
         subjectID: '',
         teacherId: '',
         topic: '',
+        topicOverrides: {},
+        topicPattern: DEFAULT_TOPIC_PATTERN,
+        startDate: '',
+        endDate: '',
+        startTime: '',
+        endTime: '',
+        meetLink: '',
+    });
+    const [bulkInitialNonTopic, setBulkInitialNonTopic] = useState<BulkNonTopicSnapshot>({
+        subjectID: '',
+        teacherId: '',
         startDate: '',
         endDate: '',
         startTime: '',
@@ -481,6 +582,8 @@ export function AdminSchedule() {
             subject: '',
             teacherId: '',
             topic: '',
+            topicOverrides: {},
+            topicPattern: DEFAULT_TOPIC_PATTERN,
             date: d ? toDateKey(d) : '',
             startTime: fmtTime(hour),
             endTime: fmtTime(hour + 1.5),
@@ -661,11 +764,6 @@ export function AdminSchedule() {
             return;
         }
 
-        if (!formData.topic.trim()) {
-            setError('Vui lòng nhập chủ đề buổi học.');
-            return;
-        }
-
         if (!formData.startTime || !formData.endTime) {
             setError('Vui lòng chọn đầy đủ giờ bắt đầu và giờ kết thúc.');
             return;
@@ -699,20 +797,64 @@ export function AdminSchedule() {
                     return;
                 }
 
-                await timetableService.createRecurring({
-                    classID: classId,
-                    teacherID: teacherId,
-                    topic: formData.topic,
-                    googleMeetLink: formData.meetLink || undefined,
-                    startDate: formData.repeatStartDate,
-                    endDate: formData.repeatEndDate,
-                    startTime: fmtTimeApi(formData.startTime),
-                    endTime: fmtTimeApi(formData.endTime),
-                    daysOfWeek: formData.selectedDays.map((d) => DAY_ENUMS[d]),
-                });
+                const generatedSessions = generateRecurringSessionDrafts(
+                    formData.repeatStartDate,
+                    formData.repeatEndDate,
+                    formData.selectedDays,
+                    formData.startTime,
+                    formData.endTime,
+                );
+
+                if (generatedSessions.length === 0) {
+                    setError('Không có buổi nào được tạo từ cấu hình lặp hiện tại.');
+                    return;
+                }
+
+                const hasTopicOverrides = Object.values(formData.topicOverrides).some((v) => v.trim().length > 0);
+
+                if (!hasTopicOverrides) {
+                    if (!formData.topic.trim()) {
+                        setError('Vui lòng nhập chủ đề chung hoặc chỉnh chủ đề từng buổi.');
+                        return;
+                    }
+
+                    await timetableService.createRecurring({
+                        classID: classId,
+                        teacherID: teacherId,
+                        topic: formData.topic,
+                        googleMeetLink: formData.meetLink || undefined,
+                        startDate: formData.repeatStartDate,
+                        endDate: formData.repeatEndDate,
+                        startTime: fmtTimeApi(formData.startTime),
+                        endTime: fmtTimeApi(formData.endTime),
+                        daysOfWeek: formData.selectedDays.map((d) => DAY_ENUMS[d]),
+                    });
+                } else {
+                    for (const session of generatedSessions) {
+                        const topic = (formData.topicOverrides[session.key] ?? formData.topic).trim();
+                        if (!topic) {
+                            setError(`Thiếu chủ đề cho ${formatSessionLabel(session)}.`);
+                            return;
+                        }
+
+                        await timetableService.createSingle({
+                            classID: classId,
+                            teacherID: teacherId,
+                            topic,
+                            googleMeetLink: formData.meetLink || undefined,
+                            startTime: buildSessionDateTime(session.date, session.startTime),
+                            endTime: buildSessionDateTime(session.date, session.endTime),
+                        });
+                    }
+                }
             } else {
                 if (!formData.date) {
                     setError('Vui lòng chọn ngày học trước khi lưu buổi học.');
+                    return;
+                }
+
+                if (!formData.topic.trim()) {
+                    setError('Vui lòng nhập chủ đề buổi học.');
                     return;
                 }
 
@@ -734,33 +876,88 @@ export function AdminSchedule() {
     }, [formData, loadCalendarData, refreshStats]);
 
     const openBulkEdit = useCallback((classId: string) => {
+        setBulkTopicModalOpen(false);
+        setBulkAllClassEvents([]);
         setBulkEditClassId(classId);
         const classInfo = classrooms.find((c) => String(c.classID) === classId);
         const target = events.filter((e) => String(e.classID) === classId);
         if (target.length > 0) {
             const first = target[0];
-            setBulkEditData({
+            const nextData: BulkEditData = {
                 subjectID: String(subjects.find((s) => s.subjectName === (classInfo?.subjectName ?? first.subject))?.subjectID ?? ''),
                 teacherId: first.teacherID ? String(first.teacherID) : '',
                 topic: '',
+                topicOverrides: {},
+                topicPattern: DEFAULT_TOPIC_PATTERN,
                 startDate: normalizeDateInput(classInfo?.startDate),
                 endDate: normalizeDateInput(classInfo?.endDate),
                 startTime: fmtTime(first.startHour),
                 endTime: fmtTime(first.startHour + first.duration),
                 meetLink: first.meetLink ?? '',
+            };
+            setBulkEditData(nextData);
+            setBulkInitialNonTopic({
+                subjectID: nextData.subjectID,
+                teacherId: nextData.teacherId,
+                startDate: nextData.startDate,
+                endDate: nextData.endDate,
+                startTime: nextData.startTime,
+                endTime: nextData.endTime,
+                meetLink: nextData.meetLink,
             });
         } else {
-            setBulkEditData({
+            const nextData: BulkEditData = {
                 subjectID: '',
                 teacherId: '',
                 topic: '',
+                topicOverrides: {},
+                topicPattern: DEFAULT_TOPIC_PATTERN,
                 startDate: normalizeDateInput(classInfo?.startDate),
                 endDate: normalizeDateInput(classInfo?.endDate),
                 startTime: '',
                 endTime: '',
                 meetLink: '',
+            };
+            setBulkEditData(nextData);
+            setBulkInitialNonTopic({
+                subjectID: nextData.subjectID,
+                teacherId: nextData.teacherId,
+                startDate: nextData.startDate,
+                endDate: nextData.endDate,
+                startTime: nextData.startTime,
+                endTime: nextData.endTime,
+                meetLink: nextData.meetLink,
             });
         }
+
+        // Load full class timeline so bulk-detail editing is not constrained by the current week/month view.
+        (async () => {
+            try {
+                const rangeStart = normalizeDateInput(classInfo?.startDate);
+                const rangeEnd = normalizeDateInput(classInfo?.endDate);
+
+                const fallbackStart = new Date(new Date().getFullYear() - 1, 0, 1);
+                const fallbackEnd = new Date(new Date().getFullYear() + 1, 11, 31, 23, 59, 59, 999);
+
+                const from = rangeStart
+                    ? new Date(`${rangeStart}T00:00:00`)
+                    : fallbackStart;
+                const to = rangeEnd
+                    ? new Date(`${rangeEnd}T23:59:59`)
+                    : fallbackEnd;
+
+                const list = await timetableService.getTimetables(from, to, true);
+                const mapped = list
+                    .map(mapTimetableItem)
+                    .filter((e) => String(e.classID) === classId);
+
+                setBulkAllClassEvents(mapped);
+            } catch {
+                // Fallback to currently loaded events if full-range fetch fails.
+                setBulkAllClassEvents(events.filter((e) => String(e.classID) === classId));
+            }
+        })();
+
         setBulkEditOpen(true);
     }, [classrooms, events, subjects]);
 
@@ -770,6 +967,23 @@ export function AdminSchedule() {
 
         setError(null);
         const fmtTimeApi = (t: string) => t && t.length === 5 ? `${t}:00` : t;
+        const topicOverrides = Object.entries(bulkEditData.topicOverrides)
+            .map(([id, topic]) => ({ id, topic: topic.trim() }))
+            .filter((item) => item.topic.length > 0);
+        const hasNonTopicBulkChange = (
+            bulkEditData.subjectID !== bulkInitialNonTopic.subjectID ||
+            bulkEditData.teacherId !== bulkInitialNonTopic.teacherId ||
+            bulkEditData.startDate !== bulkInitialNonTopic.startDate ||
+            bulkEditData.endDate !== bulkInitialNonTopic.endDate ||
+            bulkEditData.startTime !== bulkInitialNonTopic.startTime ||
+            bulkEditData.endTime !== bulkInitialNonTopic.endTime ||
+            bulkEditData.meetLink !== bulkInitialNonTopic.meetLink
+        );
+
+        if (topicOverrides.length > 0 && hasNonTopicBulkChange) {
+            setError('Khi dùng chủ đề riêng từng buổi, vui lòng chỉ chỉnh phần chủ đề để tránh ghi đè thời gian hoặc giáo viên.');
+            return;
+        }
 
         try {
             await timetableService.bulkUpdateTimetable(Number(bulkEditClassId), {
@@ -783,12 +997,28 @@ export function AdminSchedule() {
                 googleMeetLink: bulkEditData.meetLink || undefined,
             });
 
+            if (topicOverrides.length > 0) {
+                for (const item of topicOverrides) {
+                    const target = bulkAllClassEvents.find((ev) => String(ev.id) === item.id && String(ev.classID) === bulkEditClassId);
+                    if (!target) continue;
+
+                    await timetableService.updateSingleTimetable(target.id, {
+                        classID: target.classID,
+                        teacherID: target.teacherID,
+                        topic: item.topic,
+                        googleMeetLink: target.meetLink,
+                        startTime: target.startTime,
+                        endTime: target.endTime,
+                    });
+                }
+            }
+
             setBulkEditOpen(false);
             await Promise.all([loadCalendarData(), refreshStats()]);
         } catch (e) {
             setError(e instanceof Error ? e.message : 'Không thể cập nhật hàng loạt.');
         }
-    }, [bulkEditClassId, bulkEditData, loadCalendarData, refreshStats]);
+    }, [bulkEditClassId, bulkEditData, bulkInitialNonTopic, bulkAllClassEvents, loadCalendarData, refreshStats]);
 
     const handleDeleteSingle = useCallback(async () => {
         if (!selectedEvent) return;
@@ -818,6 +1048,122 @@ export function AdminSchedule() {
         const key = toDateKey(new Date());
         return filteredEvents.filter((e) => e.dateKey === key).sort((a, b) => a.startHour - b.startHour);
     }, [filteredEvents]);
+
+    const bulkClassSessions = useMemo(() => {
+        if (!bulkEditClassId) return [] as RecurringSessionDraft[];
+
+        return bulkAllClassEvents
+            .filter((e) => String(e.classID) === bulkEditClassId)
+            .map((e) => {
+                const start = parseVnDate(e.startTime);
+                const end = parseVnDate(e.endTime);
+                const startHm = `${String(start.getHours()).padStart(2, '0')}:${String(start.getMinutes()).padStart(2, '0')}`;
+                const endHm = `${String(end.getHours()).padStart(2, '0')}:${String(end.getMinutes()).padStart(2, '0')}`;
+                return {
+                    key: String(e.id),
+                    date: toDateKey(start),
+                    dayIndex: (start.getDay() + 6) % 7,
+                    startTime: startHm,
+                    endTime: endHm,
+                    topic: e.topic,
+                };
+            })
+            .sort((a, b) => `${a.date} ${a.startTime}`.localeCompare(`${b.date} ${b.startTime}`));
+    }, [bulkAllClassEvents, bulkEditClassId]);
+
+    const bulkSessionOverrideCount = useMemo(() => bulkClassSessions.reduce((count, session) => {
+        const value = (bulkEditData.topicOverrides[session.key] ?? '').trim();
+        return value ? count + 1 : count;
+    }, 0), [bulkClassSessions, bulkEditData.topicOverrides]);
+
+    const hasCustomizedBulkSessionTopic = useMemo(() => bulkClassSessions.some((session) => {
+        const value = (bulkEditData.topicOverrides[session.key] ?? '').trim();
+        return value.length > 0 && value !== bulkEditData.topic.trim();
+    }), [bulkClassSessions, bulkEditData.topic, bulkEditData.topicOverrides]);
+
+    const openBulkTopicModal = useCallback(() => {
+        const scopedDraft: Record<string, string> = {};
+        for (const session of bulkClassSessions) {
+            if (bulkEditData.topicOverrides[session.key] !== undefined) {
+                scopedDraft[session.key] = bulkEditData.topicOverrides[session.key];
+            }
+        }
+
+        setBulkDraftTopicOverrides(scopedDraft);
+        setBulkDraftTopicPattern(bulkEditData.topicPattern || DEFAULT_TOPIC_PATTERN);
+        setBulkTopicModalOpen(true);
+    }, [bulkClassSessions, bulkEditData.topicOverrides, bulkEditData.topicPattern]);
+
+    const setBulkDraftTopicOverride = useCallback((sessionKey: string, value: string) => {
+        setBulkDraftTopicOverrides((prev) => ({ ...prev, [sessionKey]: value }));
+    }, []);
+
+    const applyBulkCommonTopicToAllDraft = useCallback(() => {
+        if (bulkClassSessions.length === 0) return;
+
+        setBulkDraftTopicOverrides((prev) => {
+            const next = { ...prev };
+            for (const session of bulkClassSessions) {
+                next[session.key] = bulkEditData.topic;
+            }
+            return next;
+        });
+    }, [bulkClassSessions, bulkEditData.topic]);
+
+    const applyBulkPatternToAllDraft = useCallback(() => {
+        if (bulkClassSessions.length === 0) return;
+        const subjectName = bulkEditData.subjectID
+            ? (subjects.find((s) => String(s.subjectID) === bulkEditData.subjectID)?.subjectName ?? '')
+            : '';
+
+        setBulkDraftTopicOverrides((prev) => {
+            const next = { ...prev };
+            for (let idx = 0; idx < bulkClassSessions.length; idx += 1) {
+                const session = bulkClassSessions[idx];
+                next[session.key] = applyTopicPattern(
+                    bulkDraftTopicPattern || DEFAULT_TOPIC_PATTERN,
+                    idx + 1,
+                    subjectName,
+                );
+            }
+            return next;
+        });
+    }, [bulkClassSessions, bulkDraftTopicPattern, bulkEditData.subjectID, subjects]);
+
+    const copyBulkDraftTopicDown = useCallback((startIndex: number) => {
+        setBulkDraftTopicOverrides((prev) => {
+            const source = (
+                prev[bulkClassSessions[startIndex]?.key]
+                ?? bulkClassSessions[startIndex]?.topic
+                ?? bulkEditData.topic
+            ).trim();
+            if (!source) return prev;
+
+            const next = { ...prev };
+            for (let idx = startIndex + 1; idx < bulkClassSessions.length; idx += 1) {
+                next[bulkClassSessions[idx].key] = source;
+            }
+            return next;
+        });
+    }, [bulkClassSessions, bulkEditData.topic]);
+
+    const saveBulkTopicDraft = useCallback(() => {
+        setBulkEditData((prev) => {
+            const nextOverrides = { ...prev.topicOverrides };
+            for (const session of bulkClassSessions) {
+                delete nextOverrides[session.key];
+                const value = (bulkDraftTopicOverrides[session.key] ?? '').trim();
+                if (value) nextOverrides[session.key] = value;
+            }
+
+            return {
+                ...prev,
+                topicPattern: bulkDraftTopicPattern || DEFAULT_TOPIC_PATTERN,
+                topicOverrides: nextOverrides,
+            };
+        });
+        setBulkTopicModalOpen(false);
+    }, [bulkClassSessions, bulkDraftTopicOverrides, bulkDraftTopicPattern]);
 
     const selectedBulkSubjectName = useMemo(() => {
         if (!bulkEditData.subjectID) return '';
@@ -1400,7 +1746,13 @@ export function AdminSchedule() {
             </Dialog>
 
             {/* ── Bulk Edit Dialog ────────────────── */}
-            <Dialog open={bulkEditOpen} onOpenChange={setBulkEditOpen}>
+            <Dialog
+                open={bulkEditOpen}
+                onOpenChange={(open) => {
+                    setBulkEditOpen(open);
+                    if (!open) setBulkTopicModalOpen(false);
+                }}
+            >
                 <DialogContent className="rounded-3xl max-w-2xl">
                     <DialogHeader>
                         <DialogTitle className="text-xl font-extrabold text-[#1A1A1A] flex items-center gap-2">
@@ -1455,14 +1807,34 @@ export function AdminSchedule() {
                                     </Select>
                                 </div>
 
-                                <div className="md:col-span-2">
-                                    <Label className="text-[10px] font-extrabold text-gray-500 uppercase tracking-wider mb-1 block">Chủ đề</Label>
+                                <div className="md:col-span-2 space-y-2">
+                                    <div className="flex items-center justify-between gap-2">
+                                        <Label className="text-[10px] font-extrabold text-gray-500 uppercase tracking-wider block">Chủ đề chung</Label>
+                                        <div className="flex items-center gap-1.5">
+                                            <button
+                                                type="button"
+                                                onClick={openBulkTopicModal}
+                                                className="px-2.5 h-7 rounded-lg border border-[#1A1A1A]/20 text-[#1A1A1A] text-[11px] font-extrabold hover:bg-[#F7F7F2] transition-colors"
+                                            >
+                                                Chỉnh sửa chi tiết
+                                            </button>
+                                        </div>
+                                    </div>
                                     <Input
                                         value={bulkEditData.topic}
                                         onChange={(e) => setBulkEditData((p) => ({ ...p, topic: e.target.value }))}
                                         placeholder="Để trống nếu giữ nguyên"
                                         className="rounded-xl border-2 border-[#1A1A1A]/20 bg-white font-semibold text-sm h-9"
                                     />
+                                    <p className="text-[11px] text-gray-500 font-semibold">
+                                        Chủ đề chung áp dụng mặc định; chủ đề riêng từng buổi sẽ được ưu tiên khi bạn mở chi tiết.
+                                    </p>
+
+                                    {hasCustomizedBulkSessionTopic && (
+                                        <div className="inline-flex items-center gap-2 rounded-full border border-[#2563EB]/25 bg-[#EEF4FF] px-3 py-1 text-[11px] font-extrabold text-[#2563EB]">
+                                            Đã tùy chỉnh từng buổi ({bulkSessionOverrideCount})
+                                        </div>
+                                    )}
                                 </div>
                             </div>
                         </div>
@@ -1502,6 +1874,97 @@ export function AdminSchedule() {
                             />
                         </div>
                     </div>
+
+                    <Dialog open={bulkTopicModalOpen} onOpenChange={setBulkTopicModalOpen}>
+                        <DialogContent className="rounded-3xl max-w-3xl">
+                            <DialogHeader>
+                                <DialogTitle className="text-lg font-extrabold text-[#1A1A1A]">Tùy chỉnh chủ đề từng buổi</DialogTitle>
+                                <DialogDescription>
+                                    Danh sách tất cả buổi học của lớp hiện tại. Chủ đề riêng sẽ ưu tiên hơn chủ đề chung.
+                                </DialogDescription>
+                            </DialogHeader>
+
+                            <div className="space-y-3">
+                                <div className="grid grid-cols-1 md:grid-cols-[1fr_auto_auto] gap-2 items-center">
+                                    <Input
+                                        value={bulkDraftTopicPattern}
+                                        onChange={(e) => setBulkDraftTopicPattern(e.target.value)}
+                                        placeholder="Pattern ví dụ: Chương 1 - Buổi {index}"
+                                        className="rounded-xl border-2 border-[#1A1A1A]/20 bg-white font-semibold text-sm h-9"
+                                    />
+                                    <button
+                                        type="button"
+                                        title="Áp dụng cho tất cả: Gán cùng một chủ đề cho mọi buổi"
+                                        onClick={applyBulkCommonTopicToAllDraft}
+                                        className="h-9 px-3 rounded-xl border border-[#FF6B4A]/40 text-[#FF6B4A] text-xs font-extrabold hover:bg-[#FFF4EE] transition-colors"
+                                    >
+                                        Áp dụng cho tất cả
+                                    </button>
+                                    <button
+                                        type="button"
+                                        onClick={applyBulkPatternToAllDraft}
+                                        className="h-9 px-3 rounded-xl border border-[#2563EB]/30 text-[#2563EB] text-xs font-extrabold hover:bg-[#EEF4FF] transition-colors"
+                                    >
+                                        Tự động đánh số
+                                    </button>
+                                </div>
+                                <p className="text-[11px] text-gray-500 font-semibold">Hỗ trợ placeholder: <code>{'{index}'}</code>, <code>{'{subject}'}</code>.</p>
+
+                                <div className="max-h-[52vh] overflow-y-auto pr-1 space-y-2">
+                                    {bulkClassSessions.length === 0 && (
+                                        <div className="rounded-lg border border-dashed border-[#1A1A1A]/15 bg-[#FCFCFC] px-3 py-2 text-xs font-semibold text-gray-500">
+                                            Chưa có buổi học trong lớp này để tùy chỉnh chủ đề riêng.
+                                        </div>
+                                    )}
+
+                                    {bulkClassSessions.map((session, index) => {
+                                        const topicValue = bulkDraftTopicOverrides[session.key] ?? session.topic ?? bulkEditData.topic;
+                                        return (
+                                            <div key={session.key} className="rounded-lg border border-[#1A1A1A]/10 bg-[#FCFCFC] p-2.5 space-y-2">
+                                                <div className="flex flex-wrap items-center justify-between gap-2">
+                                                    <div>
+                                                        <div className="text-[11px] font-extrabold text-[#1A1A1A]">{formatSessionLabel(session)}</div>
+                                                        <div className="text-[10px] font-semibold text-gray-500">{session.startTime} - {session.endTime}</div>
+                                                    </div>
+                                                    <button
+                                                        type="button"
+                                                        title="Copy xuống: Áp dụng cho các buổi phía sau"
+                                                        onClick={() => copyBulkDraftTopicDown(index)}
+                                                        className="px-2 py-1 rounded-md border border-[#1A1A1A]/15 text-[10px] font-extrabold text-gray-600 hover:bg-white"
+                                                    >
+                                                        Copy xuống các buổi sau
+                                                    </button>
+                                                </div>
+                                                <Input
+                                                    value={topicValue}
+                                                    onChange={(e) => setBulkDraftTopicOverride(session.key, e.target.value)}
+                                                    placeholder="Nhập chủ đề riêng cho buổi này"
+                                                    className="rounded-lg border border-[#1A1A1A]/20 bg-white font-semibold text-sm h-8"
+                                                />
+                                            </div>
+                                        );
+                                    })}
+                                </div>
+                            </div>
+
+                            <div className="grid grid-cols-2 gap-3 pt-1">
+                                <button
+                                    type="button"
+                                    onClick={() => setBulkTopicModalOpen(false)}
+                                    className="bg-gray-100 hover:bg-gray-200 text-[#1A1A1A] font-extrabold py-2.5 rounded-xl transition-all text-sm"
+                                >
+                                    Hủy
+                                </button>
+                                <button
+                                    type="button"
+                                    onClick={saveBulkTopicDraft}
+                                    className="bg-[#FF6B4A] hover:bg-[#ff5535] text-white font-extrabold py-2.5 rounded-xl transition-all text-sm"
+                                >
+                                    Lưu thay đổi
+                                </button>
+                            </div>
+                        </DialogContent>
+                    </Dialog>
 
                     {error && (
                         <div className="bg-red-50 border border-red-200 text-red-600 px-3 py-2 rounded-xl text-sm font-semibold">
@@ -1547,6 +2010,9 @@ function CreateForm({
     error?: string | null;
 }) {
     const upd = <K extends keyof FormData>(k: K, v: FormData[K]) => setFormData((p) => ({ ...p, [k]: v }));
+    const [sessionTopicModalOpen, setSessionTopicModalOpen] = useState(false);
+    const [draftTopicOverrides, setDraftTopicOverrides] = useState<Record<string, string>>({});
+    const [draftTopicPattern, setDraftTopicPattern] = useState(formData.topicPattern || DEFAULT_TOPIC_PATTERN);
 
     const selectedClassInfo = useMemo(() => {
         if (!formData.classroomId) return null;
@@ -1561,6 +2027,104 @@ function CreateForm({
             return { ...p, selectedDays: days };
         });
     };
+
+    const generatedSessions = useMemo(() => generateRecurringSessionDrafts(
+        formData.repeatStartDate,
+        formData.repeatEndDate,
+        formData.selectedDays,
+        formData.startTime,
+        formData.endTime,
+    ), [
+        formData.repeatStartDate,
+        formData.repeatEndDate,
+        formData.selectedDays,
+        formData.startTime,
+        formData.endTime,
+    ]);
+
+    const sessionOverrideCount = useMemo(() => generatedSessions.reduce((count, session) => {
+        const value = (formData.topicOverrides[session.key] ?? '').trim();
+        return value ? count + 1 : count;
+    }, 0), [formData.topicOverrides, generatedSessions]);
+
+    const hasCustomizedSessionTopic = useMemo(() => generatedSessions.some((session) => {
+        const value = (formData.topicOverrides[session.key] ?? '').trim();
+        return value.length > 0 && value !== formData.topic.trim();
+    }), [formData.topic, formData.topicOverrides, generatedSessions]);
+
+    const openSessionTopicModal = useCallback(() => {
+        const scopedDraft: Record<string, string> = {};
+        for (const session of generatedSessions) {
+            if (formData.topicOverrides[session.key] !== undefined) {
+                scopedDraft[session.key] = formData.topicOverrides[session.key];
+            }
+        }
+
+        setDraftTopicOverrides(scopedDraft);
+        setDraftTopicPattern(formData.topicPattern || DEFAULT_TOPIC_PATTERN);
+        setSessionTopicModalOpen(true);
+    }, [formData.topicOverrides, formData.topicPattern, generatedSessions]);
+
+    const setDraftTopicOverride = useCallback((sessionKey: string, value: string) => {
+        setDraftTopicOverrides((prev) => ({ ...prev, [sessionKey]: value }));
+    }, []);
+
+    const applyCommonTopicToAllDraft = useCallback(() => {
+        if (generatedSessions.length === 0) return;
+
+        setDraftTopicOverrides((prev) => {
+            const next = { ...prev };
+            for (const session of generatedSessions) {
+                next[session.key] = formData.topic;
+            }
+            return next;
+        });
+    }, [formData.topic, generatedSessions]);
+
+    const applyPatternToAllDraft = useCallback(() => {
+        if (generatedSessions.length === 0) return;
+
+        setDraftTopicOverrides((prev) => {
+            const next = { ...prev };
+            for (let idx = 0; idx < generatedSessions.length; idx += 1) {
+                const session = generatedSessions[idx];
+                next[session.key] = applyTopicPattern(draftTopicPattern || DEFAULT_TOPIC_PATTERN, idx + 1, formData.subject);
+            }
+            return next;
+        });
+    }, [draftTopicPattern, formData.subject, generatedSessions]);
+
+    const copyDownDraftTopics = useCallback((startIndex: number) => {
+        setDraftTopicOverrides((prev) => {
+            const source = (prev[generatedSessions[startIndex]?.key] ?? formData.topic).trim();
+            if (!source) return prev;
+
+            const next = { ...prev };
+            for (let idx = startIndex + 1; idx < generatedSessions.length; idx += 1) {
+                next[generatedSessions[idx].key] = source;
+            }
+
+            return next;
+        });
+    }, [formData.topic, generatedSessions]);
+
+    const saveSessionTopicDraft = useCallback(() => {
+        setFormData((prev) => {
+            const nextOverrides = { ...prev.topicOverrides };
+            for (const session of generatedSessions) {
+                delete nextOverrides[session.key];
+                const value = (draftTopicOverrides[session.key] ?? '').trim();
+                if (value) nextOverrides[session.key] = value;
+            }
+
+            return {
+                ...prev,
+                topicPattern: draftTopicPattern || DEFAULT_TOPIC_PATTERN,
+                topicOverrides: nextOverrides,
+            };
+        });
+        setSessionTopicModalOpen(false);
+    }, [draftTopicOverrides, draftTopicPattern, generatedSessions, setFormData]);
 
     return (
         <div className="space-y-3">
@@ -1613,10 +2177,132 @@ function CreateForm({
                 </div>
             )}
 
-            <div>
-                <Label className="text-[10px] font-extrabold text-gray-400 uppercase tracking-wider mb-1 block">Chủ đề / Topic</Label>
-                <Input value={formData.topic} onChange={(e) => upd('topic', e.target.value)} placeholder="Ví dụ: Học chương 3" className="rounded-xl border-2 border-[#1A1A1A]/20 bg-[#F7F7F2] font-semibold text-sm h-9" />
+            <div className="space-y-2">
+                <div className="flex items-center justify-between gap-2">
+                    <Label className="text-[10px] font-extrabold text-gray-400 uppercase tracking-wider block">Chủ đề chung</Label>
+                    <div className="flex items-center gap-1.5">
+                        {formData.repeatWeekly && (
+                            <button
+                                type="button"
+                                onClick={openSessionTopicModal}
+                                className="px-2.5 h-7 rounded-lg border border-[#1A1A1A]/20 text-[#1A1A1A] text-[11px] font-extrabold hover:bg-[#F7F7F2] transition-colors"
+                            >
+                                Chỉnh sửa chi tiết
+                            </button>
+                        )}
+                    </div>
+                </div>
+
+                <Input
+                    value={formData.topic}
+                    onChange={(e) => upd('topic', e.target.value)}
+                    placeholder="Ví dụ: Học chương 3"
+                    className="rounded-xl border-2 border-[#1A1A1A]/20 bg-[#F7F7F2] font-semibold text-sm h-9"
+                />
+
+                {formData.repeatWeekly && (
+                    <p className="text-[11px] text-gray-500 font-semibold">
+                        Chủ đề chung áp dụng mặc định cho tất cả buổi. Chủ đề riêng sẽ ưu tiên hơn khi bạn nhập ở phần chi tiết.
+                    </p>
+                )}
+
+                {formData.repeatWeekly && hasCustomizedSessionTopic && (
+                    <div className="inline-flex items-center gap-2 rounded-full border border-[#2563EB]/25 bg-[#EEF4FF] px-3 py-1 text-[11px] font-extrabold text-[#2563EB]">
+                        Đã tùy chỉnh từng buổi ({sessionOverrideCount})
+                    </div>
+                )}
             </div>
+
+            <Dialog open={sessionTopicModalOpen} onOpenChange={setSessionTopicModalOpen}>
+                <DialogContent className="rounded-3xl max-w-3xl">
+                    <DialogHeader>
+                        <DialogTitle className="text-lg font-extrabold text-[#1A1A1A]">Tùy chỉnh chủ đề từng buổi</DialogTitle>
+                        <DialogDescription>
+                            Danh sách buổi học được tạo từ rule lặp lại. Chủ đề riêng sẽ ưu tiên hơn chủ đề chung.
+                        </DialogDescription>
+                    </DialogHeader>
+
+                    <div className="space-y-3">
+                        <div className="grid grid-cols-1 md:grid-cols-[1fr_auto_auto] gap-2 items-center">
+                            <Input
+                                value={draftTopicPattern}
+                                onChange={(e) => setDraftTopicPattern(e.target.value)}
+                                placeholder="Pattern ví dụ: Chương 1 - Buổi {index}"
+                                className="rounded-xl border-2 border-[#1A1A1A]/20 bg-white font-semibold text-sm h-9"
+                            />
+                            <button
+                                type="button"
+                                title="Áp dụng cho tất cả: Gán cùng một chủ đề cho mọi buổi"
+                                onClick={applyCommonTopicToAllDraft}
+                                className="h-9 px-3 rounded-xl border border-[#FF6B4A]/40 text-[#FF6B4A] text-xs font-extrabold hover:bg-[#FFF4EE] transition-colors"
+                            >
+                                Áp dụng cho tất cả
+                            </button>
+                            <button
+                                type="button"
+                                onClick={applyPatternToAllDraft}
+                                className="h-9 px-3 rounded-xl border border-[#2563EB]/30 text-[#2563EB] text-xs font-extrabold hover:bg-[#EEF4FF] transition-colors"
+                            >
+                                Tự động đánh số
+                            </button>
+                        </div>
+                        <p className="text-[11px] text-gray-500 font-semibold">Hỗ trợ placeholder: <code>{'{index}'}</code>, <code>{'{subject}'}</code>.</p>
+
+                        <div className="max-h-[52vh] overflow-y-auto pr-1 space-y-2">
+                            {generatedSessions.length === 0 && (
+                                <div className="rounded-lg border border-dashed border-[#1A1A1A]/15 bg-[#FCFCFC] px-3 py-2 text-xs font-semibold text-gray-500">
+                                    Chọn ngày bắt đầu/kết thúc, thứ trong tuần và khung giờ để hệ thống tạo danh sách buổi.
+                                </div>
+                            )}
+
+                            {generatedSessions.map((session, index) => {
+                                const topicValue = draftTopicOverrides[session.key] ?? formData.topic;
+                                return (
+                                    <div key={session.key} className="rounded-lg border border-[#1A1A1A]/10 bg-[#FCFCFC] p-2.5 space-y-2">
+                                        <div className="flex flex-wrap items-center justify-between gap-2">
+                                            <div>
+                                                <div className="text-[11px] font-extrabold text-[#1A1A1A]">{formatSessionLabel(session)}</div>
+                                                <div className="text-[10px] font-semibold text-gray-500">{session.startTime} - {session.endTime}</div>
+                                            </div>
+                                            <button
+                                                type="button"
+                                                title="Copy xuống: Áp dụng cho các buổi phía sau"
+                                                onClick={() => copyDownDraftTopics(index)}
+                                                className="px-2 py-1 rounded-md border border-[#1A1A1A]/15 text-[10px] font-extrabold text-gray-600 hover:bg-white"
+                                            >
+                                                Copy xuống các buổi sau
+                                            </button>
+                                        </div>
+                                        <Input
+                                            value={topicValue}
+                                            onChange={(e) => setDraftTopicOverride(session.key, e.target.value)}
+                                            placeholder="Nhập chủ đề riêng cho buổi này"
+                                            className="rounded-lg border border-[#1A1A1A]/20 bg-white font-semibold text-sm h-8"
+                                        />
+                                    </div>
+                                );
+                            })}
+                        </div>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-3 pt-1">
+                        <button
+                            type="button"
+                            onClick={() => setSessionTopicModalOpen(false)}
+                            className="bg-gray-100 hover:bg-gray-200 text-[#1A1A1A] font-extrabold py-2.5 rounded-xl transition-all text-sm"
+                        >
+                            Hủy
+                        </button>
+                        <button
+                            type="button"
+                            onClick={saveSessionTopicDraft}
+                            className="bg-[#FF6B4A] hover:bg-[#ff5535] text-white font-extrabold py-2.5 rounded-xl transition-all text-sm"
+                        >
+                            Lưu thay đổi
+                        </button>
+                    </div>
+                </DialogContent>
+            </Dialog>
 
             {/* ─── Repeat Weekly Toggle ─── */}
             <div className="bg-[#F7F7F2] rounded-xl border-2 border-[#1A1A1A]/10 p-3">

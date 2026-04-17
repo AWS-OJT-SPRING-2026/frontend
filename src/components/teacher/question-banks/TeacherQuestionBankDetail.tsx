@@ -1,7 +1,7 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import {
-    ArrowLeft, Plus, MagnifyingGlass, Funnel, Trash, PencilSimple, Question, Circle, CheckCircle, Brain
+    ArrowLeft, Plus, MagnifyingGlass, Trash, PencilSimple, Question, Circle, CheckCircle, Brain
 } from '@phosphor-icons/react';
 import {
     teacherQuestionService,

@@ -4,7 +4,6 @@ import { Amplify } from 'aws-amplify';
 import App from './App.tsx';
 import './index.css';
 
-const COGNITO_DOMAIN = import.meta.env.VITE_COGNITO_DOMAIN as string | undefined;
 const COGNITO_USER_POOL_ID = (import.meta.env.VITE_COGNITO_USER_POOL_ID as string | undefined) ?? '';
 const COGNITO_USER_POOL_CLIENT_ID = (import.meta.env.VITE_COGNITO_USER_POOL_CLIENT_ID as string | undefined) ?? '';
 
