@@ -22,7 +22,7 @@ const POMODORO_WORK = 25 * 60;
 
 export function StudentHomepage() {
     const navigate = useNavigate();
-    const { theme } = useSettings();
+    const { theme, t } = useSettings();
     const isDark = theme === 'dark';
 
     // Notification dropdown
@@ -290,7 +290,7 @@ export function StudentHomepage() {
             <div className="flex items-center justify-between mb-8">
                 <div>
                     <p className={`text-sm font-bold uppercase tracking-widest mb-1 ${textMuted}`}>
-                        Chào mừng đến với Slothub<span className="text-[#FF6B4A]">Edu</span>
+                        {t.studentHome.welcomeHeader}
                     </p>
                     {quote ? (
                         <>
@@ -298,7 +298,7 @@ export function StudentHomepage() {
                             <p className={`mt-1 text-sm font-bold ${textMuted}`}>— {quote.a}</p>
                         </>
                     ) : (
-                        <h1 className={`text-3xl font-extrabold ${text}`}>Chào buổi sáng, Văn A!</h1>
+                        <h1 className={`text-3xl font-extrabold ${text}`}>{t.studentHome.greeting}</h1>
                     )}
                 </div>
                 <div className="flex items-center gap-3">
@@ -306,7 +306,7 @@ export function StudentHomepage() {
                         <MagnifyingGlass className={`absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 ${textMuted}`} />
                         <input
                             type="text"
-                            placeholder="Tìm kiếm..."
+                            placeholder={t.studentHome.searchPlaceholder}
                             className={`pl-11 pr-5 py-3 rounded-2xl border-none shadow-sm text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-[#FF6B4A]/30 w-64 ${isDark ? 'bg-[#1A1A1A] border-2 border-[#EEEEEE] text-[#f3f4f6] placeholder:text-[#9ca3af]' : 'bg-white text-gray-700 placeholder-gray-400'}`}
                         />
                     </div>
@@ -342,8 +342,8 @@ export function StudentHomepage() {
                         <Fire className="w-6 h-6 text-[#FF6B4A]" weight="fill" />
                     </div>
                     <div className="flex-1">
-                        <p className={`text-xs font-extrabold uppercase tracking-widest mb-0.5 ${textMuted}`}>Streak học tập</p>
-                        <p className={`text-2xl font-extrabold ${text}`}>{streakCount} ngày 🔥</p>
+                        <p className={`text-xs font-extrabold uppercase tracking-widest mb-0.5 ${textMuted}`}>{t.studentHome.streakLabel}</p>
+                        <p className={`text-2xl font-extrabold ${text}`}>{streakCount} {t.studentHome.streakUnit}</p>
                         <div className="flex gap-1 mt-2">
                             {safeStreakDays.map(d => (
                                 <div key={d.label} className="flex flex-col items-center gap-1">
@@ -363,9 +363,9 @@ export function StudentHomepage() {
                         <Timer className="w-6 h-6 text-[#7C6FFF]" weight="fill" />
                     </div>
                     <div>
-                        <p className={`text-xs font-extrabold uppercase tracking-widest mb-0.5 ${textMuted}`}>Pomodoro hôm nay</p>
-                        <p className={`text-2xl font-extrabold ${text}`}>{pomSessions} phiên 🍅</p>
-                        <p className={`text-xs font-semibold mt-1 ${textMuted}`}>{pomSessions * 25} phút tập trung</p>
+                        <p className={`text-xs font-extrabold uppercase tracking-widest mb-0.5 ${textMuted}`}>{t.studentHome.pomodoroLabel}</p>
+                        <p className={`text-2xl font-extrabold ${text}`}>{pomSessions} {t.studentHome.pomodoroUnit}</p>
+                        <p className={`text-xs font-semibold mt-1 ${textMuted}`}>{pomSessions * 25} {t.studentHome.pomodoroFocus}</p>
                     </div>
                 </div>
 
@@ -378,9 +378,9 @@ export function StudentHomepage() {
                         <BookOpen className="w-6 h-6 text-[#10B981]" weight="fill" />
                     </div>
                     <div className="flex-1">
-                        <p className={`text-xs font-extrabold uppercase tracking-widest mb-0.5 ${textMuted}`}>Slozy AI Tutor</p>
-                        <p className={`text-base font-extrabold ${text}`}>Hỏi Slozy ngay</p>
-                        <p className={`text-xs font-semibold mt-1 ${textMuted}`}>Giải đáp bài tập tức thì →</p>
+                        <p className={`text-xs font-extrabold uppercase tracking-widest mb-0.5 ${textMuted}`}>{t.studentHome.tutorLabel}</p>
+                        <p className={`text-base font-extrabold ${text}`}>{t.studentHome.tutorCTA}</p>
+                        <p className={`text-xs font-semibold mt-1 ${textMuted}`}>{t.studentHome.tutorDesc}</p>
                     </div>
                 </button>
             </div>
@@ -396,7 +396,7 @@ export function StudentHomepage() {
                                 <MapTrifold className="w-5 h-5 text-[#D97706]" weight="fill" />
                             </div>
                             <div>
-                                <h2 className={`text-lg font-extrabold ${text}`}>Lộ trình đang học</h2>
+                                <h2 className={`text-lg font-extrabold ${text}`}>{t.studentHome.roadmapTitle}</h2>
                                 {homepageRoadmaps.length > 1 ? (
                                     <div className="relative mt-0.5">
                                         <select
@@ -406,7 +406,7 @@ export function StudentHomepage() {
                                         >
                                             {homepageRoadmaps.map(r => (
                                                 <option key={r.roadmapid} value={r.roadmapid.toString()}>
-                                                    {r.subject_name} · {r.total_time} tuần
+                                                    {r.subject_name} · {r.total_time} {t.studentRoadmap.weeksUnit}
                                                 </option>
                                             ))}
                                         </select>
@@ -414,21 +414,21 @@ export function StudentHomepage() {
                                     </div>
                                 ) : (
                                     <p className={`text-xs font-semibold ${textMuted}`}>
-                                        {activeHomepageRoadmap ? `${activeHomepageRoadmap.subject_name} · ${activeHomepageRoadmap.total_time} tuần` : 'Chưa có lộ trình'}
+                                        {activeHomepageRoadmap ? `${activeHomepageRoadmap.subject_name} · ${activeHomepageRoadmap.total_time} ${t.studentRoadmap.weeksUnit}` : t.studentHome.roadmapEmpty}
                                     </p>
                                 )}
                             </div>
                         </div>
                         <button onClick={() => navigate('/student/roadmap')} className="text-sm font-bold text-[#FF6B4A] hover:text-[#ff5535] flex items-center gap-1">
-                            Xem chi tiết <ArrowRight className="w-4 h-4" />
+                            {t.studentHome.viewAll} <ArrowRight className="w-4 h-4" />
                         </button>
                     </div>
 
                     {homepageRoadmaps.length === 0 ? (
                         <div className="text-center py-6">
-                            <p className={`text-sm font-semibold ${textMuted} mb-3`}>Bạn chưa có lộ trình ôn tập nào.</p>
+                            <p className={`text-sm font-semibold ${textMuted} mb-3`}>{t.studentHome.roadmapEmpty}</p>
                             <button onClick={() => navigate('/student/roadmap')} className="bg-[#FF6B4A] hover:bg-[#ff5535] text-white text-sm font-extrabold px-5 py-2.5 rounded-2xl transition-all">
-                                Tạo Lộ trình AI →
+                                {t.studentHome.roadmapCreate}
                             </button>
                         </div>
                     ) : (
@@ -436,8 +436,8 @@ export function StudentHomepage() {
                             {/* Progress bar */}
                             <div className="mb-5">
                                 <div className={`flex justify-between text-xs font-bold mb-2 ${textMuted}`}>
-                                    <span>Tiến độ tổng thể</span>
-                                    <span>{roadmapChapters.length} chương · {roadmapChapters.reduce((s: number, c: any) => s + (c.lessons?.length || 0), 0)} bài học</span>
+                                    <span>{t.studentHome.progressLabel}</span>
+                                    <span>{roadmapChapters.length} {t.studentHome.chaptersUnit} · {roadmapChapters.reduce((s: number, c: any) => s + (c.lessons?.length || 0), 0)} {t.studentHome.lessonsUnit}</span>
                                 </div>
                                 <div className={`h-2 rounded-full overflow-hidden ${isDark ? 'bg-white/10' : 'bg-gray-100'}`}>
                                     <div className="h-full rounded-full bg-[#FF6B4A] transition-all" style={{ width: '0%' }} />
@@ -457,10 +457,10 @@ export function StudentHomepage() {
                                         </div>
                                         <div className="flex-1">
                                             <p className={`text-sm font-extrabold ${text}`}>{chapter.title}</p>
-                                            <p className={`text-[11px] font-semibold ${textMuted}`}>{chapter.lessons?.length || 0} bài học</p>
+                                            <p className={`text-[11px] font-semibold ${textMuted}`}>{chapter.lessons?.length || 0} {t.studentHome.lessonsUnit}</p>
                                         </div>
                                         {i === 0 && (
-                                            <span className="text-[10px] font-extrabold bg-[#FF6B4A] text-white px-2.5 py-1 rounded-full uppercase tracking-widest">Bắt đầu</span>
+                                            <span className="text-[10px] font-extrabold bg-[#FF6B4A] text-white px-2.5 py-1 rounded-full uppercase tracking-widest">{t.studentHome.startChapter}</span>
                                         )}
                                     </div>
                                 ))}
@@ -471,13 +471,13 @@ export function StudentHomepage() {
                                     onClick={() => setRoadmapExpanded(v => !v)}
                                     className={`text-xs font-extrabold ${textMuted} hover:text-[#FF6B4A] transition-colors`}
                                 >
-                                    {roadmapExpanded ? '▲ Thu gọn' : `▼ Xem thêm ${roadmapChapters.length - 4 > 0 ? roadmapChapters.length - 4 : ''} chương`}
+                                    {roadmapExpanded ? t.studentHome.collapseBtn : `▼ ${t.studentHome.showMore} ${roadmapChapters.length - 4 > 0 ? roadmapChapters.length - 4 : ''} ${t.studentHome.chaptersUnit}`}
                                 </button>
                                 <button
                                     onClick={() => navigate('/student/study')}
                                     className="bg-[#FF6B4A] hover:bg-[#ff5535] text-white text-sm font-extrabold px-5 py-2.5 rounded-2xl transition-all shadow-sm hover:shadow-md"
                                 >
-                                    Bắt đầu học →
+                                    {t.studentHome.startBtn}
                                 </button>
                             </div>
                         </>
@@ -645,19 +645,19 @@ export function StudentHomepage() {
                                 <CalendarBlank className="w-5 h-5 text-[#FF6B4A]" weight="fill" />
                             </div>
                             <div>
-                                <h2 className={`text-lg font-extrabold ${text}`}>Deadline & Thông báo</h2>
+                                <h2 className={`text-lg font-extrabold ${text}`}>{t.studentHome.deadlineTitle}</h2>
                                 <p className={`text-xs font-semibold ${textMuted}`}>
                                     {safeDeadlines.filter(d => d.urgent).length > 0 && (
                                         <span className="text-[#FF6B4A] font-extrabold">
-                                            {safeDeadlines.filter(d => d.urgent).length} việc cần làm ngay ·{' '}
+                                            {safeDeadlines.filter(d => d.urgent).length} {t.studentHome.urgentUnit} ·{' '}
                                         </span>
                                     )}
-                                    {unreadCount} thông báo chưa đọc
+                                    {unreadCount} {t.studentHome.unreadUnit}
                                 </p>
                             </div>
                         </div>
                         <button onClick={() => navigate('/student/exercises')} className="text-sm font-bold text-[#FF6B4A] hover:text-[#ff5535] flex items-center gap-1">
-                            Xem tất cả <ArrowRight className="w-4 h-4" />
+                            {t.studentHome.viewAll} <ArrowRight className="w-4 h-4" />
                         </button>
                     </div>
 
@@ -702,7 +702,7 @@ export function StudentHomepage() {
                                         </span>
                                         {item.missing && (
                                             <span className={`text-[10px] font-extrabold px-2 py-0.5 rounded-full uppercase ${isDark ? 'bg-[#3a3f46] text-[#ff8b63] border border-[#ff8b63]/40' : 'bg-[#3b3b3b] text-[#ffb1a0]'}`}>
-                                                BỎ LỠ
+                                                {t.studentHome.missedLabel}
                                             </span>
                                         )}
                                         <span className={`text-xs font-semibold ${item.urgent ? 'text-[#FF6B4A] font-extrabold' : textMuted}`}>
@@ -719,7 +719,7 @@ export function StudentHomepage() {
                                         : (isDark ? 'bg-white/10 text-gray-400 hover:bg-white/20' : 'bg-gray-100 text-gray-600 hover:bg-gray-200')
                                     }`}
                                 >
-                                    {item.action === 'schedule' ? 'Xem lịch' : item.action === 'review' ? 'Ôn tập' : 'Làm bài'}
+                                    {item.action === 'schedule' ? t.studentHome.scheduleBtn : item.action === 'review' ? t.studentHome.reviewBtn : t.studentHome.assignmentBtn}
                                 </button>
                             </div>
                         ))}
@@ -732,7 +732,7 @@ export function StudentHomepage() {
                                 onClick={() => setShowNotifications(true)}
                                 className={`w-full flex items-center justify-between p-3 rounded-2xl transition-colors ${isDark ? 'bg-[#FF6B4A]/10 hover:bg-[#FF6B4A]/15' : 'bg-[#FF6B4A]/5 hover:bg-[#FF6B4A]/10'}`}
                             >
-                                <p className={`text-xs font-extrabold ${text}`}>Bạn có {unreadCount} thông báo chưa đọc</p>
+                                <p className={`text-xs font-extrabold ${text}`}>{t.studentHome.unreadBanner.replace('{n}', String(unreadCount))}</p>
                                 <Bell className="w-4 h-4 text-[#FF6B4A]" weight="fill" />
                             </button>
                         </div>
@@ -746,8 +746,8 @@ export function StudentHomepage() {
                             <NotePencil className="w-5 h-5 text-[#7C6FFF]" weight="fill" />
                         </div>
                         <div>
-                            <h2 className={`text-lg font-extrabold ${text}`}>Ghi chú nhanh</h2>
-                            <p className={`text-xs font-semibold ${textMuted}`}>{savedNotes.length} ghi chú đã lưu</p>
+                            <h2 className={`text-lg font-extrabold ${text}`}>{t.studentHome.notesTitle}</h2>
+                            <p className={`text-xs font-semibold ${textMuted}`}>{savedNotes.length} {t.studentHome.notesUnit}</p>
                         </div>
                     </div>
 
@@ -757,7 +757,7 @@ export function StudentHomepage() {
                             value={noteText}
                             onChange={e => setNoteText(e.target.value)}
                             onKeyDown={e => { if (e.key === 'Enter' && e.ctrlKey) saveNote(); }}
-                            placeholder="Nhập ghi chú... (Ctrl+Enter để lưu)"
+                            placeholder={t.studentHome.notePlaceholder}
                             rows={3}
                             className={`w-full rounded-2xl px-4 py-3 text-sm font-semibold resize-none focus:outline-none focus:ring-2 focus:ring-[#7C6FFF]/40 ${isDark ? 'bg-white/5 text-[#f3f4f6] placeholder:text-gray-600 border border-white/10' : 'bg-gray-50 text-[#1A1A1A] placeholder:text-gray-400 border border-gray-200'}`}
                         />
@@ -766,14 +766,14 @@ export function StudentHomepage() {
                             disabled={!noteText.trim()}
                             className="w-full py-2.5 rounded-2xl bg-[#7C6FFF] hover:bg-[#6a5de8] disabled:opacity-40 text-white text-sm font-extrabold transition-all flex items-center justify-center gap-2"
                         >
-                            <Plus className="w-4 h-4" weight="bold" /> Lưu ghi chú
+                            <Plus className="w-4 h-4" weight="bold" /> {t.studentHome.noteSaveBtn}
                         </button>
                     </div>
 
                     {/* Notes list */}
                     <div className="flex flex-col gap-2 overflow-y-auto max-h-64">
                         {savedNotes.length === 0 ? (
-                            <p className={`text-xs font-semibold text-center py-4 ${textMuted}`}>Chưa có ghi chú nào</p>
+                            <p className={`text-xs font-semibold text-center py-4 ${textMuted}`}>{t.studentHome.noNotes}</p>
                         ) : (
                             savedNotes.map(n => (
                                 <div key={n.id} className={`p-3 rounded-2xl flex gap-3 group ${isDark ? 'bg-white/5 hover:bg-white/10' : 'bg-gray-50 hover:bg-gray-100'} transition-colors`}>
@@ -795,7 +795,7 @@ export function StudentHomepage() {
             </div>
 
             <footer className={`mt-10 text-center text-xs font-semibold ${textMuted}`}>
-                © 2024 SlothubEdu – Nền tảng học tập thông minh.
+                {t.studentHome.footer}
             </footer>
         </div>
     );

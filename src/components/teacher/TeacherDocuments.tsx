@@ -22,6 +22,7 @@ import {
 } from '../../services/teacherDocumentService';
 
 function UploadOverlay({ isDark, fileName }: { isDark: boolean; fileName: string }) {
+    const { t } = useSettings();
     return createPortal(
         <div className="fixed inset-0 z-[9999] flex items-center justify-center" style={{ pointerEvents: 'all' }}>
             {/* Backdrop */}
@@ -39,7 +40,7 @@ function UploadOverlay({ isDark, fileName }: { isDark: boolean; fileName: string
 
                 {/* Title */}
                 <h2 className={`text-xl font-extrabold text-center ${isDark ? 'text-gray-100' : 'text-[#1A1A1A]'}`}>
-                    Đang tải lên tài liệu...
+                    {t.teacherDocs.uploadingMsg}
                 </h2>
 
                 {/* File name */}
@@ -58,7 +59,7 @@ function UploadOverlay({ isDark, fileName }: { isDark: boolean; fileName: string
 
                 {/* Warning */}
                 <p className={`text-sm font-semibold text-center leading-relaxed ${isDark ? 'text-gray-400' : 'text-[#1A1A1A]/60'}`}>
-                    Vui lòng không đóng tab hoặc thoát trang trong khi hệ thống đang xử lý.
+                    {t.teacherDocs.uploadWarning}
                 </p>
 
                 {/* Pulsing progress bar */}
@@ -72,7 +73,7 @@ function UploadOverlay({ isDark, fileName }: { isDark: boolean; fileName: string
 }
 
 export function TeacherDocuments() {
-    const { theme } = useSettings();
+    const { theme, t } = useSettings();
     const isDark = theme === 'dark';
     const { isAuthenticated, user } = useAuth();
 
@@ -125,12 +126,12 @@ export function TeacherDocuments() {
                 setTeacherClassrooms([]);
                 setUploadMessage({
                     type: 'error',
-                    text: 'Không tải được danh sách lớp của giáo viên. Bạn vẫn có thể xem tài liệu đã tải lên.',
+                    text: t.teacherDocs.errLoadClasses,
                 });
             }
         } catch (error) {
             console.error('Error fetching data:', error);
-            setUploadMessage({ type: 'error', text: 'Không thể tải danh sách tài liệu. Vui lòng thử lại.' });
+            setUploadMessage({ type: 'error', text: t.teacherDocs.errLoadDocs });
         } finally {
             setLoading(false);
         }
@@ -214,28 +215,28 @@ export function TeacherDocuments() {
         setUploadMessage(null);
 
         if (!selectedFile) {
-            setUploadMessage({ type: 'error', text: 'Vui lòng chọn file PDF để tải lên.' });
+            setUploadMessage({ type: 'error', text: t.teacherDocs.errNoPdf });
             return;
         }
         if (!selectedFile.name.toLowerCase().endsWith('.pdf')) {
-            setUploadMessage({ type: 'error', text: 'Chỉ hỗ trợ file PDF. Vui lòng chọn file có đuôi .pdf' });
+            setUploadMessage({ type: 'error', text: t.teacherDocs.errPdfOnly });
             return;
         }
         if (!classId) {
-            setUploadMessage({ type: 'error', text: 'Vui lòng chọn lớp học.' });
+            setUploadMessage({ type: 'error', text: t.teacherDocs.errNoClass });
             return;
         }
         if (!subjectId) {
-            setUploadMessage({ type: 'error', text: 'Vui lòng chọn môn học.' });
+            setUploadMessage({ type: 'error', text: t.teacherDocs.errNoSubject });
             return;
         }
         if (!docType) {
-            setUploadMessage({ type: 'error', text: 'Vui lòng chọn loại tài liệu.' });
+            setUploadMessage({ type: 'error', text: t.teacherDocs.errNoDocType });
             return;
         }
 
         if (!isAuthenticated) {
-            setUploadMessage({ type: 'error', text: 'Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại.' });
+            setUploadMessage({ type: 'error', text: t.teacherDocs.errSessionExpired });
             return;
         }
 
@@ -249,10 +250,10 @@ export function TeacherDocuments() {
         try {
             const token = teacherDocumentService.getTokenOrThrow();
             const result = await teacherDocumentService.uploadDocument(formData, token);
-            const typeLabel = docType === 'THEORY' ? 'Lý thuyết' : 'Câu hỏi';
+            const typeLabel = docType === 'THEORY' ? t.teacherDocs.docTypeTheory : t.teacherDocs.docTypeQuestion;
             setUploadMessage({
                 type: 'success',
-                text: `Tải lên thành công! Tài liệu ${typeLabel} đã được phân phối về lớp. (ID: ${result.record_id})`,
+                text: `${t.teacherDocs.uploadSuccess} ${typeLabel} đã được phân phối về lớp. (ID: ${result.record_id})`,
             });
             setSelectedFile(null);
             if (fileInputRef.current) {
@@ -261,7 +262,7 @@ export function TeacherDocuments() {
             await fetchData();
         } catch (error) {
             console.error('Error uploading document:', error);
-            const message = error instanceof Error ? error.message : 'Không thể kết nối đến server.';
+            const message = error instanceof Error ? error.message : t.teacherDocs.errConnect;
             setUploadMessage({ type: 'error', text: `Lỗi: ${message}` });
         } finally {
             setUploading(false);
@@ -275,17 +276,17 @@ export function TeacherDocuments() {
     };
 
     const handleDelete = async (id: number, docTypeValue: 'theory' | 'question') => {
-        if (!confirm('Bạn có chắc chắn muốn xóa tài liệu này? Thao tác này sẽ xóa toàn bộ nội dung liên quan trong database.')) return;
+        if (!confirm(t.teacherDocs.deleteConfirm)) return;
 
         try {
             const token = teacherDocumentService.getTokenOrThrow();
             await teacherDocumentService.deleteDocument(docTypeValue, id, token);
             setBooks((prev) => prev.filter((b) => !(b.id === id && b.doc_type === docTypeValue)));
-            setUploadMessage({ type: 'success', text: 'Đã xóa tài liệu và toàn bộ dữ liệu liên quan thành công.' });
+            setUploadMessage({ type: 'success', text: t.teacherDocs.deleteSuccess });
         } catch (error) {
             console.error('Error deleting book:', error);
-            const message = error instanceof Error ? error.message : 'Lỗi kết nối server.';
-            setUploadMessage({ type: 'error', text: `Xóa thất bại: ${message}` });
+            const message = error instanceof Error ? error.message : t.teacherDocs.errConnectServer;
+            setUploadMessage({ type: 'error', text: `${t.teacherDocs.deleteFailed} ${message}` });
         }
     };
 
@@ -352,12 +353,12 @@ export function TeacherDocuments() {
         }
 
         if (!distributionSubjectId) {
-            setUploadMessage({ type: 'error', text: 'Vui lòng chọn môn học trước khi phân phối.' });
+            setUploadMessage({ type: 'error', text: t.teacherDocs.errDistributeNoSubject });
             return;
         }
 
         if (distributionClassIds.length === 0) {
-            setUploadMessage({ type: 'error', text: 'Vui lòng chọn ít nhất một lớp học để phân phối.' });
+            setUploadMessage({ type: 'error', text: t.teacherDocs.errDistributeNoClass });
             return;
         }
 
@@ -378,7 +379,7 @@ export function TeacherDocuments() {
 
             setDistributionModalOpen(false);
             await fetchData();
-            setUploadMessage({ type: 'success', text: 'Phân phối tài liệu thành công.' });
+            setUploadMessage({ type: 'success', text: t.teacherDocs.distributeSuccess });
 
             const updatedDetail = await teacherDocumentService.getDocumentDetail(
                 distributionTargetDoc.doc_type,
@@ -387,7 +388,7 @@ export function TeacherDocuments() {
             );
             setDetailCache((prev) => ({ ...prev, [getDocCacheKey(distributionTargetDoc)]: updatedDetail }));
         } catch (error) {
-            const message = error instanceof Error ? error.message : 'Phân phối tài liệu thất bại.';
+            const message = error instanceof Error ? error.message : t.teacherDocs.distributeError;
             setUploadMessage({ type: 'error', text: message });
         } finally {
             setDistributionSubmitting(false);
@@ -398,20 +399,20 @@ export function TeacherDocuments() {
         <div className="p-8 space-y-6 max-w-6xl mx-auto" style={{ fontFamily: "'Nunito', sans-serif" }}>
             {/* Header */}
             <div>
-                <p className="text-xs font-extrabold text-gray-400 uppercase tracking-widest mb-1">Sinh học 101 / Tài liệu</p>
-                <h1 className={`text-3xl font-extrabold ${isDark ? 'text-gray-100' : 'text-[#1A1A1A]'}`}>Quản lý Tài liệu</h1>
+                <p className="text-xs font-extrabold text-gray-400 uppercase tracking-widest mb-1">{t.teacherDocs.docTypeLabel}</p>
+                <h1 className={`text-3xl font-extrabold ${isDark ? 'text-gray-100' : 'text-[#1A1A1A]'}`}>{t.teacherDocs.pageTitle}</h1>
             </div>
 
             {/* Success banner */}
             <div className={`flex items-center gap-3 p-4 rounded-2xl border-2 ${isDark ? 'border-emerald-400/20 bg-emerald-500/15' : 'border-[#1A1A1A]/20'}`} style={{ backgroundColor: isDark ? undefined : '#95E1D3' }}>
                 <CheckCircle className={`w-5 h-5 ${isDark ? 'text-emerald-300' : 'text-[#1A1A1A]'}`} weight="fill" />
-                <span className={`font-extrabold text-sm ${isDark ? 'text-emerald-100' : 'text-[#1A1A1A]'}`}>Đã đồng bộ với kho lưu trữ trực tuyến thành công.</span>
+                <span className={`font-extrabold text-sm ${isDark ? 'text-emerald-100' : 'text-[#1A1A1A]'}`}>{t.teacherDocs.syncMsg}</span>
             </div>
 
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
                 {/* Upload form */}
                 <div className={`lg:col-span-2 rounded-3xl border-2 p-6 space-y-5 ${isDark ? 'bg-[#171b20] border-white/10' : 'bg-white border-[#1A1A1A]'}`}>
-                    <h2 className={`font-extrabold text-lg ${isDark ? 'text-gray-100' : 'text-[#1A1A1A]'}`}>Tải lên tài liệu mới</h2>
+                    <h2 className={`font-extrabold text-lg ${isDark ? 'text-gray-100' : 'text-[#1A1A1A]'}`}>{t.teacherDocs.uploadTitle}</h2>
 
                     {/* Dropzone */}
                     <div 
@@ -432,21 +433,21 @@ export function TeacherDocuments() {
                             <UploadSimple className="w-7 h-7 text-white" weight="fill" />
                         </div>
                         <h3 className={`font-extrabold mb-1 ${isDark ? 'text-gray-100' : 'text-[#1A1A1A]'}`}>
-                            {selectedFile ? selectedFile.name : 'Kéo và thả tệp vào đây'}
+                            {selectedFile ? selectedFile.name : t.teacherDocs.dragDropText}
                         </h3>
-                        <p className={`text-sm font-semibold mb-2 ${isDark ? 'text-gray-300' : 'text-[#1A1A1A]/50'}`}>Hoặc nhấp để chọn (Tối đa 50MB)</p>
+                        <p className={`text-sm font-semibold mb-2 ${isDark ? 'text-gray-300' : 'text-[#1A1A1A]/50'}`}>{t.teacherDocs.orClickText}</p>
                         <p className={`text-xs font-extrabold uppercase tracking-widest mb-5 ${isDark ? 'text-gray-500' : 'text-[#1A1A1A]/40'}`}>PDF ONLY</p>
                         <button className="bg-[#FF6B4A] hover:bg-[#ff5535] text-white font-extrabold px-8 h-10 rounded-2xl transition-colors">
-                            {selectedFile ? 'Thay đổi tệp' : '+ Chọn tệp'}
+                            {selectedFile ? t.teacherDocs.changeFileBtn : `+ ${t.teacherDocs.selectFileBtn}`}
                         </button>
                     </div>
 
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                         <div>
-                            <Label className="text-xs font-extrabold text-gray-400 uppercase tracking-wider mb-1.5 block">Gán cho lớp học</Label>
+                            <Label className="text-xs font-extrabold text-gray-400 uppercase tracking-wider mb-1.5 block">{t.teacherDocs.classLabel}</Label>
                             <Select onValueChange={handleClassChange} value={classId}>
                                 <SelectTrigger className={`rounded-2xl border-2 h-11 font-bold ${isDark ? 'bg-[#20242b] border-white/15 text-gray-100' : 'bg-[#F7F7F2] border-[#1A1A1A]/20'}`}>
-                                    <SelectValue placeholder="Chọn lớp học" />
+                                    <SelectValue placeholder={t.teacherDocs.classPlaceholder} />
                                 </SelectTrigger>
                                 <SelectContent>
                                     {teacherClassrooms.map((c) => (
@@ -458,10 +459,10 @@ export function TeacherDocuments() {
                             </Select>
                         </div>
                         <div>
-                            <Label className="text-xs font-extrabold text-gray-400 uppercase tracking-wider mb-1.5 block">Môn học</Label>
+                            <Label className="text-xs font-extrabold text-gray-400 uppercase tracking-wider mb-1.5 block">{t.teacherDocs.subjectLabel}</Label>
                             <Select onValueChange={setSubjectId} value={subjectId} disabled={!classId}>
                                 <SelectTrigger className={`rounded-2xl border-2 h-11 font-bold ${isDark ? 'bg-[#20242b] border-white/15 text-gray-100' : 'bg-[#F7F7F2] border-[#1A1A1A]/20'}`}>
-                                    <SelectValue placeholder="Chọn môn học" />
+                                    <SelectValue placeholder={t.teacherDocs.subjectPlaceholder} />
                                 </SelectTrigger>
                                 <SelectContent>
                                     {filteredSubjects.map((s) => (
@@ -473,7 +474,7 @@ export function TeacherDocuments() {
                             </Select>
                         </div>
                         <div>
-                            <Label className="text-xs font-extrabold text-gray-400 uppercase tracking-wider mb-1.5 block">Loại tài liệu</Label>
+                            <Label className="text-xs font-extrabold text-gray-400 uppercase tracking-wider mb-1.5 block">{t.teacherDocs.docTypeLabel}</Label>
                             <Select
                                 onValueChange={(value) => setDocType(value === 'QUESTION' ? 'QUESTION' : 'THEORY')}
                                 value={docType}
@@ -482,8 +483,8 @@ export function TeacherDocuments() {
                                     <SelectValue />
                                 </SelectTrigger>
                                 <SelectContent>
-                                    <SelectItem value="THEORY">Lý thuyết</SelectItem>
-                                    <SelectItem value="QUESTION">Câu hỏi</SelectItem>
+                                    <SelectItem value="THEORY">{t.teacherDocs.docTypeTheory}</SelectItem>
+                                    <SelectItem value="QUESTION">{t.teacherDocs.docTypeQuestion}</SelectItem>
                                 </SelectContent>
                             </Select>
                         </div>
@@ -509,7 +510,7 @@ export function TeacherDocuments() {
                         disabled={uploading || !selectedFile || !subjectId || !classId}
                         className={`w-full py-3 ${uploading || !selectedFile || !subjectId || !classId ? 'bg-gray-400 cursor-not-allowed' : 'bg-[#FF6B4A] hover:bg-[#ff5535]'} text-white font-extrabold rounded-2xl transition-colors text-base`}
                     >
-                        {uploading ? 'Đang xử lý tài liệu (có thể mất vài phút)...' : 'Xác nhận tải lên'}
+                        {uploading ? t.teacherDocs.uploading : t.teacherDocs.uploadConfirmBtn}
                     </button>
                 </div>
 
@@ -519,12 +520,9 @@ export function TeacherDocuments() {
 
                     {/* Tips */}
                     <div className={`rounded-3xl border-2 p-5 ${isDark ? 'bg-[#171b20] border-white/10' : 'bg-white border-[#1A1A1A]'}`}>
-                        <h3 className={`font-extrabold mb-4 ${isDark ? 'text-gray-100' : 'text-[#1A1A1A]'}`}>Gợi ý quản lý</h3>
+                        <h3 className={`font-extrabold mb-4 ${isDark ? 'text-gray-100' : 'text-[#1A1A1A]'}`}>{t.teacherDocs.manageTipsTitle}</h3>
                         <div className="space-y-3">
-                            {[
-                                'Đặt tên file theo định dạng: [MonHoc]_[TieuDe]',
-                                'Sử dụng tag để học sinh dễ tìm kiếm tài liệu',
-                            ].map((tip, i) => (
+                            {t.teacherDocs.manageTips.map((tip: string, i: number) => (
                                 <div key={i} className={`flex gap-3 items-start p-3 rounded-2xl border-2 ${isDark ? 'border-yellow-300/20 bg-yellow-200/10' : 'border-[#1A1A1A]/15'}`} style={{ backgroundColor: isDark ? undefined : '#FCE38A' }}>
                                     <Info className={`w-4 h-4 shrink-0 mt-0.5 ${isDark ? 'text-yellow-200' : 'text-[#1A1A1A]/70'}`} weight="fill" />
                                     <p className={`text-sm font-bold ${isDark ? 'text-yellow-100/90' : 'text-[#1A1A1A]/70'}`}>{tip}</p>
@@ -538,15 +536,15 @@ export function TeacherDocuments() {
             {/* Documents list */}
             <div className={`rounded-3xl border-2 overflow-hidden ${isDark ? 'bg-[#171b20] border-white/10' : 'bg-white border-[#1A1A1A]'}`}>
                 <div className={`px-6 py-4 border-b-2 flex items-center justify-between ${isDark ? 'border-white/10' : 'border-[#1A1A1A]'}`}>
-                    <h3 className={`font-extrabold text-lg ${isDark ? 'text-gray-100' : 'text-[#1A1A1A]'}`}>Tài liệu đã tải lên</h3>
+                    <h3 className={`font-extrabold text-lg ${isDark ? 'text-gray-100' : 'text-[#1A1A1A]'}`}>{t.teacherDocs.listTitle}</h3>
                     <span className={`text-xs font-extrabold uppercase tracking-wider ${isDark ? 'text-gray-400' : 'text-[#1A1A1A]/50'}`}>
-                        Hiển thị {visibleBooks.length}/{books.length}
+                        {t.teacherDocs.showCount.replace('{n}', String(visibleBooks.length)).replace('{total}', String(books.length))}
                     </span>
                 </div>
                 <table className="w-full text-left text-sm">
                     <thead className={`border-b-2 ${isDark ? 'bg-white/5 border-white/10' : 'bg-[#1A1A1A]/5 border-[#1A1A1A]/20'}`}>
                         <tr>
-                            {['Tên file', 'Ngày tải lên', 'Môn học', 'Đã phân phối', 'Thao tác'].map(h => (
+                            {[t.teacherDocs.colName, t.teacherDocs.colDate, t.teacherDocs.colSubject, t.teacherDocs.colDistributed, t.teacherDocs.colActions].map(h => (
                                 <th key={h} className={`px-6 py-4 text-xs font-extrabold uppercase tracking-wider ${isDark ? 'text-gray-400' : 'text-[#1A1A1A]/50'}`}>{h}</th>
                             ))}
                         </tr>
@@ -555,13 +553,13 @@ export function TeacherDocuments() {
                         {loading ? (
                             <tr>
                                 <td colSpan={5} className="px-6 py-10 text-center text-gray-400 font-bold">
-                                    Đang tải dữ liệu...
+                                    {t.teacherDocs.loadingDocs}
                                 </td>
                             </tr>
                         ) : books.length === 0 ? (
                             <tr>
                                 <td colSpan={5} className="px-6 py-10 text-center text-gray-400 font-bold">
-                                    Chưa có tài liệu nào được tải lên.
+                                    {t.teacherDocs.noDocs}
                                 </td>
                             </tr>
                         ) : visibleBooks.map((book) => (
@@ -586,29 +584,29 @@ export function TeacherDocuments() {
                                     </div>
                                 </td>
                                 <td className={`px-6 py-4 font-bold ${isDark ? 'text-gray-300' : 'text-[#1A1A1A]/60'}`}>
-                                    {book.assigned_class_count} lớp
+                                    {book.assigned_class_count} {t.teacherDocs.classesUnit}
                                 </td>
                                 <td className="px-6 py-4">
                                     <div className="flex items-center gap-1">
                                         <button
                                             onClick={() => handleOpenDetail(book)}
                                             className="px-3 h-8 rounded-xl font-bold text-xs text-[#1A1A1A] bg-[#FCE38A] hover:opacity-90 transition-opacity"
-                                            title="Xem chi tiết"
+                                            title={t.teacherDocs.viewTitle}
                                         >
-                                            <Eye className="w-4 h-4 inline-block mr-1" weight="bold" /> Xem
+                                            <Eye className="w-4 h-4 inline-block mr-1" weight="bold" /> {t.teacherDocs.viewBtn}
                                         </button>
                                         <button
                                             onClick={() => handleOpenDistribution(book)}
                                             className="px-3 h-8 rounded-xl font-bold text-xs text-white bg-[#4A69FF] hover:bg-[#3b57e0] transition-colors"
-                                            title="Phân phối tài liệu"
+                                            title={t.teacherDocs.distributeTitle}
                                         >
-                                            <ShareNetwork className="w-4 h-4 inline-block mr-1" weight="bold" /> Phân phối
+                                            <ShareNetwork className="w-4 h-4 inline-block mr-1" weight="bold" /> {t.teacherDocs.distributeBtn}
                                         </button>
                                         {(user?.role === 'admin' || user?.role === 'teacher') && (
                                         <button
                                             onClick={() => handleDelete(book.id, book.doc_type)}
                                             className="p-2 text-[#FF6B4A] hover:bg-[#FF6B4A]/10 rounded-xl transition-colors"
-                                            title="Xóa tài liệu"
+                                            title={t.teacherDocs.deleteTitle}
                                         >
                                             <Trash className="w-5 h-5" weight="bold" />
                                         </button>
@@ -625,7 +623,7 @@ export function TeacherDocuments() {
                             className="text-sm font-extrabold text-[#FF6B4A] hover:text-[#ff5535]"
                             onClick={() => setShowAllDocuments((prev) => !prev)}
                         >
-                            {showAllDocuments ? 'Thu gọn danh sách' : 'Xem tất cả tài liệu'} →
+                            {showAllDocuments ? t.teacherDocs.collapseBtn : t.teacherDocs.viewAllBtn} →
                         </button>
                     ) : null}
                 </div>
@@ -634,39 +632,39 @@ export function TeacherDocuments() {
             <Dialog open={detailModalOpen} onOpenChange={setDetailModalOpen}>
                 <DialogContent className="max-w-2xl">
                     <DialogHeader>
-                        <DialogTitle>Chi tiết tài liệu</DialogTitle>
-                        <DialogDescription>Thông tin nội dung và lớp đã được phân phối.</DialogDescription>
+                        <DialogTitle>{t.teacherDocs.detailTitle}</DialogTitle>
+                        <DialogDescription>{t.teacherDocs.detailDesc}</DialogDescription>
                     </DialogHeader>
 
                     {detailLoading ? (
-                        <div className="py-8 text-center text-sm text-gray-500 font-semibold">Đang tải chi tiết...</div>
+                        <div className="py-8 text-center text-sm text-gray-500 font-semibold">{t.teacherDocs.detailLoading}</div>
                     ) : detailError ? (
                         <div className="py-8 text-center text-sm text-red-500 font-semibold">{detailError}</div>
                     ) : !activeDetail ? (
-                        <div className="py-8 text-center text-sm text-gray-500 font-semibold">Không có dữ liệu chi tiết tài liệu.</div>
+                        <div className="py-8 text-center text-sm text-gray-500 font-semibold">{t.teacherDocs.detailNoData}</div>
                     ) : (
                         <div className="space-y-4 text-sm">
                             <div className="grid grid-cols-2 gap-3">
                                 <div className="rounded-xl border p-3">
-                                    <p className="text-xs text-gray-500 uppercase font-bold">Tên tài liệu</p>
+                                    <p className="text-xs text-gray-500 uppercase font-bold">{t.teacherDocs.detailNameLabel}</p>
                                     <p className="font-extrabold mt-1 break-words">{activeDetail.book_name}</p>
                                 </div>
                                 <div className="rounded-xl border p-3">
-                                    <p className="text-xs text-gray-500 uppercase font-bold">Loại</p>
-                                    <p className="font-extrabold mt-1">{activeDetail.doc_type === 'theory' ? 'Lý thuyết' : 'Câu hỏi'}</p>
+                                    <p className="text-xs text-gray-500 uppercase font-bold">{t.teacherDocs.detailTypeLabel}</p>
+                                    <p className="font-extrabold mt-1">{activeDetail.doc_type === 'theory' ? t.teacherDocs.docTypeTheory : t.teacherDocs.docTypeQuestion}</p>
                                 </div>
                                 <div className="rounded-xl border p-3">
-                                    <p className="text-xs text-gray-500 uppercase font-bold">Môn học</p>
+                                    <p className="text-xs text-gray-500 uppercase font-bold">{t.teacherDocs.detailSubjectLabel}</p>
                                     <p className="font-extrabold mt-1">{activeDetail.subject_name}</p>
                                 </div>
                                 <div className="rounded-xl border p-3">
-                                    <p className="text-xs text-gray-500 uppercase font-bold">Ngày tải lên</p>
+                                    <p className="text-xs text-gray-500 uppercase font-bold">{t.teacherDocs.detailDateLabel}</p>
                                     <p className="font-extrabold mt-1">{new Date(activeDetail.uploadDate).toLocaleString('vi-VN')}</p>
                                 </div>
                             </div>
 
                             <div className="rounded-xl border p-3">
-                                <p className="text-xs text-gray-500 uppercase font-bold mb-2">Thống kê nội dung</p>
+                                <p className="text-xs text-gray-500 uppercase font-bold mb-2">{t.teacherDocs.statsLabel}</p>
                                 <div className="grid grid-cols-3 gap-2">
                                     {Object.entries(activeDetail.stats).map(([key, value]) => (
                                         <div key={key} className="rounded-lg bg-gray-50 px-3 py-2 font-semibold">
@@ -677,9 +675,9 @@ export function TeacherDocuments() {
                             </div>
 
                             <div className="rounded-xl border p-3">
-                                <p className="text-xs text-gray-500 uppercase font-bold mb-2">Lớp đã phân phối</p>
+                                <p className="text-xs text-gray-500 uppercase font-bold mb-2">{t.teacherDocs.assignedClasses}</p>
                                 {activeDetail.assigned_classrooms.length === 0 ? (
-                                    <p className="text-gray-500 font-semibold">Chưa phân phối cho lớp nào.</p>
+                                    <p className="text-gray-500 font-semibold">{t.teacherDocs.noClasses}</p>
                                 ) : (
                                     <div className="max-h-44 overflow-y-auto space-y-2">
                                         {activeDetail.assigned_classrooms.map((item) => (
@@ -701,18 +699,18 @@ export function TeacherDocuments() {
             <Dialog open={distributionModalOpen} onOpenChange={setDistributionModalOpen}>
                 <DialogContent className="max-w-2xl">
                     <DialogHeader>
-                        <DialogTitle>Phân phối tài liệu</DialogTitle>
+                        <DialogTitle>{t.teacherDocs.distributeTitle}</DialogTitle>
                         <DialogDescription>
-                            {distributionTargetDoc ? `Tên: ${distributionTargetDoc.book_name}` : 'Chọn môn học và các lớp cần phân phối.'}
+                            {distributionTargetDoc ? `${t.teacherDocs.distributeDocNamePrefix} ${distributionTargetDoc.book_name}` : t.teacherDocs.distributeChooseDesc}
                         </DialogDescription>
                     </DialogHeader>
 
                     <div className="space-y-4">
                         <div>
-                            <Label className="mb-1 block">Môn học</Label>
+                            <Label className="mb-1 block">{t.teacherDocs.subjectLabel}</Label>
                             <Select value={distributionSubjectId} onValueChange={handleDistributionSubjectChange}>
                                 <SelectTrigger>
-                                    <SelectValue placeholder="Chọn môn học" />
+                                    <SelectValue placeholder={t.teacherDocs.subjectPlaceholder} />
                                 </SelectTrigger>
                                 <SelectContent>
                                     {distributionSubjects.map((item) => (
@@ -725,17 +723,17 @@ export function TeacherDocuments() {
                         </div>
 
                         <div>
-                            <Label className="mb-1 block">Tìm lớp học</Label>
+                            <Label className="mb-1 block">{t.teacherDocs.searchClassLabel}</Label>
                             <Input
                                 value={distributionSearch}
                                 onChange={(event) => setDistributionSearch(event.target.value)}
-                                placeholder="Nhập tên lớp..."
+                                placeholder={t.teacherDocs.searchClassPlaceholder}
                             />
                         </div>
 
                         <div className="rounded-xl border p-3 max-h-56 overflow-y-auto space-y-2">
                             {distributionFilteredClasses.length === 0 ? (
-                                <p className="text-sm text-gray-500 font-semibold">Không có lớp phù hợp với môn học đã chọn.</p>
+                                <p className="text-sm text-gray-500 font-semibold">{t.teacherDocs.noMatchClass}</p>
                             ) : (
                                 distributionFilteredClasses.map((item) => {
                                     const checked = distributionClassIds.includes(item.classID);
@@ -754,7 +752,7 @@ export function TeacherDocuments() {
                             )}
                         </div>
 
-                        <p className="text-xs text-gray-500 font-semibold">Đã chọn: {distributionClassIds.length} lớp</p>
+                        <p className="text-xs text-gray-500 font-semibold">{t.teacherDocs.selectedCount.replace('{n}', String(distributionClassIds.length))}</p>
                     </div>
 
                     <DialogFooter>
@@ -763,14 +761,14 @@ export function TeacherDocuments() {
                             onClick={() => setDistributionModalOpen(false)}
                             disabled={distributionSubmitting}
                         >
-                            Hủy
+                            {t.teacherDocs.distributeCancelBtn}
                         </button>
                         <button
                             className="px-4 h-9 rounded-md bg-[#4A69FF] text-white font-semibold disabled:opacity-60"
                             onClick={handleConfirmDistribution}
                             disabled={distributionSubmitting}
                         >
-                            {distributionSubmitting ? 'Đang phân phối...' : 'Xác nhận'}
+                            {distributionSubmitting ? t.teacherDocs.distributing : t.teacherDocs.distributeConfirmBtn}
                         </button>
                     </DialogFooter>
                 </DialogContent>

@@ -60,7 +60,7 @@ interface RoadmapData {
 }
 
 export function StudentRoadmap() {
-    const { theme } = useSettings();
+    const { theme, t } = useSettings();
     const isDark = theme === 'dark';
     const navigate = useNavigate();
     const [searchParams, setSearchParams] = useSearchParams();
@@ -127,7 +127,7 @@ export function StudentRoadmap() {
             setSearchParams(searchParams);
         } catch (err: any) {
             console.error('Error generating roadmap:', err);
-            alert(`Có lỗi khi tạo lộ trình: ${err.message}`);
+            alert(`${t.studentRoadmap.errorGenerate} ${err.message}`);
         } finally {
             setIsGenerating(false);
         }
@@ -147,8 +147,8 @@ export function StudentRoadmap() {
 
     const handleDeleteRoadmap = async (roadmap: RoadmapData, e?: React.MouseEvent) => {
         if (e) e.stopPropagation();
-        if (!confirm(`Bạn có chắc chắn muốn xóa lộ trình môn ${roadmap.subject_name}?`)) return;
-        
+        if (!confirm(`${t.studentRoadmap.confirmDelete} ${roadmap.subject_name}?`)) return;
+
         setIsDeleting(roadmap.roadmapid);
         try {
             const res = await fetch(`${FAST_API_URL}/roadmap/${roadmap.roadmapid}`, { method: 'DELETE' });
@@ -158,11 +158,11 @@ export function StudentRoadmap() {
                     setViewingRoadmap(null);
                 }
             } else {
-                alert('Xoá lộ trình thất bại.');
+                alert(t.studentRoadmap.deleteFailMsg);
             }
         } catch (err) {
             console.error('Error deleting roadmap:', err);
-            alert('Có lỗi khi xoá lộ trình.');
+            alert(t.studentRoadmap.errorDelete);
         } finally {
             setIsDeleting(null);
         }
@@ -239,10 +239,10 @@ export function StudentRoadmap() {
                             <span className="text-[#FF6B4A]">{roadmapData.subject_name}</span>
                         </div>
                         <h1 className={`text-3xl font-extrabold ${text}`}>
-                            Lộ trình: {roadmapData.subject_name}
+                            {t.studentRoadmap.roadmapPrefix} {roadmapData.subject_name}
                         </h1>
                         <p className={`${textMuted} font-semibold mt-1`}>
-                            {roadmapData.total_time} tuần · {roadmapData.chapters?.length ?? 0} chương · Tạo lúc {new Date(roadmapData.created_at).toLocaleDateString('vi-VN')}
+                            {roadmapData.total_time} {t.studentRoadmap.weeksUnit} · {roadmapData.chapters?.length ?? 0} {t.studentRoadmap.chaptersLabel.toLowerCase()} · {t.studentRoadmap.createdAt} {new Date(roadmapData.created_at).toLocaleDateString('vi-VN')}
                         </p>
                     </div>
                     <div className="flex gap-3">
@@ -250,13 +250,13 @@ export function StudentRoadmap() {
                             onClick={() => setViewingRoadmap(null)}
                             className={`flex items-center gap-2 font-extrabold h-11 px-5 rounded-2xl text-sm transition-colors ${isDark ? 'border-2 border-white/20 bg-white/5 text-white hover:bg-white/10' : 'border-2 border-[#1A1A1A]/20 bg-white text-[#1A1A1A] hover:bg-gray-50'}`}
                         >
-                            <ArrowLeft className="w-4 h-4" /> Quay lại
+                            <ArrowLeft className="w-4 h-4" /> {t.studentRoadmap.backBtn}
                         </button>
                         <button
                             onClick={() => handleDeleteRoadmap(roadmapData)}
                             className={`flex items-center gap-2 font-extrabold h-11 px-5 rounded-2xl text-sm transition-colors ${isDark ? 'border-2 border-red-500/20 bg-red-500/10 text-red-400 hover:bg-red-500/20' : 'border-2 border-red-200 bg-red-50 text-red-600 hover:bg-red-100'}`}
                         >
-                            <Trash className="w-4 h-4" /> Xoá lộ trình
+                            <Trash className="w-4 h-4" /> {t.studentRoadmap.deleteBtn}
                         </button>
                     </div>
                 </div>
@@ -267,7 +267,7 @@ export function StudentRoadmap() {
                     <div className="flex gap-4 items-start relative z-10">
                         <div className="w-12 h-12 rounded-2xl bg-[#FCE38A] border-2 border-[#1A1A1A]/20 flex items-center justify-center shrink-0 text-xl">💡</div>
                         <div>
-                            <h2 className="text-xl font-extrabold mb-2">AI Gợi ý đặc biệt</h2>
+                            <h2 className="text-xl font-extrabold mb-2">{t.studentRoadmap.aiSuggestion}</h2>
                             <p className="text-white/60 text-sm font-semibold leading-relaxed max-w-lg">
                                 {roadmapData.chapters?.length > 0
                                     ? <>Hãy bắt đầu với <span className="font-extrabold text-[#FCE38A]">{roadmapData.chapters[0].title}</span> — {roadmapData.chapters[0].lessons?.length ?? 0} bài học đang chờ bạn.</>
@@ -277,7 +277,7 @@ export function StudentRoadmap() {
                         </div>
                     </div>
                     <button onClick={() => navigate('/student/study')} className="bg-[#ff7849] hover:bg-[#ff8b63] text-white font-extrabold px-8 h-11 rounded-2xl shrink-0 transition-colors">
-                        Học ngay →
+                        {t.studentRoadmap.studyNow}
                     </button>
                 </div>
 
@@ -286,10 +286,10 @@ export function StudentRoadmap() {
                     <div className={`${cardStyle} flex-1 rounded-3xl p-8`}>
                         <div className="flex items-center justify-between mb-12">
                             <h2 className={`font-extrabold text-xl flex items-center gap-2 ${text}`}>
-                                <TrendUp className="w-5 h-5 text-[#FF6B4A]" weight="fill" /> Con đường chinh phục 9.5
+                                <TrendUp className="w-5 h-5 text-[#FF6B4A]" weight="fill" /> {t.studentRoadmap.pathTitle}
                             </h2>
                             <span className={`text-xs font-extrabold px-3 py-1.5 rounded-2xl ${isDark ? 'bg-[#fce38a]/85 text-[#2a2a2a] border border-[#fce38a]/40' : 'bg-[#FCE38A] border-2 border-[#1A1A1A]/20 text-[#1A1A1A]'}`}>
-                                {roadmapData.chapters?.length ?? 0} chương · {roadmapData.total_time} tuần
+                                {roadmapData.chapters?.length ?? 0} {t.studentRoadmap.chaptersLabel.toLowerCase()} · {roadmapData.total_time} {t.studentRoadmap.weeksUnit}
                             </span>
                         </div>
 
@@ -315,10 +315,10 @@ export function StudentRoadmap() {
                                             ? `border-2 border-[#FF6B4A] shadow-md ${isDark ? 'bg-[#FF6B4A]/12' : 'bg-[#FF6B4A]/10'}`
                                             : `border-2 ${isDark ? 'border-white/10 bg-[#20242b]' : 'border-[#1A1A1A]/15 bg-[#F7F7F2]'}`} ${isRight ? 'text-right' : 'text-left'}`}>
                                             {isFirst && (
-                                                <span className="text-[9px] font-extrabold text-white bg-[#FF6B4A] px-2 py-0.5 rounded-full uppercase mb-2 inline-block">Bắt đầu</span>
+                                                <span className="text-[9px] font-extrabold text-white bg-[#FF6B4A] px-2 py-0.5 rounded-full uppercase mb-2 inline-block">{t.studentRoadmap.startLabel}</span>
                                             )}
                                             <h3 className={`font-extrabold mb-1 ${text}`}>{chapter.title}</h3>
-                                            <p className={`text-xs font-bold ${textMuted}`}>{chapter.lessons?.length ?? 0} bài học</p>
+                                            <p className={`text-xs font-bold ${textMuted}`}>{chapter.lessons?.length ?? 0} {t.studentRoadmap.lessonsLabel.toLowerCase()}</p>
                                         </div>
                                     </div>
                                 );
@@ -330,9 +330,9 @@ export function StudentRoadmap() {
                                     <Trophy className="w-5 h-5 text-[#1A1A1A]" weight="fill" />
                                 </div>
                                 <div className="w-[45%] p-6 rounded-3xl border border-[#1A1A1A]/20" style={{ backgroundColor: isDark ? '#f2d977' : '#FCE38A' }}>
-                                    <span className="text-xs font-extrabold uppercase tracking-widest mb-2 block text-[#1A1A1A]/50">MỤC TIÊU CUỐI</span>
+                                    <span className="text-xs font-extrabold uppercase tracking-widest mb-2 block text-[#1A1A1A]/50">{t.studentRoadmap.goalFinal}</span>
                                     <div className="text-4xl font-extrabold text-[#1A1A1A]">9.5+</div>
-                                    <p className="text-sm font-bold mt-1 text-[#1A1A1A]/60">Vượt ngưỡng kỳ thi quốc gia</p>
+                                    <p className="text-sm font-bold mt-1 text-[#1A1A1A]/60">{t.studentRoadmap.goalScore}</p>
                                 </div>
                             </div>
                         </div>
@@ -343,11 +343,11 @@ export function StudentRoadmap() {
                         {/* Progress */}
                         <div className={`${cardStyle} rounded-3xl overflow-hidden`}>
                             <div className={`px-6 py-4 ${isDark ? 'border-b border-white/10' : 'border-b-2 border-[#1A1A1A]'}`}>
-                                <h3 className={`font-extrabold text-lg ${text}`}>Tiến độ vs mục tiêu</h3>
+                                <h3 className={`font-extrabold text-lg ${text}`}>{t.studentRoadmap.progressTitle}</h3>
                             </div>
                             <div className="p-5">
                                 <div className={`flex justify-between text-sm font-extrabold mb-2 ${text}`}>
-                                    <span>Tỉ lệ hoàn thành</span>
+                                    <span>{t.studentRoadmap.completionRate}</span>
                                     <span className="text-[#FF6B4A]">42%</span>
                                 </div>
                                 <div className="h-3 w-full bg-[#1A1A1A]/10 rounded-full border border-[#1A1A1A]/15 mb-5 overflow-hidden">
@@ -370,7 +370,7 @@ export function StudentRoadmap() {
                                 </div>
                                 <div className={`${isDark ? 'bg-[#f6e08e]/85 border border-[#f6e08e]/35 text-[#5a4f25]' : 'bg-[#FCE38A] border-2 border-[#1A1A1A]/15 text-[#1A1A1A]/70'} rounded-2xl p-3 flex gap-2 text-sm font-semibold mt-3`}>
                                     <span>✨</span>
-                                    <p>Bạn đang nhanh hơn lộ trình <strong className="font-extrabold text-[#1A1A1A]">3 ngày</strong>!</p>
+                                    <p>{t.studentRoadmap.aheadMsg} <strong className="font-extrabold text-[#1A1A1A]">3 {t.studentRoadmap.days}</strong>!</p>
                                 </div>
                             </div>
                         </div>
@@ -378,7 +378,7 @@ export function StudentRoadmap() {
                         {/* Skills */}
                         <div className={`${cardStyle} rounded-3xl overflow-hidden`}>
                             <div className={`px-6 py-4 ${isDark ? 'border-b border-white/10' : 'border-b-2 border-[#1A1A1A]'}`}>
-                                <h3 className={`font-extrabold text-lg ${text}`}>Chi tiết kỹ năng (AI)</h3>
+                                <h3 className={`font-extrabold text-lg ${text}`}>{t.studentRoadmap.skillsTitle}</h3>
                             </div>
                             <div className="p-5 space-y-4">
                                 {SKILLS.map((s, i) => (
@@ -394,7 +394,7 @@ export function StudentRoadmap() {
                                 ))}
                                 <button className={`w-full h-12 font-extrabold text-sm rounded-2xl flex items-center justify-between px-4 mt-2 transition-all ${isDark ? 'bg-[#ff7849]/15 border border-[#ff8b63]/45 text-[#ffe4dc] hover:bg-[#ff7849]/25' : 'bg-[#FFF3EF] border-2 border-[#FF6B4A]/35 text-[#C2412D] hover:bg-[#FFE6DE]'}`}>
                                     <span className="inline-flex items-center gap-2">
-                                        <Question className="w-4 h-4 text-[#FF6B4A]" weight="fill" /> Kiểm tra năng lực
+                                        <Question className="w-4 h-4 text-[#FF6B4A]" weight="fill" /> {t.studentRoadmap.checkSkillBtn}
                                     </span>
                                     <ArrowRight className={`w-4 h-4 ${isDark ? 'text-[#ffd5c7]' : 'text-[#FF6B4A]'}`} />
                                 </button>
@@ -414,208 +414,194 @@ export function StudentRoadmap() {
     }
 
     // ════════════════════════════════════════════════════
-    // LIST VIEW — Trang chủ: Danh sách + Form tạo mới
+    // LIST VIEW — Danh sách + Form tạo mới (vertical layout)
     // ════════════════════════════════════════════════════
     return (
         <div className="p-8 space-y-6 max-w-7xl mx-auto" style={{ fontFamily: "'Nunito', sans-serif" }}>
             {/* Header */}
             <div>
-                <div className="flex items-center gap-2 text-sm font-bold text-gray-400 mb-2">
-                    <span>Trang chủ</span><CaretRight className="w-4 h-4" /><span className="text-[#FF6B4A]">AI Roadmap</span>
-                </div>
-                <h1 className={`text-3xl font-extrabold ${text}`}>Lộ trình Học tập AI</h1>
-                <p className={`${textMuted} font-semibold mt-1`}>Quản lý và tạo lộ trình cá nhân hóa do AI thiết kế dựa trên năng lực thực tế.</p>
+                <h1 className={`text-3xl font-extrabold ${text}`}>{t.studentRoadmap.pageTitle}</h1>
+                <p className={`${textMuted} font-semibold mt-1`}>{t.studentRoadmap.pageSubtitle}</p>
             </div>
 
-            <div className="flex flex-col xl:flex-row gap-6">
-                {/* ── LEFT: Danh sách Roadmaps ── */}
-                <div className="flex-1 space-y-4">
-                    <div className="flex items-center justify-between">
-                        <h2 className={`text-lg font-extrabold flex items-center gap-2 ${text}`}>
-                            <MapTrifold className="w-5 h-5 text-[#FF6B4A]" weight="fill" />
-                            Các lộ trình của bạn
-                            {allRoadmaps.length > 0 && (
-                                <span className={`text-xs font-bold px-2 py-0.5 rounded-full ${isDark ? 'bg-[#FF6B4A]/20 text-[#FF6B4A]' : 'bg-[#FF6B4A]/10 text-[#FF6B4A]'}`}>
-                                    {allRoadmaps.length}
-                                </span>
-                            )}
-                        </h2>
+            {/* ── TOP: Form tạo mới (inline ngang) ── */}
+            <div className={`${cardStyle} rounded-3xl p-5`}>
+                <div className="flex flex-col md:flex-row items-start md:items-center gap-4">
+                    <div className="flex items-center gap-3 shrink-0">
+                        <div className="w-10 h-10 rounded-2xl bg-[#FF6B4A] flex items-center justify-center">
+                            <Sparkle className="w-5 h-5 text-white" weight="fill" />
+                        </div>
+                        <div>
+                            <h2 className={`text-base font-extrabold ${text}`}>{t.studentRoadmap.formTitle}</h2>
+                            <p className={`text-xs font-semibold ${textMuted}`}>{t.studentRoadmap.formSubtitle}</p>
+                        </div>
                     </div>
 
-                    {allRoadmaps.length === 0 ? (
-                        <div className={`${cardStyle} rounded-3xl p-10 text-center`}>
-                            <div className="w-20 h-20 rounded-3xl bg-gradient-to-br from-[#FCE38A] to-[#FF6B4A] flex items-center justify-center mx-auto mb-5 text-3xl shadow-lg border-2 border-[#1A1A1A]/10">
-                                🚀
-                            </div>
-                            <h3 className={`text-xl font-extrabold mb-2 ${text}`}>Chưa có lộ trình nào</h3>
-                            <p className={`${textMuted} font-semibold text-sm max-w-md mx-auto`}>
-                                Hãy tạo lộ trình đầu tiên bằng form bên phải. AI sẽ phân tích năng lực và thiết kế lộ trình tối ưu cho bạn.
+                    {availableSubjects.length === 0 && allRoadmaps.length > 0 ? (
+                        <div className={`flex-1 flex items-center gap-3 ${isDark ? 'bg-emerald-500/10 border border-emerald-500/30' : 'bg-emerald-50 border-2 border-emerald-200'} rounded-2xl px-4 py-3`}>
+                            <Check className="w-5 h-5 text-emerald-500 shrink-0" weight="bold" />
+                            <p className={`text-sm font-bold ${isDark ? 'text-emerald-400' : 'text-emerald-700'}`}>
+                                {t.studentRoadmap.allDoneMsg} {t.studentRoadmap.allDoneHint}
                             </p>
                         </div>
                     ) : (
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                            {allRoadmaps.map((roadmap, index) => {
-                                const color = SUBJECT_COLORS[index % SUBJECT_COLORS.length];
-                                const totalLessons = roadmap.chapters.reduce((sum, ch) => sum + (ch.lessons?.length || 0), 0);
-                                return (
-                                    <div
-                                        key={roadmap.roadmapid}
-                                        onClick={() => setViewingRoadmap(roadmap)}
-                                        className={`${cardStyle} rounded-3xl p-6 cursor-pointer group relative overflow-hidden`}
-                                    >
-                                        {/* Color accent */}
-                                        <div className="absolute top-0 left-0 w-full h-1.5 rounded-t-3xl" style={{ backgroundColor: color }} />
-                                        
-                                        <div className="flex items-start justify-between mb-4 mt-1">
-                                            <div className="flex items-center gap-3">
-                                                <div className="w-12 h-12 rounded-2xl flex items-center justify-center text-white text-lg font-extrabold shadow-md" style={{ backgroundColor: color }}>
-                                                    <BookOpen className="w-6 h-6" weight="fill" />
-                                                </div>
-                                                <div>
-                                                    <h3 className={`font-extrabold text-lg ${text}`}>{roadmap.subject_name}</h3>
-                                                    <p className={`text-xs font-semibold ${textMuted}`}>
-                                                        Tạo {new Date(roadmap.created_at).toLocaleDateString('vi-VN')}
-                                                    </p>
-                                                </div>
-                                            </div>
-                                            <button
-                                                onClick={(e) => handleDeleteRoadmap(roadmap, e)}
-                                                disabled={isDeleting === roadmap.roadmapid}
-                                                className={`p-2 rounded-xl transition-all opacity-0 group-hover:opacity-100 ${isDark ? 'hover:bg-red-500/20 text-red-400' : 'hover:bg-red-50 text-red-400 hover:text-red-600'}`}
-                                                title="Xoá lộ trình"
-                                            >
-                                                {isDeleting === roadmap.roadmapid ? (
-                                                    <div className="w-4 h-4 border-2 border-red-400/30 border-t-red-400 rounded-full animate-spin" />
-                                                ) : (
-                                                    <Trash className="w-4 h-4" />
-                                                )}
-                                            </button>
-                                        </div>
+                        <div className="flex-1 flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
+                            {/* Subject select */}
+                            <div className="relative flex-1">
+                                <select
+                                    value={selectedSubjectId}
+                                    onChange={(e) => setSelectedSubjectId(e.target.value)}
+                                    className={`w-full h-11 rounded-2xl px-4 appearance-none font-bold focus:outline-none transition-colors text-sm ${isDark ? 'bg-[#F7F7F2] border-2 border-[#1A1A1A]/20 text-[#1A1A1A] focus:border-[#FF6B4A]' : 'bg-[#F7F7F2] border-2 border-[#1A1A1A]/20 text-[#1A1A1A] focus:border-[#FF6B4A]'}`}
+                                >
+                                    <option value="">{t.studentRoadmap.subjectPlaceholder}</option>
+                                    {availableSubjects.map(s => (
+                                        <option key={s.subject_id} value={s.subject_id.toString()}>{s.subject_name}</option>
+                                    ))}
+                                </select>
+                                <CaretDown className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none" />
+                            </div>
 
-                                        {/* Stats */}
-                                        <div className="flex gap-3 mb-4">
-                                            <div className={`flex-1 rounded-xl p-3 ${isDark ? 'bg-white/5' : 'bg-[#F7F7F2]'}`}>
-                                                <p className={`text-[10px] font-bold uppercase ${textMuted}`}>Chương</p>
-                                                <p className={`text-lg font-extrabold ${text}`}>{roadmap.chapters?.length ?? 0}</p>
-                                            </div>
-                                            <div className={`flex-1 rounded-xl p-3 ${isDark ? 'bg-white/5' : 'bg-[#F7F7F2]'}`}>
-                                                <p className={`text-[10px] font-bold uppercase ${textMuted}`}>Bài học</p>
-                                                <p className={`text-lg font-extrabold ${text}`}>{totalLessons}</p>
-                                            </div>
-                                            <div className={`flex-1 rounded-xl p-3 ${isDark ? 'bg-white/5' : 'bg-[#F7F7F2]'}`}>
-                                                <p className={`text-[10px] font-bold uppercase ${textMuted}`}>Thời gian</p>
-                                                <p className={`text-lg font-extrabold ${text}`}>{roadmap.total_time}<span className={`text-xs font-bold ${textMuted}`}> tuần</span></p>
-                                            </div>
-                                        </div>
+                            {/* Time select */}
+                            <div className="relative flex-1 sm:max-w-[180px]">
+                                <select
+                                    value={studyTime}
+                                    onChange={(e) => setStudyTime(e.target.value)}
+                                    className={`w-full h-11 rounded-2xl px-4 appearance-none font-bold focus:outline-none transition-colors text-sm ${isDark ? 'bg-[#F7F7F2] border-2 border-[#1A1A1A]/20 text-[#1A1A1A] focus:border-[#FF6B4A]' : 'bg-[#F7F7F2] border-2 border-[#1A1A1A]/20 text-[#1A1A1A] focus:border-[#FF6B4A]'}`}
+                                >
+                                    <option value="">{t.studentRoadmap.timePlaceholder}</option>
+                                    {TIME_OPTIONS.map(opt => (
+                                        <option key={opt.value} value={opt.value}>{opt.label}</option>
+                                    ))}
+                                </select>
+                                <CaretDown className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none" />
+                            </div>
 
-                                        {/* Action hint */}
-                                        <div className={`flex items-center justify-between text-xs font-extrabold px-1 ${isDark ? 'text-[#FF6B4A]' : 'text-[#FF6B4A]'}`}>
-                                            <span className="flex items-center gap-1">
-                                                <TrendUp className="w-3.5 h-3.5" weight="fill" /> Mục tiêu 9.5+
-                                            </span>
-                                            <span className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                                                Xem chi tiết <ArrowRight className="w-3 h-3" weight="bold" />
-                                            </span>
-                                        </div>
-                                    </div>
-                                );
-                            })}
+                            {/* Generate button */}
+                            <button
+                                onClick={handleGenerateRoadmap}
+                                disabled={!selectedSubjectId || !studyTime || isGenerating}
+                                className="h-11 px-6 bg-[#ff7849] hover:bg-[#ff8b63] disabled:opacity-50 disabled:cursor-not-allowed text-white font-extrabold rounded-2xl flex items-center justify-center gap-2 transition-all active:scale-[0.98] shadow-lg shadow-[#ff7849]/25 shrink-0 text-sm"
+                            >
+                                {isGenerating ? (
+                                    <>
+                                        <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                                        {t.studentRoadmap.generating}
+                                    </>
+                                ) : (
+                                    <>
+                                        <Sparkle className="w-4 h-4" weight="fill" />
+                                        {t.studentRoadmap.createBtn}
+                                    </>
+                                )}
+                            </button>
+                        </div>
+                    )}
+
+                    {/* Preview hint */}
+                    {selectedSubjectId && studyTime && (
+                        <div className={`shrink-0 ${isDark ? 'bg-[#B8B5FF]/10 border border-[#B8B5FF]/30' : 'bg-[#B8B5FF]/15 border-2 border-[#B8B5FF]/30'} rounded-2xl px-4 py-2`}>
+                            <p className={`text-xs font-bold whitespace-nowrap ${isDark ? 'text-[#B8B5FF]' : 'text-[#6c68b0]'}`}>
+                                ✨ <strong>{selectedSubjectName}</strong> · <strong>{TIME_OPTIONS.find(opt => opt.value === studyTime)?.label}</strong>
+                            </p>
                         </div>
                     )}
                 </div>
+            </div>
 
-                {/* ── RIGHT: Form tạo mới ── */}
-                <div className="w-full xl:w-[360px] shrink-0">
-                    <div className={`${cardStyle} rounded-3xl p-6 space-y-5 sticky top-8`}>
-                        <div className="flex items-center gap-3">
-                            <div className="w-10 h-10 rounded-2xl bg-[#FF6B4A] flex items-center justify-center">
-                                <Sparkle className="w-5 h-5 text-white" weight="fill" />
-                            </div>
-                            <div>
-                                <h2 className={`text-lg font-extrabold ${text}`}>Tạo Lộ trình mới</h2>
-                                <p className={`text-xs font-semibold ${textMuted}`}>AI sẽ thiết kế lộ trình phù hợp</p>
-                            </div>
-                        </div>
-
-                        {availableSubjects.length === 0 && allRoadmaps.length > 0 ? (
-                            <div className={`${isDark ? 'bg-emerald-500/10 border border-emerald-500/30' : 'bg-emerald-50 border-2 border-emerald-200'} rounded-2xl p-4 text-center`}>
-                                <Check className="w-8 h-8 text-emerald-500 mx-auto mb-2" weight="bold" />
-                                <p className={`text-sm font-bold ${isDark ? 'text-emerald-400' : 'text-emerald-700'}`}>Tất cả các môn đã có lộ trình!</p>
-                                <p className={`text-xs font-semibold mt-1 ${textMuted}`}>Xoá lộ trình cũ nếu muốn tạo lại.</p>
-                            </div>
-                        ) : (
-                            <>
-                                {/* Subject selection */}
-                                <div className="space-y-2">
-                                    <label className={`text-xs font-extrabold uppercase tracking-wider block ${textMuted}`}>
-                                        Môn học muốn ôn tập
-                                    </label>
-                                    <div className="relative">
-                                        <select
-                                            value={selectedSubjectId}
-                                            onChange={(e) => setSelectedSubjectId(e.target.value)}
-                                            className={`w-full h-12 rounded-2xl px-4 appearance-none font-bold focus:outline-none transition-colors ${isDark ? 'bg-[#F7F7F2] border-2 border-[#1A1A1A]/20 text-[#1A1A1A] focus:border-[#FF6B4A]' : 'bg-[#F7F7F2] border-2 border-[#1A1A1A]/20 text-[#1A1A1A] focus:border-[#FF6B4A]'}`}
-                                        >
-                                            <option value="">Chọn môn học...</option>
-                                            {availableSubjects.map(s => (
-                                                <option key={s.subject_id} value={s.subject_id.toString()}>{s.subject_name}</option>
-                                            ))}
-                                        </select>
-                                        <CaretDown className="absolute right-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400 pointer-events-none" />
-                                    </div>
-                                </div>
-
-                                {/* Study time selection */}
-                                <div className="space-y-2">
-                                    <label className={`text-xs font-extrabold uppercase tracking-wider block ${textMuted}`}>
-                                        Thời gian để học
-                                    </label>
-                                    <div className="relative">
-                                        <select
-                                            value={studyTime}
-                                            onChange={(e) => setStudyTime(e.target.value)}
-                                            className={`w-full h-12 rounded-2xl px-4 appearance-none font-bold focus:outline-none transition-colors ${isDark ? 'bg-[#F7F7F2] border-2 border-[#1A1A1A]/20 text-[#1A1A1A] focus:border-[#FF6B4A]' : 'bg-[#F7F7F2] border-2 border-[#1A1A1A]/20 text-[#1A1A1A] focus:border-[#FF6B4A]'}`}
-                                        >
-                                            <option value="">Chọn thời gian...</option>
-                                            {TIME_OPTIONS.map(t => (
-                                                <option key={t.value} value={t.value}>{t.label}</option>
-                                            ))}
-                                        </select>
-                                        <CaretDown className="absolute right-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400 pointer-events-none" />
-                                    </div>
-                                </div>
-
-                                {/* Preview */}
-                                {selectedSubjectId && studyTime && (
-                                    <div className={`${isDark ? 'bg-[#B8B5FF]/10 border border-[#B8B5FF]/30' : 'bg-[#B8B5FF]/15 border-2 border-[#B8B5FF]/30'} rounded-2xl p-4 animate-[slideUp_0.3s_ease-out]`}>
-                                        <p className={`text-xs font-bold ${isDark ? 'text-[#B8B5FF]' : 'text-[#6c68b0]'}`}>
-                                            ✨ AI sẽ tạo lộ trình môn <strong>{selectedSubjectName}</strong> trong <strong>{TIME_OPTIONS.find(t => t.value === studyTime)?.label}</strong>
-                                        </p>
-                                    </div>
-                                )}
-
-                                {/* Generate button */}
-                                <button
-                                    onClick={handleGenerateRoadmap}
-                                    disabled={!selectedSubjectId || !studyTime || isGenerating}
-                                    className="w-full h-12 bg-[#ff7849] hover:bg-[#ff8b63] disabled:opacity-50 disabled:cursor-not-allowed text-white font-extrabold rounded-2xl flex items-center justify-center gap-3 transition-all active:scale-[0.98] shadow-lg shadow-[#ff7849]/25"
-                                >
-                                    {isGenerating ? (
-                                        <>
-                                            <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                                            AI đang tạo...
-                                        </>
-                                    ) : (
-                                        <>
-                                            <Sparkle className="w-4 h-4" weight="fill" />
-                                            Tạo Lộ trình AI
-                                        </>
-                                    )}
-                                </button>
-                            </>
+            {/* ── BOTTOM: Danh sách Roadmaps ── */}
+            <div className="space-y-4">
+                <div className="flex items-center justify-between">
+                    <h2 className={`text-lg font-extrabold flex items-center gap-2 ${text}`}>
+                        <MapTrifold className="w-5 h-5 text-[#FF6B4A]" weight="fill" />
+                        {t.studentRoadmap.sectionTitle}
+                        {allRoadmaps.length > 0 && (
+                            <span className={`text-xs font-bold px-2 py-0.5 rounded-full ${isDark ? 'bg-[#FF6B4A]/20 text-[#FF6B4A]' : 'bg-[#FF6B4A]/10 text-[#FF6B4A]'}`}>
+                                {allRoadmaps.length}
+                            </span>
                         )}
-                    </div>
+                    </h2>
                 </div>
+
+                {allRoadmaps.length === 0 ? (
+                    <div className={`${cardStyle} rounded-3xl p-10 text-center`}>
+                        <div className="w-20 h-20 rounded-3xl bg-gradient-to-br from-[#FCE38A] to-[#FF6B4A] flex items-center justify-center mx-auto mb-5 text-3xl shadow-lg border-2 border-[#1A1A1A]/10">
+                            🚀
+                        </div>
+                        <h3 className={`text-xl font-extrabold mb-2 ${text}`}>{t.studentRoadmap.emptyTitle}</h3>
+                        <p className={`${textMuted} font-semibold text-sm max-w-md mx-auto`}>
+                            {t.studentRoadmap.emptyDesc}
+                        </p>
+                    </div>
+                ) : (
+                    <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+                        {allRoadmaps.map((roadmap, index) => {
+                            const color = SUBJECT_COLORS[index % SUBJECT_COLORS.length];
+                            const totalLessons = roadmap.chapters.reduce((sum, ch) => sum + (ch.lessons?.length || 0), 0);
+                            return (
+                                <div
+                                    key={roadmap.roadmapid}
+                                    onClick={() => setViewingRoadmap(roadmap)}
+                                    className={`${cardStyle} rounded-3xl p-6 cursor-pointer group relative overflow-hidden`}
+                                >
+                                    {/* Color accent */}
+                                    <div className="absolute top-0 left-0 w-full h-1.5 rounded-t-3xl" style={{ backgroundColor: color }} />
+
+                                    <div className="flex items-start justify-between mb-4 mt-1">
+                                        <div className="flex items-center gap-3">
+                                            <div className="w-12 h-12 rounded-2xl flex items-center justify-center text-white text-lg font-extrabold shadow-md" style={{ backgroundColor: color }}>
+                                                <BookOpen className="w-6 h-6" weight="fill" />
+                                            </div>
+                                            <div>
+                                                <h3 className={`font-extrabold text-lg ${text}`}>{roadmap.subject_name}</h3>
+                                                <p className={`text-xs font-semibold ${textMuted}`}>
+                                                    {t.studentRoadmap.createdAt} {new Date(roadmap.created_at).toLocaleDateString('vi-VN')}
+                                                </p>
+                                            </div>
+                                        </div>
+                                        <button
+                                            onClick={(e) => handleDeleteRoadmap(roadmap, e)}
+                                            disabled={isDeleting === roadmap.roadmapid}
+                                            className={`p-2 rounded-xl transition-all opacity-0 group-hover:opacity-100 ${isDark ? 'hover:bg-red-500/20 text-red-400' : 'hover:bg-red-50 text-red-400 hover:text-red-600'}`}
+                                            title={t.studentRoadmap.deleteBtn}
+                                        >
+                                            {isDeleting === roadmap.roadmapid ? (
+                                                <div className="w-4 h-4 border-2 border-red-400/30 border-t-red-400 rounded-full animate-spin" />
+                                            ) : (
+                                                <Trash className="w-4 h-4" />
+                                            )}
+                                        </button>
+                                    </div>
+
+                                    {/* Stats */}
+                                    <div className="flex gap-3 mb-4">
+                                        <div className={`flex-1 rounded-xl p-3 ${isDark ? 'bg-white/5' : 'bg-[#F7F7F2]'}`}>
+                                            <p className={`text-[10px] font-bold uppercase ${textMuted}`}>{t.studentRoadmap.chaptersLabel}</p>
+                                            <p className={`text-lg font-extrabold ${text}`}>{roadmap.chapters?.length ?? 0}</p>
+                                        </div>
+                                        <div className={`flex-1 rounded-xl p-3 ${isDark ? 'bg-white/5' : 'bg-[#F7F7F2]'}`}>
+                                            <p className={`text-[10px] font-bold uppercase ${textMuted}`}>{t.studentRoadmap.lessonsLabel}</p>
+                                            <p className={`text-lg font-extrabold ${text}`}>{totalLessons}</p>
+                                        </div>
+                                        <div className={`flex-1 rounded-xl p-3 ${isDark ? 'bg-white/5' : 'bg-[#F7F7F2]'}`}>
+                                            <p className={`text-[10px] font-bold uppercase ${textMuted}`}>{t.studentRoadmap.timeLabel}</p>
+                                            <p className={`text-lg font-extrabold ${text}`}>{roadmap.total_time}<span className={`text-xs font-bold ${textMuted}`}> {t.studentRoadmap.weeksUnit}</span></p>
+                                        </div>
+                                    </div>
+
+                                    {/* Action hint */}
+                                    <div className={`flex items-center justify-between text-xs font-extrabold px-1 ${isDark ? 'text-[#FF6B4A]' : 'text-[#FF6B4A]'}`}>
+                                        <span className="flex items-center gap-1">
+                                            <TrendUp className="w-3.5 h-3.5" weight="fill" /> {t.studentRoadmap.goalLabel}
+                                        </span>
+                                        <span className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                                            {t.studentRoadmap.viewDetail} <ArrowRight className="w-3 h-3" weight="bold" />
+                                        </span>
+                                    </div>
+                                </div>
+                            );
+                        })}
+                    </div>
+                )}
             </div>
 
             <style>{`

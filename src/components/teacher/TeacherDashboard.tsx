@@ -47,7 +47,7 @@ function formatDate(isoString: string): string {
 }
 
 export function TeacherDashboard() {
-    const { theme } = useSettings();
+    const { theme, t } = useSettings();
     const isDark = theme === 'dark';
     const navigate = useNavigate();
 
@@ -96,7 +96,7 @@ export function TeacherDashboard() {
         const now = new Date();
         const startOfDay = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 0, 0, 0);
         const endOfDay = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59);
-        timetableService.getTimetables(startOfDay, endOfDay)
+        timetableService.getMyScheduleList(startOfDay, endOfDay)
             .then(setTodaySchedule)
             .catch(() => {})
             .finally(() => setLoadingSched(false));
@@ -204,7 +204,7 @@ export function TeacherDashboard() {
                     <p className={cn('text-xs font-extrabold uppercase tracking-widest mb-1', sub)}>
                         {new Date().toLocaleDateString('vi-VN', { weekday: 'long', day: '2-digit', month: '2-digit', year: 'numeric' })}
                     </p>
-                    <h1 className={cn('text-3xl font-extrabold', txt)}>Tổng quan</h1>
+                    <h1 className={cn('text-3xl font-extrabold', txt)}>{t.teacherDashboard.pageTitle}</h1>
                 </div>
                 <button
                     onClick={() => setIsNotifyModalOpen(true)}
@@ -215,33 +215,33 @@ export function TeacherDashboard() {
                             : 'border-[#1A1A1A]/20 bg-white text-[#1A1A1A] hover:bg-gray-50',
                     )}
                 >
-                    <Bell size={16} /> Gửi thông báo cho cả lớp
+                    <Bell size={16} /> {t.teacherDashboard.sendNotifBtn}
                 </button>
             </div>
 
             {/* ── Main grid ── */}
-            <div className="grid grid-cols-1 xl:grid-cols-4 gap-6 flex-1 min-h-0 overflow-y-auto xl:overflow-hidden pr-1">
+            <div className="grid grid-cols-1 xl:grid-cols-5 gap-6 flex-1 min-h-0 overflow-y-auto xl:overflow-hidden pr-1">
 
-                {/* Left col: Documents + Tests */}
+                {/* Left col: Documents + Tests — span 2 */}
                 <div className="xl:col-span-2 space-y-6">
 
                     {/* Documents */}
                     <div className={cn('rounded-3xl border-2 p-6', card)}>
                         <h2 className={sectionTitle}>
                             <BookOpen size={20} weight="fill" className="text-[#FF6B4A]" />
-                            Tài liệu đã tải lên
+                            {t.teacherDashboard.docsTitle}
                         </h2>
 
                         {loadingDocs ? (
-                            <div className={cn('text-sm font-bold text-center py-6', sub)}>Đang tải...</div>
+                            <div className={cn('text-sm font-bold text-center py-6', sub)}>{t.teacherDashboard.loading}</div>
                         ) : documents.length === 0 ? (
-                            <div className={cn('text-sm font-bold text-center py-6', sub)}>Chưa có tài liệu nào.</div>
+                            <div className={cn('text-sm font-bold text-center py-6', sub)}>{t.teacherDashboard.noDocs}</div>
                         ) : (
                             <div className="space-y-3 max-h-[22vh] overflow-y-auto pr-1">
                                 {/* Theory docs */}
                                 {theoryDocs.length > 0 && (
                                     <div>
-                                        <p className={cn('text-xs font-extrabold uppercase tracking-wider mb-2', sub)}>Lý thuyết (Giáo trình)</p>
+                                        <p className={cn('text-xs font-extrabold uppercase tracking-wider mb-2', sub)}>{t.teacherDashboard.theorySection}</p>
                                         <div className="space-y-2">
                                             {theoryDocs.slice(0, 5).map(doc => (
                                                 <button
@@ -261,7 +261,7 @@ export function TeacherDashboard() {
                                             ))}
                                             {theoryDocs.length > 5 && (
                                                 <button onClick={() => navigate('/teacher/curriculum')} className={cn('text-xs font-bold', sub, 'hover:text-[#FF6B4A] transition-colors')}>
-                                                    + {theoryDocs.length - 5} giáo trình khác →
+                                                    + {theoryDocs.length - 5} {t.teacherDashboard.moreTextbooks}
                                                 </button>
                                             )}
                                         </div>
@@ -271,7 +271,7 @@ export function TeacherDashboard() {
                                 {/* Question bank docs */}
                                 {questionDocs.length > 0 && (
                                     <div className={theoryDocs.length > 0 ? 'pt-3 mt-3 border-t ' + (isDark ? 'border-white/10' : 'border-[#1A1A1A]/10') : ''}>
-                                        <p className={cn('text-xs font-extrabold uppercase tracking-wider mb-2', sub)}>Ngân hàng câu hỏi</p>
+                                        <p className={cn('text-xs font-extrabold uppercase tracking-wider mb-2', sub)}>{t.teacherDashboard.questionBankSection}</p>
                                         <div className="space-y-2">
                                             {questionDocs.slice(0, 5).map(doc => (
                                                 <button
@@ -291,7 +291,7 @@ export function TeacherDashboard() {
                                             ))}
                                             {questionDocs.length > 5 && (
                                                 <button onClick={() => navigate('/teacher/question-banks')} className={cn('text-xs font-bold', sub, 'hover:text-emerald-500 transition-colors')}>
-                                                    + {questionDocs.length - 5} ngân hàng khác →
+                                                    + {questionDocs.length - 5} {t.teacherDashboard.moreQuestionBanks}
                                                 </button>
                                             )}
                                         </div>
@@ -306,17 +306,17 @@ export function TeacherDashboard() {
                         <div className="flex items-center justify-between mb-4">
                             <h2 className={cn('text-lg font-extrabold flex items-center gap-2', txt)}>
                                 <ClipboardText size={20} weight="fill" className="text-[#B8B5FF]" />
-                                Bài kiểm tra đã tạo
+                                {t.teacherDashboard.testsTitle}
                             </h2>
                             <button onClick={() => navigate('/teacher/tests')} className={cn('text-xs font-bold hover:text-[#FF6B4A] transition-colors', sub)}>
-                                Xem tất cả →
+                                {t.teacherDashboard.viewAllTests}
                             </button>
                         </div>
 
                         {loadingTests ? (
-                            <div className={cn('text-sm font-bold text-center py-6', sub)}>Đang tải...</div>
+                            <div className={cn('text-sm font-bold text-center py-6', sub)}>{t.teacherDashboard.loading}</div>
                         ) : assignments.length === 0 ? (
-                            <div className={cn('text-sm font-bold text-center py-6', sub)}>Chưa có bài kiểm tra nào.</div>
+                            <div className={cn('text-sm font-bold text-center py-6', sub)}>{t.teacherDashboard.noTests}</div>
                         ) : (
                             <div className="space-y-2 max-h-[30vh] overflow-y-auto pr-1">
                                 {assignments.slice(0, 6).map(a => (
@@ -338,7 +338,7 @@ export function TeacherDashboard() {
                                             <div className={cn('flex items-center gap-3 text-xs font-semibold', sub)}>
                                                 <span>{a.className}</span>
                                                 <span>•</span>
-                                                <span>{a.totalSubmissions} lượt nộp</span>
+                                                <span>{a.totalSubmissions} {t.teacherDashboard.submissions}</span>
                                                 <span>•</span>
                                                 <span>{formatDate(a.createdAt)}</span>
                                             </div>
@@ -357,13 +357,13 @@ export function TeacherDashboard() {
                     <div className={cn('rounded-3xl border-2 p-6', card)}>
                         <h2 className={sectionTitle}>
                             <CalendarBlank size={20} weight="fill" className="text-[#FCE38A]" />
-                            Lịch dạy hôm nay
+                            {t.teacherDashboard.scheduleTitle}
                         </h2>
 
                         {loadingSched ? (
-                            <div className={cn('text-sm font-bold text-center py-6', sub)}>Đang tải...</div>
+                            <div className={cn('text-sm font-bold text-center py-6', sub)}>{t.teacherDashboard.loading}</div>
                         ) : todaySchedule.length === 0 ? (
-                            <div className={cn('text-sm font-bold text-center py-6', sub)}>Không có lịch dạy hôm nay.</div>
+                            <div className={cn('text-sm font-bold text-center py-6', sub)}>{t.teacherDashboard.noSchedule}</div>
                         ) : (
                             <div className="space-y-3 max-h-[65vh] overflow-y-auto pr-1">
                                 {todaySchedule.map(item => {
@@ -396,7 +396,7 @@ export function TeacherDashboard() {
                                             </div>
                                             {isOngoing && (
                                                 <span className="text-[10px] font-extrabold text-green-600 bg-green-100 px-2 py-0.5 rounded-full shrink-0">
-                                                    Đang dạy
+                                                    {t.teacherDashboard.teachingNow}
                                                 </span>
                                             )}
                                         </div>
@@ -407,20 +407,20 @@ export function TeacherDashboard() {
                     </div>
                 </div>
 
-                {/* Col 4: Admin Notifications (top) + Quick Actions + Pie Chart */}
+                {/* Col 4: Admin Notifications + Quick Actions */}
                 <div className="xl:col-span-1 space-y-6">
 
                     {/* Admin notifications – top */}
                     <div className={cn('rounded-3xl border-2 p-6', card)}>
                         <h2 className={sectionTitle}>
                             <Warning size={20} weight="fill" className="text-[#FFB5B5]" />
-                            Thông báo từ Admin
+                            {t.teacherDashboard.notifTitle}
                         </h2>
 
                         {loadingNotifs ? (
-                            <div className={cn('text-sm font-bold text-center py-6', sub)}>Đang tải...</div>
+                            <div className={cn('text-sm font-bold text-center py-6', sub)}>{t.teacherDashboard.loading}</div>
                         ) : notifications.length === 0 ? (
-                            <div className={cn('text-sm font-bold text-center py-6', sub)}>Không có thông báo mới.</div>
+                            <div className={cn('text-sm font-bold text-center py-6', sub)}>{t.teacherDashboard.noNotif}</div>
                         ) : (
                             <div className="space-y-3 max-h-[18vh] overflow-y-auto pr-1">
                                 {notifications.slice(0, 5).map(n => (
@@ -451,7 +451,7 @@ export function TeacherDashboard() {
                     <div className={cn('rounded-3xl border-2 p-6', card)}>
                         <h2 className={sectionTitle}>
                             <Plus size={20} weight="bold" className="text-[#FF6B4A]" />
-                            Thao tác nhanh
+                            {t.teacherDashboard.quickActionsTitle}
                         </h2>
                         <div className="space-y-3">
                             <button
@@ -468,7 +468,7 @@ export function TeacherDashboard() {
                                 )}>
                                     <ClipboardText size={18} weight="fill" />
                                 </span>
-                                <span>Tạo bài kiểm tra mới</span>
+                                <span>{t.teacherDashboard.createTestBtn}</span>
                             </button>
 
                             <button
@@ -485,24 +485,26 @@ export function TeacherDashboard() {
                                 )}>
                                     <UploadSimple size={18} weight="fill" />
                                 </span>
-                                <span>Tải lên tài liệu</span>
+                                <span>{t.teacherDashboard.uploadDocBtn}</span>
                             </button>
                         </div>
                     </div>
+                </div>
 
-                    {/* Score Distribution Pie Chart */}
+                {/* Col 5: Score Distribution Pie Chart */}
+                <div className="xl:col-span-1 space-y-6">
                     <div className={cn('rounded-3xl border-2 p-6', card)}>
                         <h2 className={sectionTitle}>
                             <BookOpen size={20} weight="fill" className="text-[#FCE38A]" />
-                            Phổ điểm gần nhất
+                            {t.teacherDashboard.scoreDistTitle}
                         </h2>
 
                         {loadingTests ? (
-                            <div className={cn('text-sm font-bold text-center py-6', sub)}>Đang tải...</div>
+                            <div className={cn('text-sm font-bold text-center py-6', sub)}>{t.teacherDashboard.loading}</div>
                         ) : assignments.length === 0 || !scoreDistribution ? (
-                            <div className={cn('text-sm font-bold text-center py-6', sub)}>Chưa có dữ liệu điểm.</div>
+                            <div className={cn('text-sm font-bold text-center py-6', sub)}>{t.teacherDashboard.noScoreData}</div>
                         ) : scoreDistribution.total === 0 ? (
-                            <div className={cn('text-sm font-bold text-center py-6', sub)}>Chưa có lượt nộp.</div>
+                            <div className={cn('text-sm font-bold text-center py-6', sub)}>{t.teacherDashboard.noSubmissions}</div>
                         ) : (() => {
                             const { below5, above5, total } = scoreDistribution;
                             const pctBelow = Math.round((below5 / total) * 100);
@@ -548,7 +550,7 @@ export function TeacherDashboard() {
                                             <text x={cx} y={cy + 12} textAnchor="middle" dominantBaseline="middle"
                                                 fontSize="9" fontWeight="700"
                                                 fill={isDark ? 'rgba(255,255,255,0.45)' : 'rgba(0,0,0,0.4)'}>
-                                                lượt nộp
+                                                {t.teacherDashboard.submissionsLabel}
                                             </text>
                                         </svg>
                                     </div>
@@ -556,14 +558,14 @@ export function TeacherDashboard() {
                                         <div className="flex items-center justify-between">
                                             <span className="flex items-center gap-2 text-xs font-bold text-emerald-500">
                                                 <span className="w-2.5 h-2.5 rounded-full bg-emerald-400 inline-block" />
-                                                Điểm ≥5
+                                                {t.teacherDashboard.scoreAbove5}
                                             </span>
                                             <span className="text-xs font-extrabold text-emerald-500">{pctAbove}% ({above5})</span>
                                         </div>
                                         <div className="flex items-center justify-between">
                                             <span className="flex items-center gap-2 text-xs font-bold text-red-400">
                                                 <span className="w-2.5 h-2.5 rounded-full bg-red-400 inline-block" />
-                                                Điểm &lt;5
+                                                {t.teacherDashboard.scoreBelow5}
                                             </span>
                                             <span className="text-xs font-extrabold text-red-400">{pctBelow}% ({below5})</span>
                                         </div>
@@ -592,7 +594,7 @@ export function TeacherDashboard() {
                             style={{ fontFamily: "'Nunito', sans-serif" }}
                         >
                             <div className="px-6 py-4 border-b border-[#1A1A1A]/10 flex items-center justify-between">
-                                <h3 className="text-lg font-extrabold text-[#1A1A1A]">Gửi thông báo cho cả lớp</h3>
+                                <h3 className="text-lg font-extrabold text-[#1A1A1A]">{t.teacherDashboard.modalTitle}</h3>
                                 <button onClick={() => setIsNotifyModalOpen(false)} className="w-10 h-10 rounded-xl border border-[#1A1A1A]/15 hover:bg-gray-50 flex items-center justify-center">
                                     <X size={18} />
                                 </button>
@@ -600,60 +602,60 @@ export function TeacherDashboard() {
 
                             <div className="px-6 py-5 space-y-4">
                                 <div>
-                                    <span className="text-sm font-bold text-[#1A1A1A]/80 mb-2 block">Mẫu thông báo nhanh</span>
+                                    <span className="text-sm font-bold text-[#1A1A1A]/80 mb-2 block">{t.teacherDashboard.quickTemplates}</span>
                                     <div className="flex gap-2">
                                         <button
                                             type="button"
                                             onClick={() => setNotifyForm(p => ({ ...p, title: 'Thông báo: Mở khóa lớp học', content: 'Chào các em,\n\nLớp học của chúng ta đã chính thức được mở khóa và các tài liệu học tập đã sẵn sàng. Các em hãy truy cập vào hệ thống để bắt đầu xem nội dung và làm bài nhé.\n\nTrân trọng,' }))}
                                             className="text-xs font-extrabold px-3 py-1.5 rounded-xl border border-[#1A1A1A]/20 transition-colors bg-white hover:bg-gray-50 text-[#1A1A1A]"
                                         >
-                                            Mở lớp
+                                            {t.teacherDashboard.openClassBtn}
                                         </button>
                                         <button
                                             type="button"
                                             onClick={() => setNotifyForm(p => ({ ...p, title: 'Thông báo: Khóa lớp học', content: 'Chào các em,\n\nHiện tại lớp học của chúng ta đã được khóa theo lịch trình. Mong các em đã hoàn thành đầy đủ bài tập và theo dõi sát sao tiến trình học thuật. Nếu có thắc mắc hãy liên hệ ngay với giáo viên.\n\nTrân trọng,' }))}
                                             className="text-xs font-extrabold px-3 py-1.5 rounded-xl border border-[#1A1A1A]/20 transition-colors bg-white hover:bg-gray-50 text-[#1A1A1A]"
                                         >
-                                            Khóa lớp
+                                            {t.teacherDashboard.closeClassBtn}
                                         </button>
                                     </div>
                                 </div>
                                 <label className="space-y-1.5 block">
-                                    <span className="text-sm font-bold text-[#1A1A1A]/80">Lớp nhận thông báo</span>
+                                    <span className="text-sm font-bold text-[#1A1A1A]/80">{t.teacherDashboard.selectClassLabel}</span>
                                     <select
                                         value={notifyForm.classTarget}
                                         onChange={e => setNotifyForm(p => ({ ...p, classTarget: e.target.value }))}
                                         className="h-10 w-full rounded-xl border border-[#1A1A1A]/20 px-3 text-sm font-semibold text-[#1A1A1A] outline-none focus:border-[#FF6B4A] appearance-none"
                                     >
-                                        <option value="" disabled>Chọn lớp học</option>
+                                        <option value="" disabled>{t.teacherDashboard.selectClassPlaceholder}</option>
                                         {teacherClasses.map(c => (
                                             <option key={c.classID} value={c.classID}>{c.className} - {c.subjectName}</option>
                                         ))}
                                     </select>
                                 </label>
                                 <label className="space-y-1.5 block">
-                                    <span className="text-sm font-bold text-[#1A1A1A]/80">Tiêu đề</span>
+                                    <span className="text-sm font-bold text-[#1A1A1A]/80">{t.teacherDashboard.notifTitleLabel}</span>
                                     <input
                                         value={notifyForm.title}
                                         onChange={e => setNotifyForm(p => ({ ...p, title: e.target.value }))}
                                         className="h-10 w-full rounded-xl border border-[#1A1A1A]/20 px-3 text-sm font-semibold text-[#1A1A1A] outline-none focus:border-[#FF6B4A]"
-                                        placeholder="Nhập tiêu đề thông báo"
+                                        placeholder={t.teacherDashboard.notifTitlePlaceholder}
                                     />
                                 </label>
                                 <label className="space-y-1.5 block">
-                                    <span className="text-sm font-bold text-[#1A1A1A]/80">Nội dung</span>
+                                    <span className="text-sm font-bold text-[#1A1A1A]/80">{t.teacherDashboard.notifContentLabel}</span>
                                     <textarea
                                         rows={4}
                                         value={notifyForm.content}
                                         onChange={e => setNotifyForm(p => ({ ...p, content: e.target.value }))}
                                         className="w-full rounded-xl border border-[#1A1A1A]/20 px-3 py-2 text-sm font-semibold text-[#1A1A1A] outline-none resize-none focus:border-[#FF6B4A]"
-                                        placeholder="Nhập nội dung gửi cho học sinh"
+                                        placeholder={t.teacherDashboard.notifContentPlaceholder}
                                     />
                                 </label>
                                 <div>
                                     <label className="flex items-center justify-between rounded-xl border border-[#1A1A1A]/10 px-3 py-2">
                                         <span className="text-sm font-bold text-[#1A1A1A]/80 inline-flex items-center gap-2">
-                                            <Bot size={16} className="text-[#FF6B4A]" /> Gợi ý nội dung bằng AI
+                                            <Bot size={16} className="text-[#FF6B4A]" /> {t.teacherDashboard.aiSuggestionLabel}
                                         </span>
                                         <button
                                             type="button"
@@ -671,7 +673,7 @@ export function TeacherDashboard() {
                                                 onClick={handleGenerateAi}
                                                 className="text-xs font-extrabold px-3 py-1.5 rounded-xl bg-[#FF6B4A]/10 text-[#FF6B4A] hover:bg-[#FF6B4A]/20 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                                             >
-                                                {isGeneratingAi ? 'Đang tạo...' : 'Tạo nội dung từ tiêu đề'}
+                                                {isGeneratingAi ? t.teacherDashboard.generating : t.teacherDashboard.genFromTitle}
                                             </button>
                                         </div>
                                     )}
@@ -683,7 +685,7 @@ export function TeacherDashboard() {
                                     onClick={() => setIsNotifyModalOpen(false)}
                                     className="h-10 px-5 rounded-xl border border-[#1A1A1A]/20 text-sm font-extrabold text-[#1A1A1A] hover:bg-gray-50 transition-colors"
                                 >
-                                    Hủy
+                                    {t.teacherDashboard.cancelBtn}
                                 </button>
                                 <button
                                     onClick={handleSendNotification}
@@ -691,7 +693,7 @@ export function TeacherDashboard() {
                                     className="h-10 px-5 rounded-xl bg-[#FF6B4A] text-white text-sm font-extrabold hover:bg-[#ff5535] transition-colors disabled:opacity-60 flex items-center gap-2"
                                 >
                                     <PaperPlaneTilt size={14} weight="fill" />
-                                    {isSending ? 'Đang gửi...' : 'Gửi thông báo'}
+                                    {isSending ? t.teacherDashboard.sending : t.teacherDashboard.sendBtn}
                                 </button>
                             </div>
                         </div>

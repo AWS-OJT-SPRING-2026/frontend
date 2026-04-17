@@ -57,8 +57,6 @@ interface ScheduleEvent {
     classStatus: string;
 }
 
-const INACTIVE_CLASS_MESSAGE = 'Lớp học này hiện đang ở trạng thái Khóa. Vui lòng liên hệ ADMIN để biết thêm chi tiết.';
-
 type ViewMode = 'week' | 'day' | 'month';
 
 /* ── Helpers ── */
@@ -143,8 +141,10 @@ function SkeletonEvent() {
 
 /* ── Tooltip Component ── */
 function EventTooltip({ event, x, y, now, isDark }: { event: ScheduleEvent; x: number; y: number; now: Date; isDark: boolean }) {
+    const { t } = useSettings();
     const status = getEventStatus(event, now);
     const style = getStatusStyles(isDark)[status];
+    const statusLabel = status === 'past' ? t.teacherSchedule.pastStatus : status === 'upcoming' ? t.teacherSchedule.upcomingStatus : t.teacherSchedule.ongoingStatus;
 
     return (
         <div
@@ -155,18 +155,18 @@ function EventTooltip({ event, x, y, now, isDark }: { event: ScheduleEvent; x: n
                 {/* Status badge */}
                 <div className="flex items-center gap-2 mb-2">
                     <span className="w-2 h-2 rounded-full" style={{ backgroundColor: style.dot }} />
-                    <span className="text-[10px] font-extrabold uppercase tracking-wider" style={{ color: style.dot }}>{style.label}</span>
+                    <span className="text-[10px] font-extrabold uppercase tracking-wider" style={{ color: style.dot }}>{statusLabel}</span>
                 </div>
                 <div className="font-extrabold text-sm mb-1.5">{event.title}</div>
                 <div className="space-y-1 text-white/75">
                     <div className="flex items-center gap-2">
                         <BookOpen className="w-3 h-3 shrink-0" />
-                        <span>Lớp: {event.className}</span>
+                        <span>{t.teacherSchedule.classLabel}: {event.className}</span>
                     </div>
                     {event.topic && (
                         <div className="flex items-center gap-2">
                             <BookOpen className="w-3 h-3 shrink-0" />
-                            <span>Chủ đề: {event.topic}</span>
+                            <span>{t.teacherSchedule.topicLabel}: {event.topic}</span>
                         </div>
                     )}
                     <div className="flex items-center gap-2">
@@ -176,17 +176,17 @@ function EventTooltip({ event, x, y, now, isDark }: { event: ScheduleEvent; x: n
                     {event.meetLink ? (
                         <div className="flex items-center gap-2 text-green-400">
                             <LinkSimple className="w-3 h-3 shrink-0" />
-                            <span>Có link Google Meet</span>
+                            <span>{t.teacherSchedule.hasMeetLink}</span>
                         </div>
                     ) : (
                         <div className="flex items-center gap-2 text-yellow-400">
                             <LinkBreak className="w-3 h-3 shrink-0" />
-                            <span>Chưa có link Meet</span>
+                            <span>{t.teacherSchedule.noMeetLink}</span>
                         </div>
                     )}
                 </div>
                 <div className="mt-2 pt-2 border-t border-white/10 text-[10px] text-white/40 font-bold">
-                    Nhấp để xem chi tiết
+                    {t.teacherSchedule.clickDetail}
                 </div>
             </div>
         </div>
@@ -211,6 +211,7 @@ function EventDetailPanel({
     now: Date;
     isDark: boolean;
 }) {
+    const { t } = useSettings();
     const [meetLink, setMeetLink] = useState(event.meetLink);
     const [isSaving, setIsSaving] = useState(false);
     const [saveMessage, setSaveMessage] = useState<string | null>(null);
@@ -234,9 +235,9 @@ function EventDetailPanel({
         setSaveMessage(null);
         try {
             await onUpdateMeetLink(event, meetLink.trim());
-            setSaveMessage('Đã cập nhật link Google Meet.');
+            setSaveMessage(t.teacherSchedule.linkUpdated);
         } catch {
-            setSaveMessage('Không thể cập nhật link. Vui lòng thử lại.');
+            setSaveMessage(t.teacherSchedule.linkUpdateError);
         } finally {
             setIsSaving(false);
         }
@@ -247,7 +248,7 @@ function EventDetailPanel({
             <div className={`px-6 py-4 border-b-2 flex items-center justify-between ${isDark ? 'border-white/10' : 'border-[#1A1A1A]'}`} style={{ backgroundColor: style.bg }}>
                 <div className="flex items-center gap-2">
                     <span className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: style.dot }} />
-                    <h3 className="font-extrabold text-lg" style={{ color: style.text }}>Chi tiết buổi học</h3>
+                    <h3 className="font-extrabold text-lg" style={{ color: style.text }}>{t.teacherSchedule.detailTitle}</h3>
                 </div>
                 <button onClick={onClose} className={`w-7 h-7 rounded-xl flex items-center justify-center transition-colors ${isDark ? 'bg-white/10 hover:bg-white/20 text-gray-100' : 'bg-[#1A1A1A]/10 hover:bg-[#1A1A1A]/20'}`}>
                     <X className="w-3.5 h-3.5" />
@@ -261,16 +262,16 @@ function EventDetailPanel({
                             {event.title.substring(0, 2).toUpperCase()}
                         </div>
                         <div>
-                            <div className={`text-[10px] font-extrabold uppercase tracking-widest mb-0.5 ${isDark ? 'text-gray-400' : 'text-[#1A1A1A]/50'}`}>Môn học</div>
+                            <div className={`text-[10px] font-extrabold uppercase tracking-widest mb-0.5 ${isDark ? 'text-gray-400' : 'text-[#1A1A1A]/50'}`}>{t.teacherSchedule.subjectLabel}</div>
                             <div className={`font-extrabold ${isDark ? 'text-gray-100' : 'text-[#1A1A1A]'}`}>{event.title}</div>
                         </div>
                     </div>
                     <div className="grid grid-cols-2 gap-3 pt-1">
                         {[
-                            ['Lớp học', event.className],
-                            ['Thời gian', event.time],
-                            ['Chủ đề', event.topic || '—'],
-                            ['Ngày dạy', `${DAY_NAMES[event.dayOfWeek]}, ${event.date}`],
+                            [t.teacherSchedule.classLabel, event.className],
+                            [t.teacherSchedule.timeLabel, event.time],
+                            [t.teacherSchedule.topicLabel, event.topic || '—'],
+                            [t.teacherSchedule.teachingDay, `${DAY_NAMES[event.dayOfWeek]}, ${event.date}`],
                         ].map(([l, v]) => (
                             <div key={l}>
                                 <div className={`text-[10px] font-extrabold uppercase tracking-widest mb-0.5 ${isDark ? 'text-gray-400' : 'text-[#1A1A1A]/50'}`}>{l}</div>
@@ -283,31 +284,31 @@ function EventDetailPanel({
                 <div className="space-y-2">
                     <div className="flex items-center gap-2">
                         <Video className="w-4 h-4 text-[#FF6B4A]" weight="fill" />
-                        <span className={`font-extrabold text-sm ${isDark ? 'text-gray-100' : 'text-[#1A1A1A]'}`}>Link Google Meet</span>
+                        <span className={`font-extrabold text-sm ${isDark ? 'text-gray-100' : 'text-[#1A1A1A]'}`}>{t.teacherSchedule.meetLinkLabel}</span>
                     </div>
                     <Input
                         value={meetLink}
                         disabled={inactiveClass}
                         onChange={e => setMeetLink(e.target.value)}
-                        placeholder="Dán link Google Meet..."
+                        placeholder={t.teacherSchedule.meetLinkPlaceholder}
                         className={`rounded-2xl border-2 font-semibold focus:border-[#FF6B4A] transition-colors ${inactiveClass ? 'pointer-events-none opacity-50' : ''} ${isDark ? 'border-white/15 bg-[#20242b] text-gray-100' : 'border-[#1A1A1A]/20 bg-[#F7F7F2]'}`}
                     />
                     {inactiveClass && (
                         <div className="flex items-center gap-1.5 text-xs font-bold text-red-500">
                             <Lock className="w-3.5 h-3.5" weight="fill" />
-                            {INACTIVE_CLASS_MESSAGE}
+                            {t.teacherSchedule.inactiveMsg}
                         </div>
                     )}
                     {!meetLink && (
                         <div className="flex items-center gap-1.5 text-xs text-[#FF6B4A] font-bold">
                             <Warning className="w-3.5 h-3.5" weight="fill" />
-                            Chưa có link Meet cho buổi học này
+                            {t.teacherSchedule.noMeetLink}
                         </div>
                     )}
                     {meetLink && (
                         <a href={meetLink} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1.5 text-xs text-emerald-600 font-bold hover:underline">
                             <Video className="w-3.5 h-3.5" weight="fill" />
-                            Mở link Meet
+                            {t.teacherSchedule.openMeetBtn}
                         </a>
                     )}
                 </div>
@@ -319,7 +320,7 @@ function EventDetailPanel({
                     disabled={isSaving || inactiveClass}
                     className="w-full py-3 bg-[#FF6B4A] hover:bg-[#ff5535] disabled:opacity-60 disabled:cursor-not-allowed text-white font-extrabold rounded-2xl active:scale-[0.98] transition-all flex items-center justify-center gap-2"
                 >
-                    <Check className="w-4 h-4" weight="bold" /> {isSaving ? 'Đang cập nhật...' : 'Cập nhật link buổi học'}
+                    <Check className="w-4 h-4" weight="bold" /> {isSaving ? t.teacherSchedule.updating : t.teacherSchedule.updateBtn}
                 </button>
                 <button
                     onClick={() => {
@@ -332,11 +333,11 @@ function EventDetailPanel({
                     disabled={inactiveClass}
                     className={`w-full py-3 font-extrabold rounded-2xl active:scale-[0.98] transition-all flex items-center justify-center gap-2 border-2 ${isDark ? 'bg-white/5 hover:bg-white/10 text-gray-100 border-white/10' : 'bg-[#1A1A1A]/5 hover:bg-[#1A1A1A]/10 text-[#1A1A1A] border-[#1A1A1A]/10'}`}
                 >
-                    <Users className="w-4 h-4" weight="bold" /> Điểm danh học sinh
+                    <Users className="w-4 h-4" weight="bold" /> {t.teacherSchedule.attendanceBtn}
                 </button>
                 {saveMessage && <p className="text-xs font-bold text-[#1A1A1A]/60">{saveMessage}</p>}
                 <p className="text-xs font-bold text-gray-400">
-                    Giáo viên chỉ được cập nhật link Google Meet cho buổi học này.
+                    {t.teacherSchedule.updateNote}
                 </p>
             </div>
         </div>
@@ -347,7 +348,7 @@ function EventDetailPanel({
 /* MAIN COMPONENT                                        */
 /* ══════════════════════════════════════════════════════ */
 export function TeacherSchedule() {
-    const { theme } = useSettings();
+    const { theme, t } = useSettings();
     const isDark = theme === 'dark';
 
     const today = new Date();
@@ -397,15 +398,20 @@ export function TeacherSchedule() {
             setStats(statsData);
         } catch (err: any) {
             console.error('Failed to fetch schedule:', err);
-            setError(err?.message || 'Không thể tải lịch dạy');
+            setError(err?.message || t.teacherSchedule.loadError);
         } finally {
             setIsLoading(false);
         }
     }, [currentDate.toISOString(), viewMode, showInactive]);
 
     const handleInactiveBlockedAction = useCallback(() => {
-        window.alert(INACTIVE_CLASS_MESSAGE);
+        window.alert(t.teacherSchedule.inactiveMsg);
     }, []);
+
+    const statusLabel = (status: EventStatus) =>
+        status === 'past' ? t.teacherSchedule.pastStatus
+        : status === 'upcoming' ? t.teacherSchedule.upcomingStatus
+        : t.teacherSchedule.ongoingStatus;
 
     const handleEventSelect = useCallback((ev: ScheduleEvent, allowToggle = false) => {
         if (isInactiveStatus(ev.classStatus)) {
@@ -549,15 +555,15 @@ export function TeacherSchedule() {
             {/* ═══ Header ═══ */}
             <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4">
                 <div>
-                    <p className="text-xs font-extrabold text-gray-400 uppercase tracking-widest mb-1">Thời khóa biểu dạy học</p>
-                    <h1 className={`text-3xl font-extrabold ${isDark ? 'text-gray-100' : 'text-[#1A1A1A]'}`}>Lịch dạy của tôi</h1>
+                    <p className="text-xs font-extrabold text-gray-400 uppercase tracking-widest mb-1">{t.teacherSchedule.subtitle}</p>
+                    <h1 className={`text-3xl font-extrabold ${isDark ? 'text-gray-100' : 'text-[#1A1A1A]'}`}>{t.teacherSchedule.pageTitle}</h1>
                 </div>
                 <div className="flex items-center gap-3 flex-wrap">
                     <div className={`flex rounded-2xl p-1 border-2 ${isDark ? 'bg-white/5 border-white/10' : 'bg-[#1A1A1A]/5 border-[#1A1A1A]/10'}`}>
                         {([
-                            { mode: 'day' as ViewMode, icon: Rows, label: 'Ngày' },
-                            { mode: 'week' as ViewMode, icon: SquaresFour, label: 'Tuần' },
-                            { mode: 'month' as ViewMode, icon: CalendarDots, label: 'Tháng' },
+                            { mode: 'day' as ViewMode, icon: Rows, label: t.teacherSchedule.dayView },
+                            { mode: 'week' as ViewMode, icon: SquaresFour, label: t.teacherSchedule.weekView },
+                            { mode: 'month' as ViewMode, icon: CalendarDots, label: t.teacherSchedule.monthView },
                         ]).map(v => (
                             <button
                                 key={v.mode}
@@ -584,11 +590,11 @@ export function TeacherSchedule() {
                     </div>
 
                     <button onClick={goToday} className="px-4 h-10 bg-[#FF6B4A] hover:bg-[#ff5535] text-white font-extrabold text-sm rounded-2xl active:scale-95 transition-all">
-                        Hôm nay
+                        {t.teacherSchedule.todayBtn}
                     </button>
 
                     <label className={`ml-auto inline-flex items-center gap-3 rounded-2xl px-3 py-2 text-sm font-extrabold ${isDark ? 'bg-[#20242b] text-gray-200' : 'bg-white border-2 border-[#1A1A1A]/15 text-[#1A1A1A]'}`}>
-                        <span>Hiển thị lớp đã khóa</span>
+                        <span>{t.teacherSchedule.showInactive}</span>
                         <button
                             type="button"
                             role="switch"
@@ -605,9 +611,9 @@ export function TeacherSchedule() {
             {/* ═══ Quick Stats from API ═══ */}
             <div className="grid grid-cols-3 gap-4">
                 {[
-                    { label: 'Buổi trong tuần', value: stats.totalSessions, bg: '#FCE38A', icon: CalendarBlank },
-                    { label: 'Có link Meet', value: stats.hasLinkSessions, bg: '#95E1D3', icon: Video },
-                    { label: 'Chưa có link', value: stats.missingLinkSessions, bg: '#FFB5B5', icon: Warning },
+                    { label: t.teacherSchedule.sessionsPerWeek, value: stats.totalSessions, bg: '#FCE38A', icon: CalendarBlank },
+                    { label: t.teacherSchedule.hasMeetLink, value: stats.hasLinkSessions, bg: '#95E1D3', icon: Video },
+                    { label: t.teacherSchedule.noMeetLink, value: stats.missingLinkSessions, bg: '#FFB5B5', icon: Warning },
                 ].map((s, i) => (
                     <div key={i} className={`rounded-2xl p-4 border-2 flex items-center gap-4 hover:shadow-md hover:-translate-y-0.5 transition-all duration-200 ${isDark ? 'border-white/10' : 'border-[#1A1A1A]'}`} style={{ backgroundColor: isDark ? (i === 0 ? '#2f2a1a' : i === 1 ? '#173434' : '#3a2025') : s.bg }}>
                         <div className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 ${isDark ? 'bg-black/40' : 'bg-[#1A1A1A]'}`}>
@@ -714,11 +720,11 @@ export function TeacherSchedule() {
                                             <div className="mt-auto flex items-center justify-between gap-1 pt-1">
                                                 <span className="inline-flex items-center gap-1 text-[8px] font-extrabold px-1.5 py-0.5 rounded-md" style={{ backgroundColor: `${evStyle.dot}20`, color: evStyle.text }}>
                                                     <span className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: evStyle.dot }} />
-                                                    {evStyle.label}
+                                                    {statusLabel(evStatus)}
                                                 </span>
                                                 {!ev.meetLink ? (
                                                     <span className={`inline-flex items-center gap-0.5 text-[8px] font-extrabold px-1.5 py-0.5 rounded-md ${isDark ? 'bg-[#3a2025] text-[#fca5a5]' : 'bg-[#FFF7ED] text-[#C2410C]'}`}>
-                                                        <Warning className="w-2.5 h-2.5" weight="fill" /> Chưa link
+                                                        <Warning className="w-2.5 h-2.5" weight="fill" /> {t.teacherSchedule.noMeetLink}
                                                     </span>
                                                 ) : (
                                                     <span className={`inline-flex items-center gap-0.5 text-[8px] font-extrabold px-1.5 py-0.5 rounded-md ${isDark ? 'bg-[#13352c] text-[#6ee7b7]' : 'bg-[#ECFDF5] text-[#047857]'}`}>
@@ -811,15 +817,15 @@ export function TeacherSchedule() {
                                                         <div className="mt-auto flex items-center justify-between gap-2 pt-1">
                                                             <span className="inline-flex items-center gap-1 text-[10px] font-extrabold px-2 py-0.5 rounded-lg" style={{ backgroundColor: `${evStyle.dot}20`, color: evStyle.text }}>
                                                                 <span className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: evStyle.dot }} />
-                                                                {evStyle.label}
+                                                                {statusLabel(evStatus)}
                                                             </span>
                                                             {!ev.meetLink ? (
                                                                 <span className={`inline-flex items-center gap-1 text-[10px] font-extrabold px-2 py-0.5 rounded-lg ${isDark ? 'bg-[#3a2025] text-[#fca5a5]' : 'bg-[#FFF7ED] text-[#C2410C]'}`}>
-                                                                    <Warning className="w-3 h-3" weight="fill" /> Chưa có link
+                                                                    <Warning className="w-3 h-3" weight="fill" /> {t.teacherSchedule.noMeetLink}
                                                                 </span>
                                                             ) : (
                                                                 <span className={`inline-flex items-center gap-1 text-[10px] font-extrabold px-2 py-0.5 rounded-lg ${isDark ? 'bg-[#13352c] text-[#6ee7b7]' : 'bg-[#ECFDF5] text-[#047857]'}`}>
-                                                                    <Video className="w-3 h-3" weight="fill" /> Có link
+                                                                    <Video className="w-3 h-3" weight="fill" /> {t.teacherSchedule.hasMeetLink}
                                                                 </span>
                                                             )}
                                                         </div>
@@ -835,7 +841,7 @@ export function TeacherSchedule() {
                                 <div className="absolute inset-0 flex items-center justify-center">
                                     <div className="text-center space-y-3">
                                         <CalendarBlank className="w-16 h-16 text-gray-300 mx-auto" />
-                                        <p className="font-extrabold text-gray-400">Không có buổi học nào</p>
+                                        <p className="font-extrabold text-gray-400">{t.teacherSchedule.noClass}</p>
                                     </div>
                                 </div>
                             )}
@@ -915,7 +921,7 @@ export function TeacherSchedule() {
                                                 })}
                                                 {dayEvs.length > 2 && (
                                                     <div className="text-[9px] font-bold text-gray-400 pl-1">
-                                                        +{dayEvs.length - 2} thêm
+                                                        +{dayEvs.length - 2} {t.teacherSchedule.moreEvents}
                                                     </div>
                                                 )}
                                             </div>
@@ -955,16 +961,19 @@ export function TeacherSchedule() {
 
             {/* ═══ Legend ═══ */}
             <div className="flex flex-wrap gap-4 items-center">
-                <span className="text-xs font-extrabold text-gray-400 uppercase tracking-widest">Chú thích trạng thái:</span>
-                {Object.entries(getStatusStyles(isDark)).map(([, s]) => (
-                    <div key={s.label} className="flex items-center gap-2 px-2.5 py-1 rounded-lg border" style={{ backgroundColor: s.bg, borderColor: s.border }}>
-                        <div className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: s.dot }} />
-                        <span className="text-xs font-bold" style={{ color: s.text }}>{s.label}</span>
-                    </div>
-                ))}
+                <span className="text-xs font-extrabold text-gray-400 uppercase tracking-widest">{t.teacherSchedule.legendTitle}</span>
+                {(['past', 'upcoming', 'ongoing'] as EventStatus[]).map(status => {
+                    const s = getStatusStyles(isDark)[status];
+                    return (
+                        <div key={status} className="flex items-center gap-2 px-2.5 py-1 rounded-lg border" style={{ backgroundColor: s.bg, borderColor: s.border }}>
+                            <div className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: s.dot }} />
+                            <span className="text-xs font-bold" style={{ color: s.text }}>{statusLabel(status)}</span>
+                        </div>
+                    );
+                })}
                 <div className="flex items-center gap-2 px-2.5 py-1 rounded-lg border border-dashed border-[#d1d5db] bg-gray-50 opacity-50 grayscale">
                     <Lock className="w-3.5 h-3.5 text-gray-500" weight="fill" />
-                    <span className="text-xs font-bold text-gray-600">Lớp ngưng hoạt động</span>
+                    <span className="text-xs font-bold text-gray-600">{t.teacherSchedule.inactiveClass}</span>
                 </div>
             </div>
 

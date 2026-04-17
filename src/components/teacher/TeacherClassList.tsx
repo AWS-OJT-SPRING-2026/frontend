@@ -140,18 +140,19 @@ function WeeklyGradeTooltip({
   payload?: Array<{ value: number; name: string; payload: { tongBaiCham: number } }>;
   label?: string;
 }) {
+  const { t } = useSettings();
   if (!active || !payload || payload.length === 0) return null;
 
-  const khaGioi = Number(payload.find((p) => p.name === 'Khá/Giỏi (>= 6.5)')?.value ?? 0);
-  const yeuKem = Number(payload.find((p) => p.name === 'TB/Yếu (< 6.5)')?.value ?? 0);
+  const khaGioi = Number(payload.find((p) => p.name === t.teacherClassList.goodGrade)?.value ?? 0);
+  const yeuKem = Number(payload.find((p) => p.name === t.teacherClassList.poorGrade)?.value ?? 0);
   const tong = Number(payload[0]?.payload?.tongBaiCham ?? khaGioi + yeuKem);
 
   return (
     <div className="rounded-xl border-2 border-[#1A1A1A]/15 bg-white px-3 py-2 text-xs font-bold shadow-md">
       <p className="mb-1 font-extrabold text-[#1A1A1A]">{label}</p>
-      <p className="text-[#FF7F50]">Khá/Giỏi: {khaGioi}</p>
-      <p className="text-[#D1A300]">TB/Yếu: {yeuKem}</p>
-      <p className="mt-1 text-[#1A1A1A]/70">Tổng bài đã chấm: {tong}</p>
+      <p className="text-[#FF7F50]">{t.teacherClassList.tooltipGoodGrade} {khaGioi}</p>
+      <p className="text-[#D1A300]">{t.teacherClassList.tooltipPoorGrade} {yeuKem}</p>
+      <p className="mt-1 text-[#1A1A1A]/70">{t.teacherClassList.tooltipTotal} {tong}</p>
     </div>
   );
 }
@@ -165,7 +166,7 @@ function StudentDetailModal({
   onClose: () => void;
   onPreviewAvatar: (url: string) => void;
 }) {
-  const { theme } = useSettings();
+  const { theme, t } = useSettings();
   const isDark = theme === 'dark';
 
   if (typeof document === 'undefined') return null;
@@ -191,7 +192,7 @@ function StudentDetailModal({
           </button>
           <div className="flex-1">
             <h3 className={`font-extrabold text-xl ${isDark ? 'text-gray-100' : 'text-[#1A1A1A]'}`}>{student.fullName}</h3>
-            <p className={`text-sm font-mono ${isDark ? 'text-gray-400' : 'text-[#1A1A1A]/60'}`}>MSSV: {formatStudentId(student.studentId)}</p>
+            <p className={`text-sm font-mono ${isDark ? 'text-gray-400' : 'text-[#1A1A1A]/60'}`}>{t.teacherClassList.studentIdLabel} {formatStudentId(student.studentId)}</p>
           </div>
           <button onClick={onClose} className={`w-8 h-8 rounded-xl flex items-center justify-center transition-colors ${isDark ? 'bg-white/10 hover:bg-white/20 text-gray-100' : 'bg-[#1A1A1A]/10 hover:bg-[#1A1A1A]/20'}`}>
             <X className="w-4 h-4" />
@@ -201,10 +202,10 @@ function StudentDetailModal({
         <div className="p-6 space-y-4">
           <div className="grid grid-cols-2 gap-4">
             {[
-              { icon: UserCircle, label: 'Giới tính', value: formatGenderVi(student.gender) },
-              { icon: GraduationCap, label: 'Ngày sinh', value: formatDateVi(student.dob) },
-              { icon: Envelope, label: 'Email', value: student.email || '-' },
-              { icon: Phone, label: 'Điện thoại', value: student.phone || '-' },
+              { icon: UserCircle, label: t.teacherClassList.genderLabel, value: formatGenderVi(student.gender) },
+              { icon: GraduationCap, label: t.teacherClassList.dobLabel, value: formatDateVi(student.dob) },
+              { icon: Envelope, label: t.teacherClassList.emailLabel, value: student.email || '-' },
+              { icon: Phone, label: t.teacherClassList.phoneLabel, value: student.phone || '-' },
             ].map((item) => (
               <div key={item.label} className="space-y-1">
                 <div className={`flex items-center gap-1.5 text-[10px] font-extrabold uppercase tracking-widest ${isDark ? 'text-gray-500' : 'text-[#1A1A1A]/50'}`}>
@@ -217,18 +218,18 @@ function StudentDetailModal({
 
           <div className="space-y-1">
             <div className={`flex items-center gap-1.5 text-[10px] font-extrabold uppercase tracking-widest ${isDark ? 'text-gray-500' : 'text-[#1A1A1A]/50'}`}>
-              <House className="w-3 h-3" /> Địa chỉ
+              <House className="w-3 h-3" /> {t.teacherClassList.addressLabel}
             </div>
             <p className={`text-sm font-bold ${isDark ? 'text-gray-100' : 'text-[#1A1A1A]'}`}>{student.address || '-'}</p>
           </div>
 
           <div className="grid grid-cols-2 gap-3 pt-2">
             <div className={`rounded-2xl p-4 border-2 ${isDark ? 'border-white/10 bg-white/5' : 'border-[#1A1A1A]/10'}`} style={{ backgroundColor: isDark ? undefined : getCompletionColor(student.completionRate) }}>
-              <div className={`text-[10px] font-extrabold uppercase tracking-widest mb-1 ${isDark ? 'text-gray-400' : 'text-[#1A1A1A]/50'}`}>Hoàn thành</div>
+              <div className={`text-[10px] font-extrabold uppercase tracking-widest mb-1 ${isDark ? 'text-gray-400' : 'text-[#1A1A1A]/50'}`}>{t.teacherClassList.completionLabel}</div>
               <div className={`text-2xl font-extrabold ${isDark ? 'text-gray-100' : 'text-[#1A1A1A]'}`}>{student.completionRate.toFixed(1)}%</div>
             </div>
             <div className={`rounded-2xl p-4 border-2 ${isDark ? 'border-white/10 bg-white/5' : 'border-[#1A1A1A]/10'}`} style={{ backgroundColor: isDark ? undefined : getGpaColor(student.gpa) }}>
-              <div className={`text-[10px] font-extrabold uppercase tracking-widest mb-1 ${isDark ? 'text-gray-400' : 'text-[#1A1A1A]/50'}`}>Điểm TB</div>
+              <div className={`text-[10px] font-extrabold uppercase tracking-widest mb-1 ${isDark ? 'text-gray-400' : 'text-[#1A1A1A]/50'}`}>{t.teacherClassList.gpaLabel}</div>
               <div className={`text-2xl font-extrabold ${isDark ? 'text-gray-100' : 'text-[#1A1A1A]'}`}>{student.gpa.toFixed(2)}</div>
             </div>
           </div>
@@ -236,10 +237,10 @@ function StudentDetailModal({
 
         <div className="px-6 pb-6 flex gap-3">
           <button className={`flex-1 py-3 font-extrabold rounded-2xl border-2 transition-colors flex items-center justify-center gap-2 ${isDark ? 'bg-white/5 hover:bg-white/10 text-gray-100 border-white/10' : 'bg-[#1A1A1A]/5 hover:bg-[#1A1A1A]/10 text-[#1A1A1A] border-[#1A1A1A]/10'}`}>
-            <Envelope className="w-4 h-4" /> Liên hệ
+            <Envelope className="w-4 h-4" /> {t.teacherClassList.contactBtn}
           </button>
           <button onClick={onClose} className="flex-1 py-3 bg-[#FF6B4A] hover:bg-[#ff5535] text-white font-extrabold rounded-2xl transition-colors">
-            Đóng
+            {t.teacherClassList.closeBtn}
           </button>
         </div>
       </div>
@@ -271,7 +272,7 @@ function AvatarPreviewOverlay({
 }
 
 export function TeacherClassList() {
-  const { theme } = useSettings();
+  const { theme, t } = useSettings();
   const isDark = theme === 'dark';
   const navigate = useNavigate();
   const { classId } = useParams();
@@ -529,7 +530,7 @@ export function TeacherClassList() {
   };
 
   if (!token) {
-    return <div className="p-8 font-bold">Vui lòng đăng nhập lại để xem dữ liệu.</div>;
+    return <div className="p-8 font-bold">{t.teacherClassList.notAuthMsg}</div>;
   }
 
   return (
@@ -540,7 +541,7 @@ export function TeacherClassList() {
           className={`flex items-center gap-1.5 transition-colors ${view === 'overview' ? 'text-[#FF6B4A]' : 'text-gray-400 hover:text-[#1A1A1A]'}`}
         >
           <Student className="w-4 h-4" weight="fill" />
-          <span className="font-extrabold">Học sinh của tôi</span>
+          <span className="font-extrabold">{t.teacherClassList.pageTitle}</span>
         </button>
 
         {view === 'roster' && selectedClass && (
@@ -548,7 +549,7 @@ export function TeacherClassList() {
             <CaretRight className="w-3.5 h-3.5 text-gray-300" />
             <span className="text-[#FF6B4A] font-extrabold flex items-center gap-1.5">
               <Student className="w-4 h-4" weight="fill" />
-              Lớp {selectedClass.className}
+              {t.teacherClassList.classPrefix} {selectedClass.className}
             </span>
           </>
         )}
@@ -559,15 +560,15 @@ export function TeacherClassList() {
           <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
             <div>
               <p className="text-xs font-extrabold text-gray-400 uppercase tracking-widest mb-1">
-                Quản lý {classes.length} lớp
+                {t.teacherClassList.manageClasses.replace('{n}', String(classes.length))}
               </p>
-              <h1 className={`text-3xl font-extrabold ${isDark ? 'text-gray-100' : 'text-[#1A1A1A]'}`}>Học sinh của tôi</h1>
+              <h1 className={`text-3xl font-extrabold ${isDark ? 'text-gray-100' : 'text-[#1A1A1A]'}`}>{t.teacherClassList.pageTitle}</h1>
             </div>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-5">
             {isLoadingClasses
-              ? <div className="col-span-full text-sm font-bold text-gray-400">Đang tải danh sách lớp...</div>
+              ? <div className="col-span-full text-sm font-bold text-gray-400">{t.teacherClassList.loadingClasses}</div>
               : classes.map((cls, idx) => (
                 <button
                   key={cls.classID}
@@ -579,7 +580,7 @@ export function TeacherClassList() {
                   <div className="relative">
                     <div className="flex items-center justify-between mb-4">
                       <div>
-                        <h3 className={`text-xl font-extrabold ${isDark ? 'text-gray-100' : 'text-[#1A1A1A]'}`}>Lớp {cls.className}</h3>
+                        <h3 className={`text-xl font-extrabold ${isDark ? 'text-gray-100' : 'text-[#1A1A1A]'}`}>{t.teacherClassList.classPrefix} {cls.className}</h3>
                         <p className={`text-xs font-bold mt-0.5 ${isDark ? 'text-gray-400' : 'text-[#1A1A1A]/60'}`}>{cls.subjectName}</p>
                       </div>
                       <div className={`w-10 h-10 rounded-2xl flex items-center justify-center group-hover:rotate-6 transition-transform ${isDark ? 'bg-black/40' : 'bg-[#1A1A1A]'}`}>
@@ -589,7 +590,7 @@ export function TeacherClassList() {
 
                     <div className="mb-4">
                       <div className={`flex justify-between text-xs font-extrabold mb-1.5 ${isDark ? 'text-gray-400' : 'text-[#1A1A1A]/60'}`}>
-                        <span>Sĩ số: {cls.currentStudents}/{cls.maxStudents}</span>
+                        <span>{t.teacherClassList.studentCountLabel} {cls.currentStudents}/{cls.maxStudents}</span>
                         <span>{Math.round((cls.currentStudents / Math.max(cls.maxStudents, 1)) * 100)}%</span>
                       </div>
                       <div className={`h-2 w-full rounded-full overflow-hidden ${isDark ? 'bg-white/10' : 'bg-[#1A1A1A]/10'}`}>
@@ -602,21 +603,21 @@ export function TeacherClassList() {
 
                     <div className="grid grid-cols-3 gap-3">
                       <div className={`rounded-xl p-2.5 text-center border ${isDark ? 'bg-white/10 border-white/10' : 'bg-white/50 border-[#1A1A1A]/10'}`}>
-                        <div className={`text-[9px] font-extrabold uppercase tracking-widest ${isDark ? 'text-gray-400' : 'text-[#1A1A1A]/50'}`}>Điểm TB</div>
+                        <div className={`text-[9px] font-extrabold uppercase tracking-widest ${isDark ? 'text-gray-400' : 'text-[#1A1A1A]/50'}`}>{t.teacherClassList.avgGpa}</div>
                         <div className="text-lg font-extrabold text-emerald-600">{(cls.averageGpa ?? 0).toFixed(1)}</div>
                       </div>
                       <div className={`rounded-xl p-2.5 text-center border ${isDark ? 'bg-white/10 border-white/10' : 'bg-white/50 border-[#1A1A1A]/10'}`}>
-                        <div className={`text-[9px] font-extrabold uppercase tracking-widest ${isDark ? 'text-gray-400' : 'text-[#1A1A1A]/50'}`}>Online</div>
+                        <div className={`text-[9px] font-extrabold uppercase tracking-widest ${isDark ? 'text-gray-400' : 'text-[#1A1A1A]/50'}`}>{t.teacherClassList.onlineCount}</div>
                         <div className="text-lg font-extrabold text-emerald-600">{cls.onlineCount}</div>
                       </div>
                       <div className={`rounded-xl p-2.5 text-center border ${isDark ? 'bg-white/10 border-white/10' : 'bg-white/50 border-[#1A1A1A]/10'}`}>
-                        <div className={`text-[9px] font-extrabold uppercase tracking-widest ${isDark ? 'text-gray-400' : 'text-[#1A1A1A]/50'}`}>Chú ý</div>
+                        <div className={`text-[9px] font-extrabold uppercase tracking-widest ${isDark ? 'text-gray-400' : 'text-[#1A1A1A]/50'}`}>{t.teacherClassList.attentionCount}</div>
                         <div className="text-lg font-extrabold text-[#FF6B4A]">{cls.needAttention}</div>
                       </div>
                     </div>
 
                     <div className={`flex items-center gap-1.5 mt-4 text-sm font-extrabold transition-all duration-200 ${isDark ? 'text-gray-300' : 'text-[#1A1A1A]/70'} opacity-70`}>
-                      Xem danh sách <CaretRight className="w-4 h-4" weight="bold" />
+                      {t.teacherClassList.viewClassBtn} <CaretRight className="w-4 h-4" weight="bold" />
                     </div>
                   </div>
                 </button>
@@ -637,9 +638,9 @@ export function TeacherClassList() {
               </button>
               <div>
                 <p className="text-xs font-extrabold text-gray-400 uppercase tracking-widest mb-1">
-                  Sĩ số: {selectedClass.currentStudents} • GVCN: {selectedClass.teacherName || 'Chưa phân công'} • {selectedClass.subjectName}
+                  {t.teacherClassList.studentCountLabel} {selectedClass.currentStudents} • {t.teacherClassList.teacherLabel} {selectedClass.teacherName || t.teacherClassList.notAssigned} • {selectedClass.subjectName}
                 </p>
-                <h1 className={`text-3xl font-extrabold ${isDark ? 'text-gray-100' : 'text-[#1A1A1A]'}`}>Danh sách lớp {selectedClass.className}</h1>
+                <h1 className={`text-3xl font-extrabold ${isDark ? 'text-gray-100' : 'text-[#1A1A1A]'}`}>{t.teacherClassList.classPrefix} {selectedClass.className}</h1>
               </div>
             </div>
             <div className="flex gap-3">
@@ -647,7 +648,7 @@ export function TeacherClassList() {
                 onClick={() => setShowExportModal(true)}
                 className={`flex items-center gap-2 border-2 px-4 h-10 rounded-2xl font-extrabold text-sm active:scale-95 transition-all ${isDark ? 'border-white/15 bg-[#20242b] text-gray-100 hover:bg-[#272c35]' : 'border-[#1A1A1A]/20 bg-white text-[#1A1A1A] hover:bg-gray-50'}`}
               >
-                <Download className="w-4 h-4" weight="fill" /> Xuất báo cáo
+                <Download className="w-4 h-4" weight="fill" /> {t.teacherClassList.exportBtn}
               </button>
             </div>
           </div>
@@ -656,10 +657,10 @@ export function TeacherClassList() {
             <div className={`flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4 p-4 border-b-2 ${isDark ? 'border-white/10' : 'border-[#1A1A1A]/20'}`}>
               <div className="flex gap-2 overflow-x-auto pb-1">
                 {([
-                  { key: 'all' as TabFilter, label: 'Tất cả', count: tabCounts.all },
-                  { key: 'online' as TabFilter, label: 'Đang Online', count: tabCounts.online },
-                  { key: 'offline' as TabFilter, label: 'Offline', count: tabCounts.offline },
-                  { key: 'attention' as TabFilter, label: 'Cần chú ý', count: tabCounts.attention },
+                  { key: 'all' as TabFilter, label: t.teacherClassList.allStudentsTab, count: tabCounts.all },
+                  { key: 'online' as TabFilter, label: t.teacherClassList.onlineTab, count: tabCounts.online },
+                  { key: 'offline' as TabFilter, label: t.teacherClassList.offlineTab, count: tabCounts.offline },
+                  { key: 'attention' as TabFilter, label: t.teacherClassList.attentionTab, count: tabCounts.attention },
                 ]).map(tab => (
                   <button
                     key={tab.key}
@@ -682,7 +683,7 @@ export function TeacherClassList() {
                   <MagnifyingGlass className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
                   <input
                     type="text"
-                    placeholder="Tìm tên hoặc MSSV..."
+                    placeholder={t.teacherClassList.searchPlaceholder}
                     value={searchQuery}
                     onChange={(e) => { setSearchQuery(e.target.value); setCurrentPage(1); }}
                     className={`pl-9 pr-4 h-9 border-2 rounded-2xl text-sm font-bold placeholder:text-gray-400 focus:outline-none focus:border-[#FF6B4A] transition-colors w-52 ${isDark ? 'border-white/15 bg-[#20242b] text-gray-100' : 'border-[#1A1A1A]/20 bg-[#F7F7F2] text-[#1A1A1A]'}`}
@@ -695,11 +696,11 @@ export function TeacherClassList() {
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="az">Tên (A-Z)</SelectItem>
-                      <SelectItem value="za">Tên (Z-A)</SelectItem>
-                      <SelectItem value="score_desc">Điểm giảm dần</SelectItem>
-                      <SelectItem value="score_asc">Điểm tăng dần</SelectItem>
-                      <SelectItem value="completion_desc">Hoàn thành giảm</SelectItem>
+                      <SelectItem value="az">{t.teacherClassList.sortAz}</SelectItem>
+                      <SelectItem value="za">{t.teacherClassList.sortZa}</SelectItem>
+                      <SelectItem value="score_desc">{t.teacherClassList.sortScoreDesc}</SelectItem>
+                      <SelectItem value="score_asc">{t.teacherClassList.sortScoreAsc}</SelectItem>
+                      <SelectItem value="completion_desc">{t.teacherClassList.sortCompletionDesc}</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
@@ -710,7 +711,7 @@ export function TeacherClassList() {
               <table className="w-full text-left text-sm">
                 <thead className={`border-b-2 ${isDark ? 'bg-white/5 border-white/10' : 'bg-[#1A1A1A]/5 border-[#1A1A1A]/20'}`}>
                   <tr>
-                    {['Họ tên', 'Tỷ lệ hoàn thành', 'Điểm TB', 'Trạng thái', 'Chi tiết'].map(h => (
+                    {[t.teacherClassList.colName, t.teacherClassList.colCompletion, t.teacherClassList.colGpa, t.teacherClassList.colStatus, t.teacherClassList.colDetails].map(h => (
                       <th key={h} className={`px-6 py-4 text-xs font-extrabold uppercase tracking-wider ${isDark ? 'text-gray-400' : 'text-[#1A1A1A]/50'}`}>{h}</th>
                     ))}
                   </tr>
@@ -720,7 +721,7 @@ export function TeacherClassList() {
                     ? (
                       <tr>
                         <td colSpan={5} className="px-6 py-16 text-center">
-                          <p className="font-extrabold text-gray-400">Đang tải dữ liệu học sinh...</p>
+                          <p className="font-extrabold text-gray-400">{t.teacherClassList.loadingStudents}</p>
                         </td>
                       </tr>
                     )
@@ -730,9 +731,9 @@ export function TeacherClassList() {
                           <td colSpan={5} className="px-6 py-16 text-center">
                             <div className="flex flex-col items-center gap-3">
                               <Users className="w-12 h-12 text-gray-300" />
-                              <p className="font-extrabold text-gray-400">Không tìm thấy học sinh phù hợp</p>
+                              <p className="font-extrabold text-gray-400">{t.teacherClassList.noStudents}</p>
                               <button onClick={() => { setSearchQuery(''); setActiveTab('all'); }} className="text-sm font-extrabold text-[#FF6B4A] hover:text-[#ff5535]">
-                                Xóa bộ lọc
+                                {t.teacherClassList.clearFilters}
                               </button>
                             </div>
                           </td>
@@ -800,9 +801,9 @@ export function TeacherClassList() {
                                 <span className={`w-2.5 h-2.5 rounded-full ${hs.status === 'ONLINE' ? 'bg-emerald-500 animate-pulse' : hs.status === 'ATTENTION' || hs.missingCount >= ATTENTION_MISSING_THRESHOLD ? 'bg-[#FF6B4A]' : 'bg-gray-300'}`} />
                                 <span className={`text-sm font-bold ${isDark ? 'text-gray-300' : 'text-[#1A1A1A]/70'}`}>
                                   {hs.status === 'ONLINE'
-                                    ? 'Online'
+                                    ? t.teacherClassList.statusOnline
                                     : hs.status === 'ATTENTION' || hs.missingCount >= ATTENTION_MISSING_THRESHOLD
-                                      ? `Cần chú ý${hs.missingCount > 0 ? ` (${hs.missingCount} bỏ lỡ)` : ''}`
+                                      ? `${t.teacherClassList.statusAttention}${hs.missingCount > 0 ? ` (${hs.missingCount} ${t.teacherClassList.missedSuffix})` : ''}`
                                       : formatTimeAgo(hs.lastActiveTime)}
                                 </span>
                               </div>
@@ -812,7 +813,7 @@ export function TeacherClassList() {
                                 <button
                                   onClick={() => openStudentModal(hs)}
                                   className="w-8 h-8 rounded-xl bg-[#FF6B4A]/10 hover:bg-[#FF6B4A]/20 flex items-center justify-center transition-colors group/btn"
-                                  title="Xem chi tiết"
+                                  title={t.teacherClassList.viewStudentTitle}
                                 >
                                   <Eye className="w-4 h-4 text-[#FF6B4A] group-hover/btn:scale-110 transition-transform" />
                                 </button>
@@ -827,7 +828,10 @@ export function TeacherClassList() {
 
             <div className={`p-4 border-t-2 flex items-center justify-between ${isDark ? 'border-white/10' : 'border-[#1A1A1A]/10'}`}>
               <span className="text-sm font-bold text-gray-400">
-                Hiển thị {filteredStudents.length === 0 ? 0 : (currentPage - 1) * 5 + 1}-{Math.min(currentPage * 5, totalStudents)} / {totalStudents} học sinh
+                {t.teacherClassList.showStudents
+                  .replace('{from}', String(filteredStudents.length === 0 ? 0 : (currentPage - 1) * 5 + 1))
+                  .replace('{to}', String(Math.min(currentPage * 5, totalStudents)))
+                  .replace('{total}', String(totalStudents))}
               </span>
               <div className="flex gap-2">
                 <button
@@ -864,10 +868,10 @@ export function TeacherClassList() {
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
             <div className={`lg:col-span-2 rounded-3xl border-2 overflow-hidden ${isDark ? 'bg-[#171b20] border-white/10' : 'bg-white border-[#1A1A1A]'}`}>
               <div className={`px-6 py-4 border-b-2 flex justify-between items-center ${isDark ? 'border-white/10' : 'border-[#1A1A1A]'}`}>
-                <h3 className={`font-extrabold text-lg ${isDark ? 'text-gray-100' : 'text-[#1A1A1A]'}`}>Thống kê điểm theo tuần</h3>
+                <h3 className={`font-extrabold text-lg ${isDark ? 'text-gray-100' : 'text-[#1A1A1A]'}`}>{t.teacherClassList.weeklyStatsTitle}</h3>
                 <div className="flex items-center gap-4 text-xs font-extrabold">
-                  <span className="inline-flex items-center gap-2"><i className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: '#FF7F50' }} /> Khá/Giỏi (&gt;= 6.5)</span>
-                  <span className="inline-flex items-center gap-2"><i className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: '#FFD700' }} /> TB/Yếu (&lt; 6.5)</span>
+                  <span className="inline-flex items-center gap-2"><i className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: '#FF7F50' }} /> {t.teacherClassList.goodGrade}</span>
+                  <span className="inline-flex items-center gap-2"><i className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: '#FFD700' }} /> {t.teacherClassList.poorGrade}</span>
                 </div>
               </div>
               <div className="px-6 pt-5 pb-2 h-56">
@@ -893,14 +897,14 @@ export function TeacherClassList() {
                     />
                     <Tooltip content={<WeeklyGradeTooltip />} cursor={{ fill: isDark ? '#ffffff10' : '#00000008' }} />
                     <Bar
-                      name="Khá/Giỏi (>= 6.5)"
+                      name={t.teacherClassList.goodGrade}
                       dataKey="khaGioi"
                       stackId="score"
                       fill="#FF7F50"
                       radius={[8, 8, 0, 0]}
                     />
                     <Bar
-                      name="TB/Yếu (< 6.5)"
+                      name={t.teacherClassList.poorGrade}
                       dataKey="yeuKem"
                       stackId="score"
                       fill="#FFD700"
@@ -913,11 +917,11 @@ export function TeacherClassList() {
 
             <div className={`rounded-3xl border-2 overflow-hidden ${isDark ? 'bg-[#171b20] border-white/10' : 'bg-white border-[#1A1A1A]'}`}>
               <div className={`px-6 py-4 border-b-2 ${isDark ? 'border-white/10' : 'border-[#1A1A1A]'}`}>
-                <h3 className={`font-extrabold text-lg ${isDark ? 'text-gray-100' : 'text-[#1A1A1A]'}`}>Thông báo mới nhất</h3>
+                <h3 className={`font-extrabold text-lg ${isDark ? 'text-gray-100' : 'text-[#1A1A1A]'}`}>{t.teacherClassList.notifTitle}</h3>
               </div>
               <div className="p-5 space-y-3 flex-1">
                 {previewNotifications.length === 0 ? (
-                  <div className="p-3 text-sm font-bold text-gray-400">Chưa có thông báo gần đây.</div>
+                  <div className="p-3 text-sm font-bold text-gray-400">{t.teacherClassList.noNotif}</div>
                 ) : previewNotifications.map((n, i) => (
                   <div key={i} className={`flex gap-3 p-3 rounded-2xl border-2 hover:shadow-md hover:-translate-y-0.5 transition-all duration-200 cursor-pointer ${isDark ? 'border-white/10 bg-white/5' : 'border-[#1A1A1A]/15'}`} style={{ backgroundColor: isDark ? undefined : n.bg }}>
                     <div className={`w-8 h-8 shrink-0 rounded-xl flex items-center justify-center ${isDark ? 'bg-white/10' : 'bg-white'}`}>
@@ -937,7 +941,7 @@ export function TeacherClassList() {
                   onClick={() => setShowNotifications(true)}
                   className={`w-full py-2.5 font-extrabold text-sm border-2 rounded-2xl active:scale-[0.98] transition-all ${isDark ? 'text-gray-100 border-white/15 hover:bg-white/5' : 'text-[#1A1A1A] border-[#1A1A1A]/20 hover:bg-[#1A1A1A]/5'}`}
                 >
-                  Xem tất cả thông báo
+                  {t.teacherClassList.viewAllNotif}
                 </button>
               </div>
             </div>

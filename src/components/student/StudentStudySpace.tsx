@@ -80,7 +80,7 @@ const levels = [
 // Main Component
 // ═══════════════════════════════════════════════════════
 export function StudentStudySpace() {
-    const { theme } = useSettings();
+    const { theme, t } = useSettings();
     const isDark = theme === 'dark';
     const navigate = useNavigate();
 
@@ -243,7 +243,7 @@ export function StudentStudySpace() {
             setSessions(prev => prev.map(s => s.id === activeId ? { ...s, messages: final, updatedAt: Date.now() } : s));
             await persistSession(activeId, title, final);
         } catch {
-            const err: Message = { role: 'assistant', content: '⚠️ Xin lỗi, mình gặp sự cố khi kết nối. Bạn thử gửi lại nhé!', timestamp: new Date() };
+            const err: Message = { role: 'assistant', content: t.studentStudySpace.errorMsg, timestamp: new Date() };
             const final = [...newMsgs, err]; setMessages(final);
             setSessions(prev => prev.map(s => s.id === activeId ? { ...s, messages: final, updatedAt: Date.now() } : s));
             await persistSession(activeId, title, final);
@@ -252,9 +252,9 @@ export function StudentStudySpace() {
 
     const createNewSession = async () => {
         const id = generateSessionId();
-        setSessions(prev => [{ id, title: 'Cuộc hội thoại mới', messages: [], updatedAt: Date.now() }, ...prev]);
+        setSessions(prev => [{ id, title: t.studentStudySpace.newSessionTitle, messages: [], updatedAt: Date.now() }, ...prev]);
         setSessionId(id); setMessages([]);
-        try { await persistSession(id, 'Cuộc hội thoại mới', []); } catch { }
+        try { await persistSession(id, t.studentStudySpace.newSessionTitle, []); } catch { }
         chatInputRef.current?.focus();
     };
 
@@ -320,7 +320,7 @@ export function StudentStudySpace() {
             if (!res.ok) throw new Error('Failed');
             const data = await res.json();
             setQuizQuestions(data); setQuizAnswers(new Array(data.length).fill(null)); setQuizCurrent(0); setQuizStarted(true); setQuizStartTime(Date.now()); setQuizShowResult(false);
-        } catch { alert('Lỗi khi tải câu hỏi.'); }
+        } catch { alert(t.studentStudySpace.quizLoadError); }
         finally { setQuizLoading(false); }
     };
 
@@ -386,22 +386,22 @@ export function StudentStudySpace() {
                 <div className={`h-14 flex items-center px-4 justify-between shrink-0 border-b ${borderClr}`}>
                     <div className="flex items-center gap-2">
                         <BookOpen className="w-5 h-5 text-[#FF6B4A]" weight="fill" />
-                        <span className={`text-sm font-extrabold ${text}`}>Nguồn tài liệu</span>
+                        <span className={`text-sm font-extrabold ${text}`}>{t.studentStudySpace.sourcesPanel}</span>
                     </div>
                 </div>
 
                 <div className="flex-1 overflow-y-auto">
                     {/* Roadmap selector — compact dropdown */}
                     <div className="p-3">
-                        <p className={`text-[10px] font-extrabold uppercase tracking-widest mb-2 ${textMuted}`}>Lộ trình AI</p>
+                        <p className={`text-[10px] font-extrabold uppercase tracking-widest mb-2 ${textMuted}`}>{t.studentStudySpace.roadmapDropdown}</p>
                         {sourcesLoading ? (
                             <div className="flex items-center gap-2 py-2"><CircleNotch className="w-4 h-4 animate-spin text-[#FF6B4A]" /><span className={`text-xs font-bold ${textMuted}`}>Đang tải...</span></div>
                         ) : allRoadmaps.length === 0 ? (
                             <div className="flex flex-col items-center justify-center p-4 bg-[#FF6B4A]/5 border border-[#FF6B4A]/20 rounded-2xl mt-1 text-center">
                                 <span className="text-lg mb-1">🚀</span>
-                                <p className={`text-[10px] font-bold ${textMuted} mb-2`}>Chưa có lộ trình ôn tập.</p>
+                                <p className={`text-[10px] font-bold ${textMuted} mb-2`}>{t.studentStudySpace.noRoadmap}</p>
                                 <button onClick={() => navigate('/student/roadmap')} className="bg-[#FF6B4A] hover:bg-[#ff5535] text-white text-[10px] font-extrabold px-3 py-1.5 rounded-lg transition-colors">
-                                    Tạo Lộ trình
+                                    {t.studentStudySpace.createRoadmap}
                                 </button>
                             </div>
                         ) : (
@@ -426,7 +426,7 @@ export function StudentStudySpace() {
                     {bookLoading && <div className="flex justify-center py-4"><CircleNotch className="w-5 h-5 animate-spin text-[#FF6B4A]" /></div>}
                     {activeBook && selectedRoadmapId && (
                         <div className="px-3 pb-3 space-y-1">
-                            <p className={`text-[10px] font-extrabold uppercase tracking-widest mb-2 ${textMuted}`}>Lộ trình môn {allRoadmaps.find(r => r.roadmapid === selectedRoadmapId)?.subject_name}</p>
+                            <p className={`text-[10px] font-extrabold uppercase tracking-widest mb-2 ${textMuted}`}>{t.studentStudySpace.roadmapDropdown} {allRoadmaps.find(r => r.roadmapid === selectedRoadmapId)?.subject_name}</p>
                             {allRoadmaps.find(r => r.roadmapid === selectedRoadmapId)?.chapters.map((ch: any) => {
                                 const isOpen = openChapters.includes(ch.chapterid);
                                 return (
@@ -449,7 +449,7 @@ export function StudentStudySpace() {
                                                             onClick={() => { setSelectedLesson(realLesson); setSelectedChapterNum(activeChapter?.chapterNumber.toString() || ''); }}
                                                             className={`w-full text-left px-2.5 py-1.5 rounded-lg text-[11px] font-bold transition-all flex flex-col gap-0.5 ${selectedLesson?.id === roadmapLesson.lessonid ? 'bg-[#FF6B4A]/15 text-[#FF6B4A]' : `${text} ${hoverBg}`}`}>
                                                             <span>{roadmapLesson.title}</span>
-                                                            <span className={`text-[9px] font-semibold flex items-center gap-1 ${selectedLesson?.id === roadmapLesson.lessonid ? 'text-[#FF6B4A]/70' : textMuted}`}>✨ Đề xuất: {roadmapLesson.time} phút</span>
+                                                            <span className={`text-[9px] font-semibold flex items-center gap-1 ${selectedLesson?.id === roadmapLesson.lessonid ? 'text-[#FF6B4A]/70' : textMuted}`}>✨ {roadmapLesson.time} {t.studentStudySpace.lessonMinutes}</span>
                                                         </button>
                                                     );
                                                 })}
@@ -470,7 +470,7 @@ export function StudentStudySpace() {
                             </div>
                             <div className="space-y-2 max-h-60 overflow-y-auto">
                                 {selectedLesson.sections.length === 0 ? (
-                                    <p className={`text-[10px] font-semibold ${textMuted}`}>Chưa có nội dung.</p>
+                                    <p className={`text-[10px] font-semibold ${textMuted}`}>{t.studentStudySpace.noContent}</p>
                                 ) : selectedLesson.sections.map(sec => (
                                     <div key={sec.id}>
                                         <p className={`text-[10px] font-extrabold mb-1 ${text}`}>{selectedChapterNum}.{selectedLesson.lessonNumber}.{sec.sectionNumber}: {sec.sectionTitle || 'Tổng quan'}</p>
@@ -500,9 +500,9 @@ export function StudentStudySpace() {
                             <button onClick={() => setShowSessionList(!showSessionList)}
                                 className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-[11px] font-extrabold transition-all ${showSessionList ? 'bg-[#FF6B4A]/15 text-[#FF6B4A]' : `${isDark ? 'bg-white/5 text-gray-300 hover:bg-white/10' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}`}`}>
                                 <ListBullets className="w-3.5 h-3.5" weight="bold" />
-                                Lịch sử ({sessions.length})
+                                {t.studentStudySpace.historyLabel} ({sessions.length})
                             </button>
-                            <button onClick={createNewSession} className="bg-[#FF6B4A] hover:bg-[#ff5535] text-white px-3 py-1.5 rounded-xl text-[11px] font-extrabold transition-colors">+ Mới</button>
+                            <button onClick={createNewSession} className="bg-[#FF6B4A] hover:bg-[#ff5535] text-white px-3 py-1.5 rounded-xl text-[11px] font-extrabold transition-colors">{t.studentStudySpace.newSession}</button>
                         </div>
                     </div>
 
@@ -511,7 +511,7 @@ export function StudentStudySpace() {
                         <div className={`border-t ${borderClr} px-4 py-3 max-h-52 overflow-y-auto`}>
                             <div className="space-y-1">
                                 {sessions.length === 0 ? (
-                                    <p className={`text-xs font-semibold text-center py-3 ${textMuted}`}>Chưa có cuộc hội thoại nào</p>
+                                    <p className={`text-xs font-semibold text-center py-3 ${textMuted}`}>{t.studentStudySpace.noConversations}</p>
                                 ) : [...sessions].sort((a, b) => b.updatedAt - a.updatedAt).map(s => (
                                     <div key={s.id}
                                         onClick={() => { switchSession(s.id); setShowSessionList(false); }}
@@ -523,7 +523,7 @@ export function StudentStudySpace() {
                                         </div>
                                         <div className="flex-1 min-w-0">
                                             <p className={`text-xs font-extrabold truncate ${text}`}>{s.title}</p>
-                                            <p className={`text-[10px] font-semibold ${textMuted}`}>{s.messages.length} tin nhắn</p>
+                                            <p className={`text-[10px] font-semibold ${textMuted}`}>{s.messages.length} {t.studentStudySpace.messagesUnit}</p>
                                         </div>
                                         <button onClick={(e) => handleDeleteSession(s.id, e)}
                                             className={`opacity-0 group-hover:opacity-100 w-7 h-7 rounded-lg flex items-center justify-center transition-all shrink-0 ${isDark ? 'hover:bg-red-500/20 text-red-400' : 'hover:bg-red-50 text-red-400'}`}>
@@ -543,10 +543,10 @@ export function StudentStudySpace() {
                             <div className="w-14 h-14 bg-[#1A1A1A] rounded-2xl flex items-center justify-center mx-auto mb-3 border-2 border-[#1A1A1A]">
                                 <Sparkle className="w-7 h-7 text-[#FCE38A]" weight="fill" />
                             </div>
-                            <h2 className={`text-xl font-extrabold mb-2 ${text}`}>Hôm nay bạn cần hỗ trợ gì?</h2>
-                            <p className={`${textMuted} font-semibold text-sm mb-5`}>Đặt câu hỏi về bài tập, lý thuyết, hoặc yêu cầu AI giải thích.</p>
+                            <h2 className={`text-xl font-extrabold mb-2 ${text}`}>{t.studentStudySpace.welcomeMsg}</h2>
+                            <p className={`${textMuted} font-semibold text-sm mb-5`}>{t.studentStudySpace.welcomeSub}</p>
                             <div className="grid grid-cols-2 gap-2">
-                                {['Giải thích bài đang đọc', 'Tóm tắt chương hiện tại', 'Giải phương trình ví dụ', 'Cho mẹo ghi nhớ'].map(s => (
+                                {t.studentStudySpace.suggestions.map((s: string) => (
                                     <button key={s} onClick={() => { setChatInput(s); chatInputRef.current?.focus(); }}
                                         className={`px-3 py-2.5 rounded-xl text-xs font-bold transition-all text-left ${isDark ? 'border border-white/10 bg-white/5 text-gray-300 hover:border-[#FF6B4A]' : 'border border-gray-200 bg-white text-gray-600 hover:border-[#FF6B4A]'}`}>
                                         {s}
@@ -559,7 +559,7 @@ export function StudentStudySpace() {
                     {messages.map((msg, i) => (
                         <div key={i} className={`flex flex-col ${msg.role === 'user' ? 'items-end' : 'items-start'} gap-1`}>
                             <span className={`text-[10px] font-bold ${textMuted} ${msg.role === 'user' ? 'mr-12' : 'ml-12'}`}>
-                                {msg.role === 'user' ? 'Bạn' : 'Slozy AI'} • {msg.timestamp.toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' })}
+                                {msg.role === 'user' ? t.studentStudySpace.userLabel : t.studentStudySpace.chatHeader} • {msg.timestamp.toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' })}
                             </span>
                             <div className={`flex items-start gap-3 w-full ${msg.role === 'user' ? 'justify-end' : ''}`}>
                                 {msg.role === 'assistant' && <div className="w-8 h-8 bg-[#1A1A1A] rounded-xl border border-[#1A1A1A] flex items-center justify-center shrink-0 mt-1"><Sparkle className="w-4 h-4 text-[#FCE38A]" weight="fill" /></div>}
@@ -589,7 +589,7 @@ export function StudentStudySpace() {
                         <div className="flex items-start gap-3">
                             <div className="w-8 h-8 bg-[#1A1A1A] rounded-xl flex items-center justify-center shrink-0"><Sparkle className="w-4 h-4 text-[#FCE38A]" weight="fill" /></div>
                             <div className="bg-[#95E1D3]/20 rounded-2xl rounded-tl-none px-4 py-3 border border-[#95E1D3]">
-                                <div className="flex items-center gap-2"><CircleNotch className="w-4 h-4 animate-spin text-[#1A1A1A]" /><span className="font-extrabold text-xs text-[#1A1A1A]">Đang phân tích...</span></div>
+                                <div className="flex items-center gap-2"><CircleNotch className="w-4 h-4 animate-spin text-[#1A1A1A]" /><span className="font-extrabold text-xs text-[#1A1A1A]">{t.studentStudySpace.analyzing}</span></div>
                             </div>
                         </div>
                     )}
@@ -602,7 +602,7 @@ export function StudentStudySpace() {
                         <div className={`flex-1 h-12 rounded-full flex items-center px-4 shadow-sm focus-within:ring-2 focus-within:ring-[#FFB800] ${isDark ? 'bg-[#222] text-gray-100' : 'bg-[#1e1e1e] text-white'}`}>
                             <input ref={chatInputRef} value={chatInput} onChange={e => setChatInput(e.target.value)}
                                 onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleSend(); } }}
-                                disabled={isChatLoading} placeholder="Hỏi Slozy AI bất cứ điều gì..."
+                                disabled={isChatLoading} placeholder={t.studentStudySpace.inputPlaceholder}
                                 className={`w-full h-full bg-transparent border-none outline-none text-sm font-semibold ${isDark ? 'placeholder:text-gray-500' : 'placeholder:text-gray-400'}`} />
                         </div>
                         <button onClick={handleSend} disabled={isChatLoading || !chatInput.trim()}
@@ -627,7 +627,7 @@ export function StudentStudySpace() {
                 />
                 <div className={`h-14 flex items-center px-4 shrink-0 border-b ${borderClr}`}>
                     <Lightning className="w-5 h-5 text-[#FFB800] mr-2" weight="fill" />
-                    <span className={`text-sm font-extrabold ${text}`}>Công cụ học tập</span>
+                    <span className={`text-sm font-extrabold ${text}`}>{t.studentStudySpace.studioHeader}</span>
                 </div>
 
                 <div className="flex-1 overflow-y-auto p-3">
@@ -636,23 +636,23 @@ export function StudentStudySpace() {
                         <div className="space-y-2">
                             <button onClick={() => navigate('/student/review')} className={`w-full flex items-center gap-3 p-3.5 rounded-2xl transition-all border ${isDark ? 'border-white/10 bg-white/5 hover:bg-white/10' : 'border-gray-200 bg-white hover:bg-gray-50'}`}>
                                 <div className="w-10 h-10 rounded-xl bg-[#FCE38A]/30 flex items-center justify-center"><BookOpen className="w-5 h-5 text-[#D4A017]" weight="fill" /></div>
-                                <div className="text-left"><p className={`text-sm font-extrabold ${text}`}>Ôn tập</p><p className={`text-[10px] font-semibold ${textMuted}`}>Trang ôn tập tổng hợp</p></div>
+                                <div className="text-left"><p className={`text-sm font-extrabold ${text}`}>{t.studentStudySpace.reviewBtn}</p><p className={`text-[10px] font-semibold ${textMuted}`}>{t.studentStudySpace.reviewDesc}</p></div>
                                 <ArrowRight className={`w-4 h-4 ml-auto ${textMuted}`} />
                             </button>
                             <button onClick={() => setStudioMode('quiz')} className={`w-full flex items-center gap-3 p-3.5 rounded-2xl transition-all border ${isDark ? 'border-white/10 bg-white/5 hover:bg-white/10' : 'border-gray-200 bg-white hover:bg-gray-50'}`}>
                                 <div className="w-10 h-10 rounded-xl bg-[#B8B5FF]/20 flex items-center justify-center"><Exam className="w-5 h-5 text-[#7C6FFF]" weight="fill" /></div>
-                                <div className="text-left"><p className={`text-sm font-extrabold ${text}`}>Tạo Quiz ôn tập</p><p className={`text-[10px] font-semibold ${textMuted}`}>Trắc nghiệm AI cá nhân hóa</p></div>
+                                <div className="text-left"><p className={`text-sm font-extrabold ${text}`}>{t.studentStudySpace.quizBtn}</p><p className={`text-[10px] font-semibold ${textMuted}`}>{t.studentStudySpace.quizDesc}</p></div>
                                 <ArrowRight className={`w-4 h-4 ml-auto ${textMuted}`} />
                             </button>
                             <button onClick={() => setStudioMode('flashcard')} className={`w-full flex items-center gap-3 p-3.5 rounded-2xl transition-all border ${isDark ? 'border-white/10 bg-white/5 hover:bg-white/10' : 'border-gray-200 bg-white hover:bg-gray-50'}`}>
                                 <div className="w-10 h-10 rounded-xl bg-[#FF6B4A]/15 flex items-center justify-center"><Cards className="w-5 h-5 text-[#FF6B4A]" weight="fill" /></div>
-                                <div className="text-left"><p className={`text-sm font-extrabold ${text}`}>Flashcard</p><p className={`text-[10px] font-semibold ${textMuted}`}>{flashcards.length} thẻ đã tạo</p></div>
+                                <div className="text-left"><p className={`text-sm font-extrabold ${text}`}>{t.studentStudySpace.flashcardBtn}</p><p className={`text-[10px] font-semibold ${textMuted}`}>{flashcards.length} {t.studentStudySpace.cardsUnit}</p></div>
                                 <ArrowRight className={`w-4 h-4 ml-auto ${textMuted}`} />
                             </button>
                             <button onClick={() => { if (selectedLesson) { setChatInput(`Tóm tắt ngắn gọn bài "${selectedLesson.title}"`); chatInputRef.current?.focus(); } else { setChatInput('Tóm tắt bài học hiện tại cho tôi'); chatInputRef.current?.focus(); } }}
                                 className={`w-full flex items-center gap-3 p-3.5 rounded-2xl transition-all border ${isDark ? 'border-white/10 bg-white/5 hover:bg-white/10' : 'border-gray-200 bg-white hover:bg-gray-50'}`}>
                                 <div className="w-10 h-10 rounded-xl bg-[#95E1D3]/30 flex items-center justify-center"><FileText className="w-5 h-5 text-[#10B981]" weight="fill" /></div>
-                                <div className="text-left"><p className={`text-sm font-extrabold ${text}`}>Tóm tắt tài liệu</p><p className={`text-[10px] font-semibold ${textMuted}`}>AI tóm tắt bài đang đọc</p></div>
+                                <div className="text-left"><p className={`text-sm font-extrabold ${text}`}>{t.studentStudySpace.summarizeBtn}</p><p className={`text-[10px] font-semibold ${textMuted}`}>{t.studentStudySpace.summarizeDesc}</p></div>
                                 <ArrowRight className={`w-4 h-4 ml-auto ${textMuted}`} />
                             </button>
                         </div>
@@ -662,12 +662,12 @@ export function StudentStudySpace() {
                     {studioMode === 'quiz' && !quizStarted && (
                         <div className="space-y-3">
                             <button onClick={() => { setStudioMode('tools'); setQuizStarted(false); setQuizShowResult(false); }} className={`flex items-center gap-1 text-xs font-bold ${textMuted} hover:text-[#FF6B4A]`}>
-                                <CaretLeft className="w-3 h-3" /> Quay lại
+                                <CaretLeft className="w-3 h-3" /> {t.studentStudySpace.quizBack}
                             </button>
-                            <h3 className={`text-sm font-extrabold ${text}`}>📝 Cấu hình Quiz</h3>
+                            <h3 className={`text-sm font-extrabold ${text}`}>{t.studentStudySpace.quizConfigTitle}</h3>
 
                             <div>
-                                <p className={`text-[10px] font-extrabold uppercase tracking-wider mb-1 ${textMuted}`}>Môn học</p>
+                                <p className={`text-[10px] font-extrabold uppercase tracking-wider mb-1 ${textMuted}`}>{t.studentStudySpace.quizSubjectLabel}</p>
                                 <select value={quizSelectedSubject || ''} onChange={e => setQuizSelectedSubject(Number(e.target.value))}
                                     className={`w-full h-9 rounded-xl px-3 text-xs font-bold appearance-none ${isDark ? 'bg-white/5 border border-white/10 text-gray-200' : 'bg-gray-50 border border-gray-200 text-gray-700'}`}>
                                     {quizSubjects.map(s => <option key={s.subject_id} value={s.subject_id}>{s.subject_name}</option>)}
@@ -675,12 +675,12 @@ export function StudentStudySpace() {
                             </div>
 
                             <div>
-                                <p className={`text-[10px] font-extrabold uppercase tracking-wider mb-1 ${textMuted}`}>Số câu: {quizNumQ}</p>
+                                <p className={`text-[10px] font-extrabold uppercase tracking-wider mb-1 ${textMuted}`}>{t.studentStudySpace.quizQuestionsLabel} {quizNumQ}</p>
                                 <input type="range" min={5} max={30} value={quizNumQ} onChange={e => setQuizNumQ(Number(e.target.value))} className="w-full accent-[#FF6B4A]" />
                             </div>
 
                             <div>
-                                <p className={`text-[10px] font-extrabold uppercase tracking-wider mb-1 ${textMuted}`}>Chọn bài học</p>
+                                <p className={`text-[10px] font-extrabold uppercase tracking-wider mb-1 ${textMuted}`}>{t.studentStudySpace.quizLessonLabel}</p>
                                 <div className="space-y-1 max-h-40 overflow-y-auto">
                                     {quizLessons.map((l, i) => (
                                         <button key={l.id} onClick={() => setQuizLessons(prev => { const n = [...prev]; n[i] = { ...n[i], selected: !n[i].selected }; return n; })}
@@ -696,7 +696,7 @@ export function StudentStudySpace() {
 
                             <button onClick={handleStartQuiz} disabled={quizLoading || quizLessons.filter(l => l.selected).length === 0}
                                 className="w-full py-2.5 rounded-xl bg-[#7C6FFF] hover:bg-[#6B5CE7] disabled:opacity-40 text-white text-sm font-extrabold transition-all flex items-center justify-center gap-2">
-                                {quizLoading ? <><CircleNotch className="w-4 h-4 animate-spin" /> Đang tạo đề...</> : <><Exam className="w-4 h-4" weight="fill" /> Bắt đầu Quiz</>}
+                                {quizLoading ? <><CircleNotch className="w-4 h-4 animate-spin" /> {t.studentStudySpace.quizGenerating}</> : <><Exam className="w-4 h-4" weight="fill" /> {t.studentStudySpace.quizStart}</>}
                             </button>
                         </div>
                     )}
@@ -705,10 +705,10 @@ export function StudentStudySpace() {
                     {studioMode === 'quiz' && quizStarted && !quizShowResult && quizQuestions.length > 0 && (
                         <div className="space-y-3">
                             <div className="flex items-center justify-between">
-                                <span className={`text-[10px] font-extrabold uppercase tracking-wider ${textMuted}`}>Câu {quizCurrent + 1}/{quizQuestions.length}</span>
+                                <span className={`text-[10px] font-extrabold uppercase tracking-wider ${textMuted}`}>{t.studentStudySpace.quizQuestionLabel} {quizCurrent + 1}/{quizQuestions.length}</span>
                                 <button onClick={handleSubmitQuiz} disabled={quizSubmitting}
                                     className="text-[10px] font-extrabold bg-[#FF6B4A] text-white px-3 py-1 rounded-lg hover:bg-[#ff5535] disabled:opacity-50">
-                                    {quizSubmitting ? 'Đang nộp...' : 'Nộp bài'}
+                                    {quizSubmitting ? t.studentStudySpace.quizSubmitting : t.studentStudySpace.quizSubmit}
                                 </button>
                             </div>
 
@@ -727,10 +727,10 @@ export function StudentStudySpace() {
 
                             <div className="flex gap-2">
                                 <button onClick={() => setQuizCurrent(Math.max(0, quizCurrent - 1))} disabled={quizCurrent === 0}
-                                    className={`flex-1 py-2 rounded-xl text-xs font-extrabold border disabled:opacity-30 ${borderClr} ${text}`}>← Trước</button>
+                                    className={`flex-1 py-2 rounded-xl text-xs font-extrabold border disabled:opacity-30 ${borderClr} ${text}`}>{t.studentStudySpace.quizPrevBtn}</button>
                                 <button onClick={() => quizCurrent < quizQuestions.length - 1 ? setQuizCurrent(quizCurrent + 1) : handleSubmitQuiz()}
                                     className="flex-1 py-2 rounded-xl text-xs font-extrabold bg-[#1A1A1A] text-white">
-                                    {quizCurrent === quizQuestions.length - 1 ? 'Nộp bài' : 'Tiếp →'}
+                                    {quizCurrent === quizQuestions.length - 1 ? t.studentStudySpace.quizSubmit : t.studentStudySpace.quizNextBtn}
                                 </button>
                             </div>
 
@@ -750,19 +750,19 @@ export function StudentStudySpace() {
                     {studioMode === 'quiz' && quizShowResult && (
                         <div className="space-y-3 text-center">
                             <div className="text-4xl mb-2">🏆</div>
-                            <h3 className={`text-lg font-extrabold ${text}`}>Hoàn thành!</h3>
+                            <h3 className={`text-lg font-extrabold ${text}`}>{t.studentStudySpace.quizComplete}</h3>
                             <div className="grid grid-cols-2 gap-2">
                                 <div className={`rounded-xl p-3 ${isDark ? 'bg-white/5' : 'bg-gray-50'}`}>
                                     <p className="text-2xl font-extrabold text-[#FF6B4A]">{quizScore}/10</p>
-                                    <p className={`text-[9px] font-bold uppercase ${textMuted}`}>Điểm</p>
+                                    <p className={`text-[9px] font-bold uppercase ${textMuted}`}>{t.studentStudySpace.quizScore}</p>
                                 </div>
                                 <div className={`rounded-xl p-3 ${isDark ? 'bg-white/5' : 'bg-gray-50'}`}>
                                     <p className={`text-2xl font-extrabold ${text}`}>{quizCorrect}/{quizQuestions.length}</p>
-                                    <p className={`text-[9px] font-bold uppercase ${textMuted}`}>Đúng</p>
+                                    <p className={`text-[9px] font-bold uppercase ${textMuted}`}>{t.studentStudySpace.quizCorrect}</p>
                                 </div>
                             </div>
                             <button onClick={() => { setQuizStarted(false); setQuizShowResult(false); setStudioMode('tools'); }}
-                                className="w-full py-2 rounded-xl bg-[#1A1A1A] text-white text-xs font-extrabold">Quay lại</button>
+                                className="w-full py-2 rounded-xl bg-[#1A1A1A] text-white text-xs font-extrabold">{t.studentStudySpace.quizReturn}</button>
                         </div>
                     )}
 
@@ -770,23 +770,23 @@ export function StudentStudySpace() {
                     {studioMode === 'flashcard' && (
                         <div className="space-y-3">
                             <button onClick={() => setStudioMode('tools')} className={`flex items-center gap-1 text-xs font-bold ${textMuted} hover:text-[#FF6B4A]`}>
-                                <CaretLeft className="w-3 h-3" /> Quay lại
+                                <CaretLeft className="w-3 h-3" /> {t.studentStudySpace.quizBack}
                             </button>
                             <h3 className={`text-sm font-extrabold ${text}`}>🃏 Flashcard ({flashcards.length})</h3>
 
                             <div className="space-y-1.5">
-                                <input value={newFront} onChange={e => setNewFront(e.target.value)} placeholder="Mặt trước (câu hỏi)..."
+                                <input value={newFront} onChange={e => setNewFront(e.target.value)} placeholder={t.studentStudySpace.flashFrontPlaceholder}
                                     className={`w-full rounded-xl px-3 py-2 text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-[#FF6B4A]/40 ${isDark ? 'bg-white/5 text-gray-200 placeholder:text-gray-600 border border-white/10' : 'bg-gray-50 text-gray-700 placeholder:text-gray-400 border border-gray-200'}`} />
-                                <input value={newBack} onChange={e => setNewBack(e.target.value)} onKeyDown={e => { if (e.key === 'Enter') addFlashcard(); }} placeholder="Mặt sau (đáp án)..."
+                                <input value={newBack} onChange={e => setNewBack(e.target.value)} onKeyDown={e => { if (e.key === 'Enter') addFlashcard(); }} placeholder={t.studentStudySpace.flashBackPlaceholder}
                                     className={`w-full rounded-xl px-3 py-2 text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-[#FF6B4A]/40 ${isDark ? 'bg-white/5 text-gray-200 placeholder:text-gray-600 border border-white/10' : 'bg-gray-50 text-gray-700 placeholder:text-gray-400 border border-gray-200'}`} />
                                 <button onClick={addFlashcard} disabled={!newFront.trim() || !newBack.trim()}
                                     className="w-full py-2 rounded-xl bg-[#FF6B4A] hover:bg-[#ff5535] disabled:opacity-40 text-white text-xs font-extrabold transition-all flex items-center justify-center gap-1">
-                                    <Plus className="w-3.5 h-3.5" weight="bold" /> Tạo thẻ
+                                    <Plus className="w-3.5 h-3.5" weight="bold" /> {t.studentStudySpace.flashCreateBtn}
                                 </button>
                             </div>
 
                             <div className="space-y-1.5 max-h-72 overflow-y-auto">
-                                {flashcards.length === 0 ? <p className={`text-[10px] font-semibold text-center py-4 ${textMuted}`}>Chưa có flashcard nào</p> : flashcards.map(card => (
+                                {flashcards.length === 0 ? <p className={`text-[10px] font-semibold text-center py-4 ${textMuted}`}>{t.studentStudySpace.noFlashcards}</p> : flashcards.map(card => (
                                     <div key={card.id} onClick={() => flipCard(card.id)}
                                         className={`p-2.5 rounded-xl cursor-pointer group transition-all ${isDark ? 'bg-white/5 hover:bg-white/10' : 'bg-gray-50 hover:bg-gray-100'}`}>
                                         <div className="flex items-start gap-2">
@@ -795,7 +795,7 @@ export function StudentStudySpace() {
                                             </div>
                                             <div className="flex-1 min-w-0">
                                                 <p className={`text-[11px] font-extrabold ${text}`}>{card.flipped ? card.back : card.front}</p>
-                                                <p className={`text-[9px] font-bold ${textMuted}`}>{card.flipped ? '💡 Đáp án' : '❓ Nhấn để lật'}</p>
+                                                <p className={`text-[9px] font-bold ${textMuted}`}>{card.flipped ? t.studentStudySpace.flashAnswer : t.studentStudySpace.flashHint}</p>
                                             </div>
                                             <button onClick={e => { e.stopPropagation(); deleteFlashcard(card.id); }} className="opacity-0 group-hover:opacity-100 transition-opacity">
                                                 <Trash className="w-3 h-3 text-red-400" weight="fill" />

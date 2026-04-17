@@ -35,7 +35,7 @@ function isSpecialContentBlock(block: ContentBlockDto): boolean {
 }
 
 export function StudentDocuments() {
-  const { theme } = useSettings();
+  const { theme, t } = useSettings();
   const isDark = theme === 'dark';
 
   const [loading, setLoading] = useState(true);
@@ -131,7 +131,7 @@ export function StudentDocuments() {
   const handleOpenSubject = async (subjectId: number) => {
     const selected = subjects.find((item) => item.subjectId === subjectId);
     if (!selected?.bookId) {
-      setError('Môn học này hiện chưa có tài liệu lý thuyết khả dụng.');
+      setError(t.studentDocs.noMaterials);
       return;
     }
 
@@ -154,7 +154,7 @@ export function StudentDocuments() {
         setOpenChapters([hierarchy.chapters[0].id]);
       }
     } catch (e) {
-      const message = e instanceof Error ? e.message : 'Không thể tải chi tiết tài liệu.';
+      const message = e instanceof Error ? e.message : t.studentDocs.errorLoading;
       setError(message);
     } finally {
       setBookLoading(false);
@@ -215,7 +215,7 @@ export function StudentDocuments() {
 
   const renderLessonContent = (lesson: LessonDto, chapterNumber: string) => {
     if (lesson.sections.length === 0) {
-      return <p className={`text-sm ${isDark ? 'text-gray-300' : 'text-[#1A1A1A]/70'}`}>Bài học chưa có nội dung.</p>;
+      return <p className={`text-sm ${isDark ? 'text-gray-300' : 'text-[#1A1A1A]/70'}`}>{t.studentDocs.noLessonContent}</p>;
     }
 
     return (
@@ -226,7 +226,7 @@ export function StudentDocuments() {
             className={`rounded-xl border p-3 md:p-4 ${isDark ? 'border-white/10 bg-[#171b20]' : 'border-[#1A1A1A]/10 bg-[#F9FAFF]'}`}
           >
             <h4 className={`text-base md:text-lg font-extrabold ${isDark ? 'text-gray-100' : 'text-[#1A1A1A]'}`}>
-              {chapterNumber}.{lesson.lessonNumber}.{sectionIndex + 1}: {section.sectionTitle ?? 'Nội dung tổng quan'}
+              {chapterNumber}.{lesson.lessonNumber}.{sectionIndex + 1}: {section.sectionTitle ?? t.studentDocs.overviewSection}
             </h4>
 
             <div className="mt-3 space-y-3">
@@ -268,10 +268,10 @@ export function StudentDocuments() {
         >
           <div>
             <p className={`font-extrabold ${isDark ? 'text-gray-100' : 'text-[#1A1A1A]'}`}>
-              Chương {chapter.chapterNumber}: {chapter.title}
+              {t.studentDocs.chapterLabel} {chapter.chapterNumber}: {chapter.title}
             </p>
             <p className={`text-xs font-semibold ${isDark ? 'text-gray-400' : 'text-[#1A1A1A]/60'}`}>
-              {chapter.lessons.length} bài học
+              {chapter.lessons.length} {t.studentDocs.lessonsUnit}
             </p>
           </div>
           {chapterOpen ? <CaretDown className="w-5 h-5" /> : <CaretRight className="w-5 h-5" />}
@@ -289,11 +289,11 @@ export function StudentDocuments() {
                   >
                     <div>
                       <p className={`font-bold ${isDark ? 'text-gray-100' : 'text-[#1A1A1A]'}`}>
-                        Bài {lesson.lessonNumber}: {lesson.title}
+                        {t.studentDocs.lessonLabel} {lesson.lessonNumber}: {lesson.title}
                       </p>
                       <p className={`text-xs font-semibold flex items-center gap-1 ${isDark ? 'text-gray-400' : 'text-[#1A1A1A]/60'}`}>
                         <BookOpen className="w-3.5 h-3.5" weight="fill" />
-                        ≈ {lesson.estimatedTime ?? 1} phút đọc
+                        {t.studentDocs.readingTime.replace('{time}', String(lesson.estimatedTime ?? 1))}
                       </p>
                     </div>
                     {lessonOpen ? <CaretDown className="w-4 h-4" /> : <CaretRight className="w-4 h-4" />}
@@ -314,7 +314,7 @@ export function StudentDocuments() {
   };
 
   if (loading) {
-    return <div className="p-8">Đang tải tài liệu học tập...</div>;
+    return <div className="p-8">{t.studentDocs.loadingMsg}</div>;
   }
 
   return (
@@ -323,7 +323,7 @@ export function StudentDocuments() {
         <>
           <div>
             <p className="text-xs font-extrabold text-gray-400 uppercase tracking-widest mb-1">Học sinh / Tài liệu</p>
-            <h1 className={`text-3xl font-extrabold ${isDark ? 'text-gray-100' : 'text-[#1A1A1A]'}`}>Tổng quan tài liệu lý thuyết</h1>
+            <h1 className={`text-3xl font-extrabold ${isDark ? 'text-gray-100' : 'text-[#1A1A1A]'}`}>{t.studentDocs.pageTitle}</h1>
           </div>
 
           {error && <p className="text-sm text-red-500 font-semibold">{error}</p>}
@@ -340,7 +340,7 @@ export function StudentDocuments() {
               >
                 <p className="text-lg font-extrabold">{subject.subjectName}</p>
                 <p className={`text-sm font-semibold mt-1 ${isDark ? 'text-gray-400' : 'text-[#1A1A1A]/60'}`}>
-                  {subject.totalChapters} chương · {subject.totalLessons} bài học
+                  {subject.totalChapters} {t.studentDocs.chapterLabel.toLowerCase()} · {subject.totalLessons} {t.studentDocs.lessonsUnit}
                 </p>
               </button>
             ))}
@@ -358,7 +358,7 @@ export function StudentDocuments() {
             }}
             className={`inline-flex items-center gap-2 font-bold ${isDark ? 'text-gray-300' : 'text-[#1A1A1A]/70'}`}
           >
-            <CaretLeft className="w-4 h-4" /> Quay lại tổng quan
+            <CaretLeft className="w-4 h-4" /> {t.studentDocs.backBtn}
           </button>
 
           <div>

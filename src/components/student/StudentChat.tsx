@@ -47,7 +47,7 @@ function fromDto(dto: ChatSessionDto): ChatSession {
 }
 
 export function StudentChat() {
-    const { theme } = useSettings();
+    const { theme, t } = useSettings();
     const isDark = theme === 'dark';
     
     // Tách nội dung thành các segment: text thuần và widget
@@ -264,7 +264,7 @@ export function StudentChat() {
 
     const handleDeleteSession = async (id: string, e: React.MouseEvent) => {
         e.stopPropagation();
-        if (!confirm('Bạn có chắc chắn muốn xóa cuộc hội thoại này?')) return;
+        if (!confirm(t.studentChat.deleteConfirm)) return;
         setSessions(prev => prev.filter(s => s.id !== id));
         if (sessionId === id) {
             createNewSession();
@@ -324,14 +324,14 @@ export function StudentChat() {
                     {/* Section 1 */}
                     <div>
                         <div className="flex items-center justify-between px-2 mb-3">
-                            <h3 className={`text-[11px] font-extrabold uppercase tracking-widest ${isDark ? 'text-gray-400' : 'text-[#1A1A1A]/50'}`}>Đoạn thoại tương tác</h3>
+                            <h3 className={`text-[11px] font-extrabold uppercase tracking-widest ${isDark ? 'text-gray-400' : 'text-[#1A1A1A]/50'}`}>{t.studentChat.historyTitle}</h3>
                             <button onClick={createNewSession} className="text-[#FF6B4A] hover:bg-[#FF6B4A]/10 px-2 py-0.5 rounded-lg text-xs font-black transition-colors">
-                                + TẠO MỚI
+                                {t.studentChat.newChatBtn}
                             </button>
                         </div>
                         <div className="space-y-1">
                             {sessions.length === 0 ? (
-                                <p className="text-xs px-2 text-gray-400 font-bold italic">Chưa có lịch sử chat.</p>
+                                <p className="text-xs px-2 text-gray-400 font-bold italic">{t.studentChat.noHistory}</p>
                             ) : (
                                 [...sessions].sort((a, b) => b.updatedAt - a.updatedAt).map(session => (
                                     <button
@@ -361,7 +361,7 @@ export function StudentChat() {
 
                     {/* Section 2 */}
                     <div>
-                        <h3 className={`text-[11px] font-extrabold uppercase tracking-widest mb-3 px-2 ${isDark ? 'text-gray-400' : 'text-[#1A1A1A]/50'}`}>Luyện tập tình huống</h3>
+                        <h3 className={`text-[11px] font-extrabold uppercase tracking-widest mb-3 px-2 ${isDark ? 'text-gray-400' : 'text-[#1A1A1A]/50'}`}>{t.studentChat.practiceSection}</h3>
                         <div className="space-y-1">
                             <button className={`w-full text-left px-3 py-2.5 rounded-xl border-2 border-transparent font-bold transition-colors flex items-center justify-between ${isDark ? 'hover:bg-white/5 text-gray-300' : 'hover:bg-[#1A1A1A]/5 text-[#1A1A1A]/70'}`}>
                                 <span className="truncate pr-2">Giao tiếp sân bay</span>
@@ -380,11 +380,11 @@ export function StudentChat() {
                     <div className={`rounded-2xl p-4 relative overflow-hidden ${isDark ? 'bg-[#1f2e2c] border border-[#3b5551]' : 'bg-[#95E1D3]/50 border-2 border-[#1A1A1A]'}`}>
                         <div className="flex items-center gap-2 mb-3">
                             <Sparkle className="w-4 h-4 text-[#1A1A1A]" weight="fill" />
-                            <span className={`text-xs font-black ${isDark ? 'text-gray-100' : 'text-[#1A1A1A]'}`}>Truyền cảm hứng (AI)</span>
+                            <span className={`text-xs font-black ${isDark ? 'text-gray-100' : 'text-[#1A1A1A]'}`}>{t.studentChat.insightTitle}</span>
                         </div>
                         <div className={`rounded-xl p-4 ${isDark ? 'bg-[#18181b] border border-white/10' : 'bg-white border-2 border-[#1A1A1A]'}`}>
                             <div className="w-6 h-6 rounded-full bg-[#1A1A1A] text-white flex items-center justify-center text-[10px] font-black mx-auto mb-2">💡</div>
-                            <h4 className={`font-extrabold text-center text-sm mb-2 ${isDark ? 'text-gray-100' : 'text-[#1A1A1A]'}`}>Chia nhỏ câu hỏi</h4>
+                            <h4 className={`font-extrabold text-center text-sm mb-2 ${isDark ? 'text-gray-100' : 'text-[#1A1A1A]'}`}>{t.studentChat.insightTip}</h4>
                             <p className={`text-[11px] text-center font-bold leading-relaxed ${isDark ? 'text-gray-300' : 'text-[#1A1A1A]/70'}`}>Thay vì hỏi toàn bộ bài dài, hãy hỏi từng ý nhỏ. AI sẽ giúp bạn tư duy dễ dàng và tự tin hơn.</p>
 
                             <div className="flex justify-center gap-1 mt-4">
@@ -406,10 +406,10 @@ export function StudentChat() {
                     </h2>
                     <div className="flex items-center gap-2 shrink-0">
                         <button className={`hidden sm:block px-4 py-1.5 font-extrabold text-xs rounded-xl transition-colors ${isDark ? 'bg-[#1f1f23] hover:bg-[#26262b] text-gray-100 border border-white/10' : 'bg-[#F7F7F2] hover:bg-[#1A1A1A]/5 text-[#1A1A1A] border-2 border-[#1A1A1A]/20'}`}>
-                            Đánh giá
+                            {t.studentChat.evaluateBtn}
                         </button>
                         <button className={`hidden sm:block px-4 py-1.5 font-extrabold text-xs rounded-xl transition-colors ${isDark ? 'bg-[#1f1f23] hover:border-[#ff9a73] text-[#ff9a73] border border-[#ff9a73]/50' : 'bg-[#FF6B4A]/10 hover:bg-[#FF6B4A]/20 text-[#FF6B4A] border-2 border-[#FF6B4A]/30'}`}>
-                            Kết thúc
+                            {t.studentChat.endBtn}
                         </button>
                         <button className={`w-9 h-9 rounded-xl flex items-center justify-center transition-colors ${isDark ? 'text-gray-200 hover:bg-white/10' : 'text-[#1A1A1A] hover:bg-[#1A1A1A]/5'}`}>
                             <DotsThreeVertical className="w-6 h-6" weight="bold" />
@@ -424,8 +424,8 @@ export function StudentChat() {
                             <div className="w-16 h-16 bg-[#1A1A1A] rounded-2xl flex items-center justify-center mx-auto mb-4 border-2 border-[#1A1A1A]">
                                 <Sparkle className="w-8 h-8 text-[#FCE38A]" weight="fill" />
                             </div>
-                            <h2 className={`text-2xl font-extrabold mb-2 ${isDark ? 'text-gray-100' : 'text-[#1A1A1A]'}`}>Hôm nay bạn cần hỗ trợ gì?</h2>
-                            <p className={`${isDark ? 'text-gray-400' : 'text-[#1A1A1A]/50'} font-semibold text-sm mb-6`}>Đặt câu hỏi về bài tập, lý thuyết hoặc yêu cầu giải thích công thức.</p>
+                            <h2 className={`text-2xl font-extrabold mb-2 ${isDark ? 'text-gray-100' : 'text-[#1A1A1A]'}`}>{t.studentChat.welcomeTitle}</h2>
+                            <p className={`${isDark ? 'text-gray-400' : 'text-[#1A1A1A]/50'} font-semibold text-sm mb-6`}>{t.studentChat.welcomeSub}</p>
 
                             {/* Suggested Prompts */}
                             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 max-w-lg mx-auto">
@@ -513,7 +513,7 @@ export function StudentChat() {
                     {isLoading && (
                         <div className="flex flex-col items-start gap-1 w-full">
                             <span className={`text-[11px] font-bold text-gray-400 ml-14`}>
-                                Slozy AI • Nhập dữ liệu...
+                                Slozy AI • {t.studentChat.loadingMsg}
                             </span>
                             <div className="flex items-start gap-4 w-full">
                                 <div className="w-10 h-10 bg-[#1A1A1A] rounded-2xl border-2 border-[#1A1A1A] flex items-center justify-center shrink-0 shadow-sm mt-1">
@@ -522,7 +522,7 @@ export function StudentChat() {
                                 <div className="bg-[#95E1D3]/20 text-[#1A1A1A] rounded-3xl rounded-tl-none px-6 py-4 border-2 border-[#95E1D3] shadow-sm">
                                     <div className="flex items-center gap-2">
                                         <CircleNotch className="w-5 h-5 animate-spin text-[#1A1A1A]" />
-                                        <span className="font-extrabold text-sm text-[#1A1A1A]">Đang phân tích và tìm trong Sách lý thuyết...</span>
+                                        <span className="font-extrabold text-sm text-[#1A1A1A]">{t.studentChat.loadingAnalysis}</span>
                                     </div>
                                 </div>
                             </div>

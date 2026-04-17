@@ -296,6 +296,7 @@ function mapStudentScheduleToEntry(item: StudentScheduleItem, index: number): Sc
 }
 
 function EventTooltip({ event, x, y, now }: { event: ScheduleEntry; x: number; y: number; now: Date }) {
+    const { t } = useSettings();
     const { status } = getEventStatusInfo(event.startHour, event.startMin, event.endHour, event.endMin, event.dateKey, now);
     const style = EVENT_STATUS_STYLES[status];
 
@@ -308,7 +309,7 @@ function EventTooltip({ event, x, y, now }: { event: ScheduleEntry; x: number; y
                 <div className="flex items-center gap-2 mb-2">
                     <span className={`w-2.5 h-2.5 rounded-full ${style.dot} ${status === 'ongoing' ? 'animate-pulse' : ''}`} />
                     <span className={`text-[10px] font-extrabold uppercase tracking-wider ${style.text}`}>
-                        {status === 'ongoing' ? 'Đang diễn ra' : status === 'past' ? 'Đã kết thúc' : 'Sắp diễn ra'}
+                        {status === 'ongoing' ? t.studentSchedule.eventOngoing : status === 'past' ? t.studentSchedule.eventPast : t.studentSchedule.eventUpcoming}
                     </span>
                 </div>
                 <div className="font-extrabold text-sm mb-1.5">{event.subject}</div>
@@ -348,6 +349,7 @@ function EventTooltip({ event, x, y, now }: { event: ScheduleEntry; x: number; y
 }
 
 function EventDetailDialog({ event, onClose, onViewHomework, onBlockedAction }: { event: ScheduleEntry | null; onClose: () => void; onViewHomework: (event: ScheduleEntry) => void; onBlockedAction: () => void }) {
+    const { t } = useSettings();
     if (!event) return null;
     const inactiveClass = isInactiveStatus(event.classStatus);
 
@@ -373,35 +375,35 @@ function EventDetailDialog({ event, onClose, onViewHomework, onBlockedAction }: 
                 <div className="space-y-3">
                     <div className="rounded-2xl border-2 border-[#1A1A1A]/10 bg-[#F7F7F2] p-4 space-y-3 text-sm font-semibold text-[#1A1A1A]">
                         <div className="flex items-center justify-between gap-2 border-b-2 border-[#1A1A1A]/5 pb-2">
-                            <span className="text-[#1A1A1A]/60 font-extrabold uppercase tracking-widest text-[10px]">Thời gian</span>
+                            <span className="text-[#1A1A1A]/60 font-extrabold uppercase tracking-widest text-[10px]">{t.studentSchedule.detailTime}</span>
                             <span className="font-extrabold text-[#1A1A1A] flex items-center gap-1.5">
                                 <Clock className="w-4 h-4 text-[#FF6B4A]" weight="bold" />
                                 {pad(event.startHour)}:{pad(event.startMin)} - {pad(event.endHour)}:{pad(event.endMin)}
                             </span>
                         </div>
                         <div className="flex items-center justify-between gap-2 border-b-2 border-[#1A1A1A]/5 pb-2">
-                            <span className="text-[#1A1A1A]/60 font-extrabold uppercase tracking-widest text-[10px]">Phòng học</span>
+                            <span className="text-[#1A1A1A]/60 font-extrabold uppercase tracking-widest text-[10px]">{t.studentSchedule.detailRoom}</span>
                             <span className="font-extrabold text-[#1A1A1A] flex items-center gap-1.5">
                                 <MapPin className="w-4 h-4 text-[#95E1D3]" weight="bold" />
                                 {event.room || 'Online'}
                             </span>
                         </div>
                         <div className="flex items-center justify-between gap-2 border-b-2 border-[#1A1A1A]/5 pb-2">
-                            <span className="text-[#1A1A1A]/60 font-extrabold uppercase tracking-widest text-[10px]">Danh sách bạn học</span>
+                            <span className="text-[#1A1A1A]/60 font-extrabold uppercase tracking-widest text-[10px]">{t.studentSchedule.detailClassmates}</span>
                             <span onClick={() => {onClose(); window.dispatchEvent(new CustomEvent('openClassmates', { detail: event }))}} className="font-extrabold text-[#1A1A1A] flex items-center gap-1.5 cursor-pointer hover:underline">
                                 <Users className="w-4 h-4 text-[#3B82F6]" weight="bold" />
-                                {event.studentsCount || 0} học sinh
+                                {event.studentsCount || 0} {t.studentSchedule.detailClassmatesUnit}
                             </span>
                         </div>
                         <div className="flex items-start justify-between gap-2">
-                            <span className="text-[#1A1A1A]/60 font-extrabold uppercase tracking-widest text-[10px] whitespace-nowrap pt-1">Chủ đề</span>
-                            <span className="font-bold text-[#1A1A1A] text-right">{event.topic || 'Chưa cập nhật'}</span>
+                            <span className="text-[#1A1A1A]/60 font-extrabold uppercase tracking-widest text-[10px] whitespace-nowrap pt-1">{t.studentSchedule.detailTopic}</span>
+                            <span className="font-bold text-[#1A1A1A] text-right">{event.topic || t.studentSchedule.detailNotUpdated}</span>
                         </div>
                     </div>
 
                     {event.materials && event.materials.length > 0 && (
                         <div className="space-y-2">
-                            <div className="text-[10px] font-extrabold uppercase tracking-widest text-[#1A1A1A]/60 mb-1">Tài liệu bài giảng</div>
+                            <div className="text-[10px] font-extrabold uppercase tracking-widest text-[#1A1A1A]/60 mb-1">{t.studentSchedule.detailMaterials}</div>
                             <div className="grid grid-cols-1 gap-2">
                                 {event.materials.map((m, i) => (
                                     <a key={i} href={m.url} className="flex items-center gap-3 p-3 bg-white border-2 border-[#1A1A1A]/10 rounded-xl hover:border-[#FF6B4A] transition-colors cursor-pointer group">
@@ -432,7 +434,7 @@ function EventDetailDialog({ event, onClose, onViewHomework, onBlockedAction }: 
                                 className={`inline-flex w-full items-center justify-center gap-2 rounded-2xl border-2 px-3 py-3.5 text-sm font-extrabold transition-colors active:scale-95 ${inactiveClass ? 'border-gray-300 bg-gray-100 text-gray-400 cursor-not-allowed' : 'border-[#2563EB]/20 bg-[#EEF4FF] text-[#2563EB] hover:bg-[#E2ECFF]'}`}
                             >
                                 <Video className="w-5 h-5" weight="fill" />
-                                Tham gia Meet
+                                {t.studentSchedule.detailJoinMeet}
                             </button>
                         )}
                         {event.hasHomework && (
@@ -441,7 +443,7 @@ function EventDetailDialog({ event, onClose, onViewHomework, onBlockedAction }: 
                                 className="inline-flex w-full items-center justify-center gap-2 rounded-2xl border-2 border-[#D97706]/20 bg-[#FEF3C7] px-3 py-3.5 text-[#D97706] hover:bg-[#FDE68A] text-sm font-extrabold transition-colors active:scale-95"
                             >
                                 <WarningCircle className="w-5 h-5" weight="fill" />
-                                Xem bài tập ({event.homeworkCount || 1})
+                                {t.studentSchedule.detailHomework} ({event.homeworkCount || 1})
                             </button>
                         )}
                     </div>
