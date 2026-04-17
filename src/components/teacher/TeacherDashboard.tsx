@@ -195,7 +195,7 @@ export function TeacherDashboard() {
 
     return (
         <div
-            className="h-full flex flex-col p-6 md:p-8 space-y-6 max-w-7xl mx-auto overflow-hidden"
+            className="flex flex-col p-6 md:p-8 pb-12 md:pb-16 space-y-6 max-w-7xl mx-auto"
             style={{ fontFamily: "'Nunito', sans-serif" }}
         >
             {/* ── Header ── */}
@@ -220,7 +220,7 @@ export function TeacherDashboard() {
             </div>
 
             {/* ── Main grid ── */}
-            <div className="grid grid-cols-1 xl:grid-cols-5 gap-6 flex-1 min-h-0 overflow-y-auto xl:overflow-hidden pr-1">
+            <div className="grid grid-cols-1 xl:grid-cols-5 gap-6">
 
                 {/* Left col: Documents + Tests — span 2 */}
                 <div className="xl:col-span-2 space-y-6">

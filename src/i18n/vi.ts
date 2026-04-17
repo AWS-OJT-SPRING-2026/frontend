@@ -305,7 +305,7 @@ const vi = {
     welcomeHeader: 'Chào mừng đến với SlothubEdu',
     greeting: 'Chào buổi sáng!',
     searchPlaceholder: 'Tìm kiếm...',
-    footer: '© 2024 SlothubEdu – Nền tảng học tập thông minh.',
+    footer: '© 2026 SlothubEdu – Nền tảng học tập thông minh.',
   },
 
   // ── Student Study Space Page ──

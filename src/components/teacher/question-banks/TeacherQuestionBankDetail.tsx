@@ -11,10 +11,6 @@ import {
 } from '../../../services/teacherQuestionService';
 import { authService } from '../../../services/authService';
 import { cn } from '../../../lib/utils';
-import ReactMarkdown from 'react-markdown';
-import remarkGfm from 'remark-gfm';
-import remarkMath from 'remark-math';
-import rehypeKatex from 'rehype-katex';
 import 'katex/dist/katex.min.css';
 import { MathRenderer } from '../../ui/MathRenderer';
 
@@ -247,12 +243,7 @@ export default function TeacherQuestionBankDetail() {
                                         )}
                                     </div>
                                     <div className="text-[#1A1A1A] font-bold text-base leading-relaxed markdown-content">
-                                        <ReactMarkdown 
-                                            remarkPlugins={[remarkGfm, remarkMath]}
-                                            rehypePlugins={[rehypeKatex]}
-                                        >
-                                            {cleanQuestionText(q.questionText)?.replace(/\\n/g, '\n')}
-                                        </ReactMarkdown>
+                                        <MathRenderer content={cleanQuestionText(q.questionText)?.replace(/\\n/g, '\n')} />
                                     </div>
                                 </div>
                                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">

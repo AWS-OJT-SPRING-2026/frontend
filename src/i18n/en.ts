@@ -307,7 +307,7 @@ const en: Translations = {
     welcomeHeader: 'Welcome to SlothubEdu',
     greeting: 'Good morning!',
     searchPlaceholder: 'Search...',
-    footer: '© 2024 SlothubEdu – Smart Learning Platform.',
+    footer: '© 2026 SlothubEdu – Smart Learning Platform.',
   },
 
   // ── Student Study Space Page ──

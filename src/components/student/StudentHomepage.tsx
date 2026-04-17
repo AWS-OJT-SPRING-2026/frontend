@@ -7,6 +7,7 @@ import {
     Eye, Gear, ArrowLeft, X, CoffeeBean, ChartBar, CaretDown,
 } from '@phosphor-icons/react';
 import { useSettings } from '../../context/SettingsContext';
+import { useAuth } from '../../context/AuthContext';
 import { NotificationDropdown } from './NotificationDropdown';
 import { weeklyProgressService, WeeklyProgressData } from '../../services/weeklyProgressService';
 import { notificationService } from '../../services/notificationService';
@@ -23,6 +24,7 @@ const POMODORO_WORK = 25 * 60;
 export function StudentHomepage() {
     const navigate = useNavigate();
     const { theme, t } = useSettings();
+    const { user } = useAuth();
     const isDark = theme === 'dark';
 
     // Notification dropdown
@@ -327,7 +329,18 @@ export function StudentHomepage() {
                         />
                     </div>
 
-                    <div className="w-12 h-12 bg-[#FF6B4A] rounded-2xl flex items-center justify-center text-white font-extrabold text-lg shadow-sm cursor-pointer" onClick={() => navigate('/student/account')}>V</div>
+                    {user?.avatarUrl ? (
+                        <img
+                            src={user.avatarUrl}
+                            alt={user?.name || 'User'}
+                            className="w-12 h-12 rounded-2xl object-cover shadow-sm cursor-pointer ring-2 ring-[#FF6B4A]/30 hover:ring-[#FF6B4A] transition-all"
+                            onClick={() => navigate('/student/account')}
+                        />
+                    ) : (
+                        <div className="w-12 h-12 bg-[#FF6B4A] rounded-2xl flex items-center justify-center text-white font-extrabold text-lg shadow-sm cursor-pointer hover:bg-[#ff5535] transition-colors" onClick={() => navigate('/student/account')}>
+                            {user?.name?.[0]?.toUpperCase() || 'U'}
+                        </div>
+                    )}
                 </div>
             </div>
 

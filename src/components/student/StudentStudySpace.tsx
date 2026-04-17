@@ -12,6 +12,7 @@ import remarkMath from 'remark-math';
 import rehypeKatex from 'rehype-katex';
 import 'katex/dist/katex.min.css';
 import { useSettings } from '../../context/SettingsContext';
+import { useAuth } from '../../context/AuthContext';
 import { authService } from '../../services/authService';
 import { profileService } from '../../services/profileService';
 import { aiFetch } from '../../services/aiFetch';
@@ -81,6 +82,7 @@ const levels = [
 // ═══════════════════════════════════════════════════════
 export function StudentStudySpace() {
     const { theme, t } = useSettings();
+    const { user } = useAuth();
     const isDark = theme === 'dark';
     const navigate = useNavigate();
 
@@ -580,7 +582,19 @@ export function StudentStudySpace() {
                                         <p className="font-semibold text-[14px] leading-relaxed whitespace-pre-wrap">{msg.content}</p>
                                     )}
                                 </div>
-                                {msg.role === 'user' && <div className="w-8 h-8 rounded-xl bg-[#FF6B4A] border border-[#1A1A1A] flex items-center justify-center text-white text-[10px] font-extrabold shrink-0 mt-1">HS</div>}
+                                {msg.role === 'user' && (
+                                    user?.avatarUrl ? (
+                                        <img
+                                            src={user.avatarUrl}
+                                            alt={user?.name || 'User'}
+                                            className="w-8 h-8 rounded-xl object-cover border border-[#1A1A1A] shrink-0 mt-1"
+                                        />
+                                    ) : (
+                                        <div className="w-8 h-8 rounded-xl bg-[#FF6B4A] border border-[#1A1A1A] flex items-center justify-center text-white text-[10px] font-extrabold shrink-0 mt-1">
+                                            {user?.name?.split(' ').map(w => w[0]).join('').slice(-2).toUpperCase() || 'HS'}
+                                        </div>
+                                    )
+                                )}
                             </div>
                         </div>
                     ))}

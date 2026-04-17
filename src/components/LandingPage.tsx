@@ -308,7 +308,7 @@ export function LandingPage() {
                         ))}
                     </div>
                     <div className="border-t border-white/10 pt-8 flex flex-col sm:flex-row justify-between items-center gap-4 text-xs font-bold">
-                        <p>© 2024 SlothubEdu Corporation. All rights reserved.</p>
+                        <p>© 2026 SlothubEdu Corporation. All rights reserved.</p>
                     </div>
                 </div>
             </footer>

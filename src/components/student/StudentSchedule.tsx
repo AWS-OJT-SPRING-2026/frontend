@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import {
     CalendarBlank, Clock, BookOpen, ChalkboardTeacher, CaretLeft, CaretRight,
     Video, Rows, SquaresFour, WarningCircle, MapPin, X, Target, CalendarDots,
-    CheckCircle, XCircle, Bell, PaperPlaneRight, FileText, Users, Student, ClipboardText, Lock
+    CheckCircle, XCircle, Bell, PaperPlaneRight, FileText, Users, Student, ClipboardText, Lock, Books
 } from '@phosphor-icons/react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '../ui/dialog';
 import { useSettings } from '../../context/SettingsContext';
@@ -14,6 +14,8 @@ import { notificationService } from '../../services/notificationService';
 import { upcomingTaskService, UpcomingTask } from '../../services/upcomingTaskService';
 import { parseVnDate } from '../../lib/timeUtils';
 import { isInactiveStatus } from '../shared/InactiveClassState';
+import { studentMaterialService } from '../../services/studentMaterialService';
+import { authService } from '../../services/authService';
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL;
 
@@ -348,10 +350,11 @@ function EventTooltip({ event, x, y, now }: { event: ScheduleEntry; x: number; y
     );
 }
 
-function EventDetailDialog({ event, onClose, onViewHomework, onBlockedAction }: { event: ScheduleEntry | null; onClose: () => void; onViewHomework: (event: ScheduleEntry) => void; onBlockedAction: () => void }) {
+function EventDetailDialog({ event, onClose, onViewHomework, onBlockedAction, theorySubjectNames, onViewDocuments }: { event: ScheduleEntry | null; onClose: () => void; onViewHomework: (event: ScheduleEntry) => void; onBlockedAction: () => void; theorySubjectNames: Set<string>; onViewDocuments: () => void }) {
     const { t } = useSettings();
     if (!event) return null;
     const inactiveClass = isInactiveStatus(event.classStatus);
+    const hasTheoryMaterial = theorySubjectNames.has(event.subject);
 
     return (
         <Dialog open={!!event} onOpenChange={(open) => !open && onClose()}>
@@ -446,6 +449,23 @@ function EventDetailDialog({ event, onClose, onViewHomework, onBlockedAction }: 
                                 {t.studentSchedule.detailHomework} ({event.homeworkCount || 1})
                             </button>
                         )}
+                        {hasTheoryMaterial && (
+                            <button
+                                type="button"
+                                onClick={() => {
+                                    if (inactiveClass) {
+                                        onBlockedAction();
+                                        return;
+                                    }
+                                    onClose();
+                                    onViewDocuments();
+                                }}
+                                className={`inline-flex w-full items-center justify-center gap-2 rounded-2xl border-2 px-3 py-3.5 text-sm font-extrabold transition-colors active:scale-95 ${inactiveClass ? 'border-gray-300 bg-gray-100 text-gray-400 cursor-not-allowed' : 'border-[#8B5CF6]/20 bg-[#F3EEFF] text-[#7C3AED] hover:bg-[#EDE5FF]'}`}
+                            >
+                                <Books className="w-5 h-5" weight="fill" />
+                                Tài liệu
+                            </button>
+                        )}
                     </div>
                 </div>
 
@@ -512,6 +532,24 @@ export function StudentSchedule() {
 
     // ── Real notification unread count ─────────────────────────────────────
     const [realUnreadCount, setRealUnreadCount] = useState(0);
+
+    // ── Theory subject names (for "Tài liệu" button in detail dialog) ────
+    const [theorySubjectNames, setTheorySubjectNames] = useState<Set<string>>(new Set());
+
+    useEffect(() => {
+        let cancelled = false;
+        const token = authService.getToken();
+        if (token) {
+            studentMaterialService.getTheorySubjectsOverview(token)
+                .then(subjects => {
+                    if (!cancelled) {
+                        setTheorySubjectNames(new Set(subjects.map(s => s.subjectName)));
+                    }
+                })
+                .catch(() => {});
+        }
+        return () => { cancelled = true; };
+    }, []);
 
     useEffect(() => {
         const handleOpenClassmates = (e: any) => setShowClassmates(e.detail);
@@ -1473,6 +1511,8 @@ export function StudentSchedule() {
                 onClose={() => setSelectedEvent(null)}
                 onViewHomework={handleViewHomework}
                 onBlockedAction={handleInactiveBlockedAction}
+                theorySubjectNames={theorySubjectNames}
+                onViewDocuments={() => navigate('/student/documents')}
             />
             {tooltipData && <EventTooltip event={tooltipData.event} x={tooltipData.x} y={tooltipData.y} now={now} />}
 
