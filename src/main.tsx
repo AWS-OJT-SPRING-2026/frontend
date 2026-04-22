@@ -7,12 +7,6 @@ import './index.css';
 const COGNITO_USER_POOL_ID = (import.meta.env.VITE_COGNITO_USER_POOL_ID as string | undefined) ?? '';
 const COGNITO_USER_POOL_CLIENT_ID = (import.meta.env.VITE_COGNITO_USER_POOL_CLIENT_ID as string | undefined) ?? '';
 
-// ── AWS Amplify configuration ─────────────────────────────────────────────────
-// Chỉ cấu hình Cognito User Pool (không có oauth redirect vì dùng Custom UI).
-// Amplify sẽ tự quản lý token storage, refresh token, và session persistence.
-//
-// User Pool:   ap-southeast-1_VLlAOfNlC
-// App Client:  1338kohcgccptp602485oah1sd  (Public client — no client secret)
 Amplify.configure({
   Auth: {
     Cognito: {
